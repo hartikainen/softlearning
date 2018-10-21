@@ -1,7 +1,7 @@
 from copy import deepcopy
 
 from softlearning.preprocessors.utils import get_preprocessor_from_params
-from . import vanilla
+from . import vanilla, metric_learning
 
 
 def create_double_value_function(value_fn, *args, **kwargs):
@@ -18,6 +18,9 @@ VALUE_FUNCTIONS = {
     'double_feedforward_Q_function': lambda *args, **kwargs: (
         create_double_value_function(
             vanilla.create_feedforward_Q_function, *args, **kwargs)),
+    'double_metric_Q_function': lambda *args, **kwargs: (
+        create_double_value_function(
+            metric_learning.create_metric_Q_function, *args, **kwargs))
 }
 
 

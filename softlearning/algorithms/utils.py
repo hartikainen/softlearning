@@ -9,8 +9,17 @@ def create_SAC_algorithm(variant, *args, **kwargs):
     return algorithm
 
 
+def create_metric_learning_algorithm_one(variant, *args, **kwargs):
+    from .metric_learning import MetricLearningAlgorithmOne
+
+    algorithm = MetricLearningAlgorithmOne(*args, **kwargs)
+
+    return algorithm
+
+
 ALGORITHM_CLASSES = {
     'SAC': create_SAC_algorithm,
+    'MetricLearningAlgorithmOne': create_metric_learning_algorithm_one,
 }
 
 

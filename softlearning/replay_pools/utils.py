@@ -3,7 +3,8 @@ from copy import deepcopy
 from . import (
     simple_replay_pool,
     extra_policy_info_replay_pool,
-    union_pool)
+    union_pool,
+    metric_learning_pool)
 
 
 POOL_CLASSES = {
@@ -11,6 +12,7 @@ POOL_CLASSES = {
     'ExtraPolicyInfoReplayPool': (
         extra_policy_info_replay_pool.ExtraPolicyInfoReplayPool),
     'UnionPool': union_pool.UnionPool,
+    'MetricLearningPool': metric_learning_pool.MetricLearningPool,
 }
 
 DEFAULT_REPLAY_POOL = 'SimpleReplayPool'

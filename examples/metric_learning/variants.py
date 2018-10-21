@@ -9,30 +9,30 @@ DEFAULT_LAYER_SIZE = 256
 
 ENV_PARAMS = {
     'Point2DEnv': {
-        'default': {
+        'Default': {
             'observation_keys': ('observation', ),
         },
-        'wall': {
+        'Wall': {
             'observation_keys': ('observation', ),
         },
     }
 }
 
 NUM_EPOCHS_PER_DOMAIN = {
-    'swimmer': int(5e2 + 1),
-    'hopper': int(3e3 + 1),
-    'half-cheetah': int(3e3 + 1),
-    'walker': int(3e3 + 1),
-    'ant': int(3e3 + 1),
-    'humanoid': int(1e4 + 1),
-    'pusher-2d': int(2e3 + 1),
-    'sawyer-torque': int(1e3 + 1),
+    'Swimmer': int(5e2 + 1),
+    'Hopper': int(3e3 + 1),
+    'HalfCheetah': int(3e3 + 1),
+    'Walker': int(3e3 + 1),
+    'Ant': int(3e3 + 1),
+    'Humanoid': int(1e4 + 1),
+    'Pusher2d': int(2e3 + 1),
     'HandManipulatePen': int(1e4 + 1),
     'HandManipulateEgg': int(1e4 + 1),
     'HandManipulateBlock': int(1e4 + 1),
     'HandReach': int(1e4 + 1),
     'DClaw3': int(5e2 + 1),
     'ImageDClaw3': int(5e3 + 1),
+    'Point2DEnv': int(200 + 1)
 }
 
 
@@ -53,16 +53,10 @@ def get_variant_spec(universe, domain, task, policy):
         'env_params': ENV_PARAMS.get(domain, {}).get(task, {}),
         'policy_params': {
             'type': 'GaussianPolicy',
-            'reg': 1e-3,
-            'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
-            'reparameterize': True,
-            'squash': True,
-        },
-        'V_params': {
-            'type': 'metric_V_function',
             'kwargs': {
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
-            }
+                'squash': True,
+            },
         },
         'Q_params': {
             'type': 'double_metric_Q_function',
@@ -73,28 +67,31 @@ def get_variant_spec(universe, domain, task, policy):
         'preprocessor_params': None,
         'algorithm_params': {
             'type': 'MetricLearningAlgorithmOne',
+            'kwargs': {
+                'epoch_length': 1000,
+                'train_every_n_steps': 1,
+                'n_train_repeat': 1,
+                'n_initial_exploration_steps': int(1e3),
+                'reparameterize': True,
+                'eval_render_mode': None,
+                'eval_n_episodes': 1,
+                'eval_deterministic': True,
 
-            'epoch_length': 1000,
-            'n_epochs': NUM_EPOCHS_PER_DOMAIN[domain],
-            'train_every_n_steps': 1,
-            'n_train_repeat': 1,
-            'n_initial_exploration_steps': int(1e3),
-            'eval_render': False,
-            'eval_n_episodes': 1,
-            'eval_deterministic': True,
-
-            'lr': 3e-4,
-            'discount': tune.grid_search([0.99]),
-            'target_update_interval': 1,
-            'tau': 0.005,
-            'target_entropy': 'auto',
-            'reward_scale': 1.0,
-            'action_prior': 'uniform',
-            'save_full_state': False,
+                'lr': 3e-4,
+                'discount': 0.99,
+                'target_update_interval': 1,
+                'tau': 0.005,
+                'target_entropy': 'auto',
+                'reward_scale': 1.0,
+                'action_prior': 'uniform',
+                'save_full_state': False,
+            }
         },
         'replay_pool_params': {
             'type': 'MetricLearningPool',
-            'max_size': 1e6,
+            'kwargs': {
+                'max_size': 1e6,
+            }
         },
         'sampler_params': {
             'type': 'SimpleSampler',
@@ -107,14 +104,9 @@ def get_variant_spec(universe, domain, task, policy):
             }
         },
         'run_params': {
-            'seed': tune.grid_search(
-                np.random.randint(0, 1000, 3).tolist()),
-            'snapshot_mode': 'gap',
-            'snapshot_gap': lambda spec: (
-                spec.get('config', spec)
-                ['algorithm_params']
-                ['n_epochs'] // 10),
-            'sync_pkl': True,
+            'seed': lambda spec: np.random.randint(0, 10000),
+            'checkpoint_at_end': False,
+            'checkpoint_frequency': 0,
         },
     }
 
