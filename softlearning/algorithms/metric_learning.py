@@ -105,13 +105,13 @@ class MetricLearningAlgorithmOne(RLAlgorithm):
         self._observations_ph = tf.placeholder(
             tf.float32,
             shape=(None, *self._observation_shape),
-            name='observation',
+            name='observations',
         )
 
         self._next_observations_ph = tf.placeholder(
             tf.float32,
             shape=(None, *self._observation_shape),
-            name='next_observation',
+            name='next_observations',
         )
 
         self._goals_ph = tf.placeholder(

@@ -64,7 +64,7 @@ def get_variant_spec(universe, domain, task, policy):
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
             }
         },
-        'preprocessor_params': None,
+        'preprocessor_params': {},
         'algorithm_params': {
             'type': 'MetricLearningAlgorithmOne',
             'kwargs': {
