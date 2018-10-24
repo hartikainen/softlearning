@@ -9,7 +9,7 @@ from .rl_algorithm import RLAlgorithm
 from .sac import td_target
 
 
-class MetricLearningAlgorithmOne(RLAlgorithm):
+class MetricLearningSoftActorCritic(RLAlgorithm):
 
     def __init__(
             self,
@@ -33,7 +33,7 @@ class MetricLearningAlgorithmOne(RLAlgorithm):
             save_full_state=False,
             **kwargs):
 
-        super(MetricLearningAlgorithmOne, self).__init__(**kwargs)
+        super(MetricLearningSoftActorCritic, self).__init__(**kwargs)
 
         self._env = env
         self._policy = policy

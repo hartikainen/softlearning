@@ -10,16 +10,16 @@ def create_SAC_algorithm(variant, *args, **kwargs):
 
 
 def create_metric_learning_algorithm_one(variant, *args, **kwargs):
-    from .metric_learning import MetricLearningAlgorithmOne
+    from .metric_learning import MetricLearningSoftActorCritic
 
-    algorithm = MetricLearningAlgorithmOne(*args, **kwargs)
+    algorithm = MetricLearningSoftActorCritic(*args, **kwargs)
 
     return algorithm
 
 
 ALGORITHM_CLASSES = {
     'SAC': create_SAC_algorithm,
-    'MetricLearningAlgorithmOne': create_metric_learning_algorithm_one,
+    'MetricLearningSoftActorCritic': create_metric_learning_algorithm_one,
 }
 
 

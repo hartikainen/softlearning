@@ -66,7 +66,8 @@ def get_variant_spec(universe, domain, task, policy):
         },
         'preprocessor_params': {},
         'algorithm_params': {
-            'type': 'MetricLearningAlgorithmOne',
+            'type': 'MetricLearningSoftActorCritic',
+
             'kwargs': {
                 'epoch_length': 1000,
                 'train_every_n_steps': 1,
