@@ -187,7 +187,7 @@ ENV_PARAMS = {
             'target_initial_velocity_range': (0, 0),
             'target_initial_position_range': (np.pi, np.pi),
             'object_initial_velocity_range': (0, 0),
-            'object_initial_position_range': (-np.pi, -np.pi),
+            'object_initial_position_range': (0, 0),
         }
     },
     'ImageDClaw3': {
