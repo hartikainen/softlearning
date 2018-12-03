@@ -84,7 +84,7 @@ NUM_EPOCHS_PER_DOMAIN = {
     'HandManipulateEgg': int(1e4 + 1),
     'HandManipulateBlock': int(1e4 + 1),
     'HandReach': int(1e4 + 1),
-    'DClaw3': int(5e2 + 1),
+    'DClaw3': int(2e2 + 1),
     'ImageDClaw3': int(5e3 + 1),
     'Point2DEnv': int(200 + 1),
     'Reacher': int(200 + 1),
@@ -104,6 +104,18 @@ ALGORITHM_PARAMS_PER_DOMAIN = {
         } for domain in NUM_EPOCHS_PER_DOMAIN
     }
 }
+
+
+class NegativeLogLossFn(object):
+    def __init__(self, eps):
+        self._eps = eps
+
+    def __call__(self, object_target_distance):
+        return -np.log(object_target_distance + self._eps)
+
+    def __str__(self):
+        return str(f'eps={self._eps:e}')
+
 
 ENV_PARAMS = {
     'swimmer': {  # 2 DoF
@@ -159,14 +171,23 @@ ENV_PARAMS = {
     },
     'DClaw3': {
         'ScrewV2': {
-            'object_target_distance_cost_coeff': 2.0,
-            'pose_difference_cost_coeff': 0.0,
-            'joint_velocity_cost_coeff': 0.0,
+            'object_target_distance_reward_fn': tune.grid_search([
+                *[
+                    NegativeLogLossFn(eps)
+                    for eps in [1e-1, 1e-2, 1e-4, 1e-6]
+                ],
+            ]),
+            'pose_difference_cost_coeff': tune.grid_search([
+                1e-4, 1e-3, 1e-2, 1e-1
+            ]),
+            'joint_velocity_cost_coeff': tune.grid_search([
+                1e-4, 1e-3, 1e-2, 1e-1
+            ]),
             'joint_acceleration_cost_coeff': tune.grid_search([0]),
             'target_initial_velocity_range': (0, 0),
             'target_initial_position_range': (np.pi, np.pi),
             'object_initial_velocity_range': (0, 0),
-            'object_initial_position_range': (-np.pi, np.pi),
+            'object_initial_position_range': (-np.pi, -np.pi),
         }
     },
     'ImageDClaw3': {
