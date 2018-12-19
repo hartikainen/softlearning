@@ -11,10 +11,17 @@ ENV_PARAMS = {
     'Point2DEnv': {
         'Default': {
             'observation_keys': ('observation', ),
+            'fixed_goal': (5.0, 5.0),
+            'reset_positions': ((-5.0, -5.0), ),
         },
         'Wall': {
             'observation_keys': ('observation', ),
-        },
+            'fixed_goal': (5.0, 5.0),
+            # 'fixed_goal': (4.0, 0.0),
+            'reset_positions': ((-5.0, -5.0), ),
+            'wall_shape': tune.grid_search(['zigzag']),
+            'discretize': False,
+        }
     }
 }
 
