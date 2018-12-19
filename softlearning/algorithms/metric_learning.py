@@ -484,6 +484,23 @@ class MetricLearningSoftActorCritic(RLAlgorithm):
         self._previous_training_paths = training_paths
         self._update_temporary_goal(training_paths)
 
+    def _timestep_before_hook(self, *args, **kwargs):
+        if ((self._timestep % self.sampler._max_path_length)
+            >= self.sampler._max_path_length * 0.8):
+            self.sampler.initialize(
+                self._env, self._initial_exploration_policy, self._pool)
+            # self.sampler.initialize(
+            #     self._env, self._env.unwrapped.optimal_policy, self._pool)
+        else:
+            # self.sampler.initialize(
+            #     self._env, self._initial_exploration_policy, self._pool)
+            self.sampler.initialize(self._env, self._policy, self._pool)
+            # self.sampler.initialize(
+            #     self._env, self._env.unwrapped.optimal_policy, self._pool)
+            if (self.sampler.policy is self._initial_exploration_policy
+                or self.sampler.policy is self._env.unwrapped.optimal_policy):
+                assert isinstance(self._env.unwrapped, Point2DEnv)
+
     def _do_training(self, iteration, batch):
         """Runs the operations for updating training and target ops."""
 
