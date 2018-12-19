@@ -5,8 +5,6 @@ import numpy as np
 import pandas as pd
 import os
 
-from rllab.misc import logger
-
 import matplotlib.pyplot as plt
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
@@ -217,30 +215,21 @@ def plot_distances(figure,
                 ny,
                 velocities=None,
                 observation_type=None)
-            actions = np.zeros((observations_1.shape[0], 2))
-            inputs = algorithm._metric_learner._distance_estimator_inputs(
-                observations_1, observations_2, actions)
+            actions = algorithm._policy.actions_np([observations_1])
+            # actions = np.zeros((observations_1.shape[0], 2))
+            # inputs = algorithm._metric_learner._distance_estimator_inputs(
+            #     observations_1, observations_2, actions)
+            inputs = [observations_1, observations_2, actions]
             X = np.reshape(observations_xy[:, 0], (nx, ny))
             Y = np.reshape(observations_xy[:, 1], (nx, ny))
 
-            try:
-                Z = algorithm._metric_learner.distance_estimator.predict(
-                    inputs).reshape(nx, ny)
-            except Exception as e:
-                all_string_keys = algorithm._metric_learner.distance_estimator.layers[0].keys
-                observations_strs = algorithm._metric_learner.distance_estimator.layers[0].to_tf_string(
-                    inputs)
-                observations_strs = algorithm._sess.run(observations_strs)
-
-                from pdb import set_trace; from pprint import pprint; set_trace()
-
-                for i, j in enumerate(observations_strs):
-                    if j not in all_string_keys:
-                        print(f'does not exist: {j}, {i}')
+            Z = - algorithm._Qs[0].predict(inputs).reshape(nx, ny)
 
             filled_contour = ax.contourf(
                 X, Y, Z,
-                levels=np.arange(algorithm._metric_learner._max_distance),
+                # levels=np.arange(algorithm._metric_learner._max_distance),
+                # levels=np.arange(25),
+                levels=25,
                 cmap='PuBuGn')
 
             contour = ax.contour(
@@ -308,18 +297,29 @@ def plot_Q(figure,
             # ax = subplots[row][column]
             Q_axes.append(ax)
 
-            raise ValueError('nope')
+            # raise ValueError('nope')
+
             position = observations_xy[i, :]
             goal = goals_xy[i, :]
-            observations = get_observations(
+            observations_1 = get_observations(
                 position,
                 goal,
                 nx,
                 ny,
                 velocities=None,
                 observation_type=None)
+            goal_position = goals_xy[i, :]
+            observations_2 = get_observations(
+                goal_position,
+                observations_xy,
+                nx,
+                ny,
+                observation_type=None)
             actions = actions_xy
-            Z = algorithm._q_functions[0].eval(observations, actions).reshape(nx, ny)
+            # Z = algorithm._q_functions[0].eval(observations, actions).reshape(nx, ny)
+            Z = - algorithm._Qs[0].predict([
+                observations_1, observations_2, actions
+            ]).reshape(nx, ny)
             contour = ax.contourf(
                 actions_X,
                 actions_Y,
@@ -340,6 +340,7 @@ def plot_V(figure,
            algorithm,
            observations_xy,
            goals_xy,
+           training_paths,
            evaluation_paths,
            num_heatmaps=16):
     min_x, max_x = algorithm._env.unwrapped.observation_x_bounds
@@ -363,7 +364,8 @@ def plot_V(figure,
         observation_type=None)
     X = np.reshape(observations_xy[:, 0], (nx, ny))
     Y = np.reshape(observations_xy[:, 1], (nx, ny))
-    Z = np.reshape(algorithm._vf.eval(observations), (nx, ny))
+    Z = np.reshape(algorithm._V.predict(
+        [observations_1, goals]), (nx, ny))
     contour = ax.contourf(
         X,
         Y,
@@ -384,8 +386,8 @@ def plot_V(figure,
                marker='*',
                label='final goal')
 
-    colorbar_ax, kw = mpl.colorbar.make_axes(ax, location='bottom',)
-    figure.colorbar(contour, cax=colorbar_ax, **kw)
+    # colorbar_ax, kw = mpl.colorbar.make_axes(ax, location='bottom',)
+    # figure.colorbar(contour, cax=colorbar_ax, **kw)
 
     goal_estimate = algorithm._temporary_goal
     ax.scatter(*goal_estimate,
@@ -406,10 +408,7 @@ def plot_V(figure,
                marker='*',
                label="past temporary goals")
 
-    previous_training_paths = getattr(
-        algorithm, '_previous_training_paths', [])
-
-    for i, training_path in enumerate(previous_training_paths):
+    for i, training_path in enumerate(training_paths):
         observations = training_path['observations']
 
         if observations.shape[1] == 11:
@@ -526,8 +525,9 @@ def plot_distance_quiver(figure,
                 observation_type=None)
 
             actions = np.zeros((observations_1.shape[0], 2))
-            inputs = algorithm._metric_learner._distance_estimator_inputs(
-                observations_1, observations_2, actions)
+            # inputs = algorithm._metric_learner._distance_estimator_inputs(
+            #     observations_1, observations_2, actions)
+            inputs = [observations_1, observations_2, actions]
             X = np.reshape(observations_xy[:, 0], (nx, ny))
             Y = np.reshape(observations_xy[:, 1], (nx, ny))
 
@@ -579,20 +579,17 @@ def plot_lagrange_multipliers(figure,
     pass
 
 
-def point_2d_plotter(algorithm, iteration, evaluation_paths):
-    log_base_dir = logger.get_snapshot_dir()
+def point_2d_plotter(algorithm, iteration, training_paths, evaluation_paths):
+    log_base_dir = os.getcwd()
+
     heatmap_dir = os.path.join(log_base_dir, 'vf_heatmap')
     if not os.path.exists(heatmap_dir):
         os.makedirs(heatmap_dir)
-    algorithm._preference_vf_heatmap_path = os.path.join(
-        heatmap_dir, 'iteration-{}-V_star.png'.format(iteration))
-
-    if algorithm._preference_vf_heatmap_path is None: return
 
     PLOT = (
         'distances',
-        # 'Q',
-        'distance-quiver',
+        'Q',
+        # 'distance-quiver',
         'V',
         # 'lagrange-multipliers'
     )
@@ -613,7 +610,7 @@ def point_2d_plotter(algorithm, iteration, evaluation_paths):
     reset_position = algorithm._env._env.unwrapped.get_reset_position()
     # np.array([ 0.6890015 , -0.14968373])
 
-    if (algorithm._metric_learner.distance_estimator.layers[0].name
+    if (False and algorithm._metric_learner.distance_estimator.layers[0].name
         == 'float_lookup_layer'):
         X = algorithm.evaluation_observations[:, 0]
         Y = algorithm.evaluation_observations[:, 1]
@@ -705,7 +702,7 @@ def point_2d_plotter(algorithm, iteration, evaluation_paths):
         plot_Q(fig,
                grid_spec[i],
                algorithm,
-               goals_xy,
+               observations_xy,
                goals_xy,
                num_heatmaps=num_heatmaps)
         i += 1
@@ -719,6 +716,7 @@ def point_2d_plotter(algorithm, iteration, evaluation_paths):
                algorithm,
                observations_xy,
                goals_xy,
+               training_paths,
                evaluation_paths,
                num_heatmaps=num_heatmaps)
 
