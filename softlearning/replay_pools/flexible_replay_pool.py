@@ -69,6 +69,26 @@ class FlexibleReplayPool(ReplayPool):
         return self.batch_by_indices(
             last_n_indices, field_name_filter=field_name_filter, **kwargs)
 
+    def filter_fields(self, field_names, field_name_filter):
+        if isinstance(field_name_filter, str):
+            field_name_filter = [field_name_filter]
+
+        if isinstance(field_name_filter, (list, tuple)):
+            field_name_list = field_name_filter
+
+            def filter_fn(field_name):
+                return field_name in field_name_list
+
+        else:
+            filter_fn = field_name_filter
+
+        filtered_field_names = [
+            field_name for field_name in field_names
+            if filter_fn(field_name)
+        ]
+
+        return filtered_field_names
+
     def batch_by_indices(self, indices, field_name_filter=None):
         if any(indices % self._max_size) > self.size:
             raise ValueError(
@@ -77,10 +97,8 @@ class FlexibleReplayPool(ReplayPool):
 
         field_names = self.field_names
         if field_name_filter is not None:
-            field_names = [
-                field_name for field_name in field_names
-                if field_name_filter(field_name)
-            ]
+            field_names = self.filter_fields(
+                field_names, field_name_filter)
 
         return {
             field_name: getattr(self, field_name)[indices]
