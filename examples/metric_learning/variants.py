@@ -112,7 +112,8 @@ def get_variant_spec(universe, domain, task, policy):
             }
         },
         'run_params': {
-            'seed': lambda spec: np.random.randint(0, 10000),
+            'seed': tune.sample_from(
+                lambda spec: np.random.randint(0, 10000)),
             'checkpoint_at_end': False,
             'checkpoint_frequency': 0,
         },
