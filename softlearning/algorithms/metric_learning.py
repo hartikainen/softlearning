@@ -8,6 +8,15 @@ from tensorflow.python.training import training_util
 from .rl_algorithm import RLAlgorithm
 from .sac import td_target
 
+from softlearning.environments.adapters.gym_adapter import (
+    Point2DEnv,
+    Point2DWallEnv,
+    CustomSwimmerEnv,
+    CustomAntEnv,
+    CustomHumanoidEnv)
+
+from softlearning.visualization import point_2d_plotter
+
 
 class MetricLearningSoftActorCritic(RLAlgorithm):
 
@@ -34,6 +43,13 @@ class MetricLearningSoftActorCritic(RLAlgorithm):
             **kwargs):
 
         super(MetricLearningSoftActorCritic, self).__init__(**kwargs)
+
+        self._goal = getattr(env.unwrapped, 'fixed_goal', None)
+        self._temporary_goal = None
+        self._first_observation = None
+        # self._temporary_goal_update_rule = (
+        #     'farthest_estimate_from_first_observation')
+        self._temporary_goal_update_rule = 'operator_query_last_step'
 
         self._env = env
         self._policy = policy
@@ -137,10 +153,16 @@ class MetricLearningSoftActorCritic(RLAlgorithm):
             name='terminals',
         )
 
+        self._temporary_goal_ph = tf.placeholder(
+            tf.float32,
+            shape=self._env.observation_space.shape,
+            name='goals',
+        )
+
     def _get_Q_target(self):
         next_actions = self._policy.actions([self._next_observations_ph])
-        next_log_pis = self._policy.log_pis(
-            [self._next_observations_ph], next_actions)
+        # next_log_pis = self._policy.log_pis(
+        #     [self._next_observations_ph], next_actions)
 
         next_Qs_values = tuple(
             Q_target([
@@ -152,14 +174,21 @@ class MetricLearningSoftActorCritic(RLAlgorithm):
         )
 
         min_next_Q = tf.reduce_min(next_Qs_values, axis=0)
-        next_value = min_next_Q - self._alpha * next_log_pis
+        next_value = min_next_Q
+        # next_value = min_next_Q - self._alpha * next_log_pis
 
-        terminals = tf.to_float(next_value < -1.0)
+        terminals = tf.to_float(
+            tf.norm(
+                self._next_observations_ph - self._goals_ph,
+                ord=2,
+                axis=1,
+                keepdims=True)
+            < 0.1)
 
         Q_target = td_target(
             reward=-1.0,
             discount=self._discount,
-            next_value=terminals * next_value
+            next_value=(1.0 - terminals) * next_value
         )  # N
 
         return Q_target
@@ -234,8 +263,12 @@ class MetricLearningSoftActorCritic(RLAlgorithm):
         elif self._action_prior == 'uniform':
             policy_prior_log_probs = 0.0
 
+        goals = tf.tile(
+            self._temporary_goal_ph[None, :],
+            # self._env.unwrapped.fixed_goal[None, :],
+            (tf.shape(self._observations_ph)[0], 1))
         Q_log_targets = tuple(
-            Q([self._observations_ph, self._goals_ph, actions])
+            Q([self._observations_ph, goals, actions])
             for Q in self._Qs)
         min_Q_log_target = tf.reduce_min(Q_log_targets, axis=0)
 
@@ -279,6 +312,178 @@ class MetricLearningSoftActorCritic(RLAlgorithm):
                 for target, source in zip(target_params, source_params)
             ])
 
+    def _update_temporary_goal(self, training_paths):
+        if self._temporary_goal_update_rule == 'closest_l2_from_goal':
+            new_observations = np.concatenate([
+                path['observations'] for path in training_paths], axis=0)
+            new_distances = np.linalg.norm(
+                new_observations - self._goal, axis=1)
+
+            min_distance_idx = np.argmin(new_distances)
+            min_distance = new_distances[min_distance_idx]
+
+            current_distance = np.linalg.norm(
+                self._temporary_goal - self._goal)
+            if min_distance < current_distance:
+                self._temporary_goal = new_observations[min_distance_idx]
+        elif (self._temporary_goal_update_rule
+              == 'farthest_l2_from_first_observation'):
+            new_observations = np.concatenate([
+                path['observations'] for path in training_paths], axis=0)
+            new_distances = np.linalg.norm(
+                new_observations - self._first_observation, axis=1)
+
+            max_distance_idx = np.argmax(new_distances)
+            max_distance = new_distances[max_distance_idx]
+
+            current_distance = np.linalg.norm(
+                self._temporary_goal - self._first_observation)
+            if max_distance > current_distance:
+                self._temporary_goal = new_observations[max_distance_idx]
+        elif (self._temporary_goal_update_rule
+              == 'farthest_estimate_from_first_observation'):
+
+            new_observations = getattr(
+                self._pool, 'observations.observation')[:self._pool.size]
+            first_observations = np.tile(
+                self._first_observation[None, :],
+                (new_observations.shape[0], 1))
+            actions = self._policy.actions_np([first_observations])
+            new_distances = tuple(
+                Q.predict([
+                    np.tile(self._first_observation[None, :],
+                            (new_observations.shape[0], 1)),
+                    new_observations,
+                    actions,
+                ])
+                for Q in self._Qs)
+
+            new_distances = - np.min(new_distances, axis=0)
+            max_distance_idx = np.argmax(new_distances)
+            max_distance = new_distances[max_distance_idx]
+
+            current_distances = tuple(
+                Q.predict([
+                    self._first_observation[None, :],
+                    self._temporary_goal[None, :],
+                    self._policy.actions_np([self._first_observation[None, :]]),
+                ])
+                for Q in self._Qs)
+            current_distance = - np.min(current_distances)
+            if max_distance > current_distance:
+                self._temporary_goal = new_observations[max_distance_idx]
+
+        elif (self._temporary_goal_update_rule == 'operator_query_last_step'):
+            new_observations = np.concatenate([
+                path['observations'] for path in training_paths], axis=0)
+            path_last_observations = new_observations[
+                -1::-self.sampler._max_path_length]
+            if isinstance(self._env.unwrapped, (Point2DEnv, Point2DWallEnv)):
+                last_observations_distances = (
+                    self._env.unwrapped.get_approximate_shortest_paths(
+                        np.round(path_last_observations),
+                        np.tile(np.round(self._goal),
+                                (path_last_observations.shape[0], 1))
+                    ))
+
+                min_distance_idx = np.argmin(last_observations_distances)
+                min_distance = last_observations_distances[min_distance_idx]
+
+                current_distance = (
+                    self._env.unwrapped.get_approximate_shortest_paths(
+                        np.round(self._temporary_goal[None, :]),
+                        np.round(self._goal[None, :])
+                    ))
+
+                if min_distance < current_distance:
+                    self._temporary_goal = path_last_observations[
+                        min_distance_idx]
+            elif isinstance(self._env.unwrapped,
+                            (RllabSwimmerEnv, RllabAntEnv, RllabHumanoidEnv)):
+                last_observations_positions = path_last_observations[:, -3:-1]
+                last_observations_distances = np.linalg.norm(
+                    last_observations_positions, ord=2, axis=1)
+
+                max_distance_idx = np.argmax(last_observations_distances)
+                max_distance = last_observations_distances[max_distance_idx]
+
+                current_distance = np.linalg.norm(
+                    self._temporary_goal[-3:-1], ord=2)
+                if max_distance > current_distance:
+                    self._temporary_goal = path_last_observations[
+                        max_distance_idx]
+            elif isinstance(self._env.unwrapped,
+                            (GymAntEnv,
+                             GymHalfCheetahEnv,
+                             GymHumanoidEnv)):
+                velocity_indices = {
+                    GymAntEnv: slice(
+                        self._env.unwrapped.sim.data.qpos.size - 2,
+                        self._env.unwrapped.sim.data.qpos.size),
+                    GymHalfCheetahEnv: slice(
+                        self._env.unwrapped.sim.data.qpos.size - 1,
+                        self._env.unwrapped.sim.data.qpos.size),
+                    GymHumanoidEnv: slice(
+                        self._env.unwrapped.sim.data.qpos.size - 2,
+                        self._env.unwrapped.sim.data.qpos.size),
+                }[type(self._env.unwrapped)]
+                new_velocities = new_observations[
+                    :, velocity_indices]
+                new_velocities = np.linalg.norm(new_velocities, ord=2, axis=1)
+
+                max_velocity_idx = np.argmax(new_velocities)
+                max_velocity = new_velocities[max_velocity_idx]
+
+                current_velocity = np.linalg.norm(
+                    self._temporary_goal[velocity_indices], ord=2)
+                if max_velocity > current_velocity:
+                    self._temporary_goal = new_observations[
+                        max_velocity_idx]
+            elif isinstance(self._env.unwrapped,
+                            (CustomAntEnv,
+                             CustomHumanoidEnv)):
+                if self._env.unwrapped._exclude_current_positions_from_observation:
+                    raise NotImplementedError
+
+                position_idx = slice(0, 2)
+                last_observations_positions = path_last_observations[
+                    :, position_idx]
+                last_observations_distances = np.linalg.norm(
+                    last_observations_positions, ord=2, axis=1)
+
+                max_distance_idx = np.argmax(last_observations_distances)
+                max_distance = last_observations_distances[max_distance_idx]
+
+                current_distance = np.linalg.norm(
+                    self._temporary_goal[position_idx], ord=2)
+                if max_distance > current_distance:
+                    self._temporary_goal = path_last_observations[
+                        max_distance_idx]
+            elif isinstance(self._env.unwrapped,
+                            (GymInvertedPendulumEnv,
+                             GymInvertedDoublePendulumEnv)):
+                raise NotImplementedError
+            elif isinstance(self._env.unwrapped, FixedTargetReacherEnv):
+                last_distances_from_target = np.linalg.norm(
+                    path_last_observations[:, -3:], ord=2, axis=1)
+
+                min_distance_idx = np.argmin(last_distances_from_target)
+                min_distance = last_distances_from_target[min_distance_idx]
+
+                current_distance_from_target = np.linalg.norm(
+                    self._temporary_goal[-3:])
+                if min_distance < current_distance_from_target:
+                    self._temporary_goal = path_last_observations[
+                        min_distance_idx]
+            elif isinstance(self._env.unwrapped, SawyerPushAndReachXYZEnv):
+                self._temporary_goal = self._env.unwrapped._state_goal.copy()
+            else:
+                raise NotImplementedError
+
+    def _epoch_after_hook(self, training_paths):
+        self._previous_training_paths = training_paths
+        self._update_temporary_goal(training_paths)
+
     def _do_training(self, iteration, batch):
         """Runs the operations for updating training and target ops."""
 
@@ -298,9 +503,15 @@ class MetricLearningSoftActorCritic(RLAlgorithm):
             self._actions_ph: batch['actions'],
             self._next_observations_ph: batch['next_observations'],
             self._goals_ph: batch['goals'],
-            self._rewards_ph: batch['rewards'],
+            # self._rewards_ph: batch['rewards'],
             self._terminals_ph: batch['terminals'],
         }
+
+        if self._temporary_goal is None:
+            self._temporary_goal = batch['observations'][0]
+            self._first_observation = batch['observations'][0]
+
+        feed_dict.update({self._temporary_goal_ph: self._temporary_goal})
 
         if iteration is not None:
             feed_dict[self._iteration_ph] = iteration
@@ -346,6 +557,14 @@ class MetricLearningSoftActorCritic(RLAlgorithm):
 
         if self._plotter:
             self._plotter.draw()
+
+        if True or self._plot_distances:
+            if isinstance(self._env.unwrapped, (Point2DEnv, Point2DWallEnv)):
+                point_2d_plotter.point_2d_plotter(
+                    self, iteration, training_paths, evaluation_paths)
+            elif isinstance(self._env.unwrapped, FixedTargetReacherEnv):
+                fixed_target_reacher_plotter.fixed_target_reacher_plotter(
+                    self, iteration, training_paths, evaluation_paths)
 
         return diagnostics
 
