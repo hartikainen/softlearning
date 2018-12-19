@@ -230,6 +230,7 @@ def plot_distances(figure,
                 # levels=np.arange(algorithm._metric_learner._max_distance),
                 # levels=np.arange(25),
                 levels=25,
+                extend='both',
                 cmap='PuBuGn')
 
             contour = ax.contour(
@@ -326,6 +327,7 @@ def plot_Q(figure,
                 Z,
                 20,
                 linestyles='dashed',
+                extend='both',
                 cmap='PuBuGn')
             # ax.plot(*state, 'go')
 
