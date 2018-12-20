@@ -357,24 +357,28 @@ def plot_V(figure,
     ax.set_xlim([min_x, max_x])
     ax.set_ylim([min_y, max_y])
 
-    observations = get_observations(
-        observations_xy,
-        goals_xy[-1, :],
-        nx,
-        ny,
-        velocities=None,
-        observation_type=None)
-    X = np.reshape(observations_xy[:, 0], (nx, ny))
-    Y = np.reshape(observations_xy[:, 1], (nx, ny))
-    Z = np.reshape(algorithm._V.predict(
-        [observations_1, goals]), (nx, ny))
-    contour = ax.contourf(
-        X,
-        Y,
-        Z,
-        15,
-        linestyles='dashed',
-        cmap='PuBuGn')
+    if hasattr(algorithm, '_V'):
+        observations = get_observations(
+            observations_xy,
+            goals_xy[-1, :],
+            nx,
+            ny,
+            velocities=None,
+            observation_type=None)
+        X = np.reshape(observations_xy[:, 0], (nx, ny))
+        Y = np.reshape(observations_xy[:, 1], (nx, ny))
+        Z = np.reshape(algorithm._V.predict(
+            [observations_1, goals]), (nx, ny))
+        contour = ax.contourf(
+            X,
+            Y,
+            Z,
+            15,
+            linestyles='dashed',
+            cmap='PuBuGn')
+
+        colorbar_ax, kw = mpl.colorbar.make_axes(ax, location='bottom',)
+        figure.colorbar(contour, cax=colorbar_ax, **kw)
 
     if getattr(algorithm._env.unwrapped, 'fixed_goal', None) is not None:
         fixed_goal = algorithm._env._env.unwrapped.fixed_goal[:2]
@@ -387,9 +391,6 @@ def plot_V(figure,
                color='blue',
                marker='*',
                label='final goal')
-
-    # colorbar_ax, kw = mpl.colorbar.make_axes(ax, location='bottom',)
-    # figure.colorbar(contour, cax=colorbar_ax, **kw)
 
     goal_estimate = algorithm._temporary_goal
     ax.scatter(*goal_estimate,
