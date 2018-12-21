@@ -92,6 +92,7 @@ def get_variant_spec(universe, domain, task, policy):
                 'target_entropy': 'auto',
                 'reward_scale': 1.0,
                 'action_prior': 'uniform',
+                'plot_distances': True,
                 'save_full_state': False,
             }
         },

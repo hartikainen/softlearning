@@ -39,6 +39,7 @@ class MetricLearningSoftActorCritic(RLAlgorithm):
             action_prior='uniform',
             reparameterize=False,
 
+            plot_distances=False,
             save_full_state=False,
             **kwargs):
 
@@ -77,6 +78,7 @@ class MetricLearningSoftActorCritic(RLAlgorithm):
         self._action_prior = action_prior
         self._reparameterize = reparameterize
 
+        self._plot_distances = plot_distances
         self._save_full_state = save_full_state
 
         observation_shape = self._env.active_observation_shape
