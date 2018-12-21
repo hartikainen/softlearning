@@ -477,8 +477,7 @@ class MetricLearningSoftActorCritic(RLAlgorithm):
             self.sampler.initialize(self._env, self._policy, self._pool)
             # self.sampler.initialize(
             #     self._env, self._env.unwrapped.optimal_policy, self._pool)
-            if (self.sampler.policy is self._initial_exploration_policy
-                or self.sampler.policy is self._env.unwrapped.optimal_policy):
+            if self.sampler.policy is not self._policy:
                 assert isinstance(self._env.unwrapped, Point2DEnv)
 
     def _do_training(self, iteration, batch):
