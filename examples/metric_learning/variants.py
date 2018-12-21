@@ -8,6 +8,21 @@ from examples.utils import variant_equals
 DEFAULT_LAYER_SIZE = 256
 
 ENV_PARAMS = {
+    'Swimmer': {
+        'CustomDefault': {
+            'exclude_current_positions_from_observation': False,
+        },
+    },
+    'Ant': {
+        'CustomDefault': {
+            'exclude_current_positions_from_observation': False,
+        },
+    },
+    'Humanoid': {
+        'CustomDefault': {
+            'exclude_current_positions_from_observation': False,
+        },
+    },
     'Point2DEnv': {
         'Default': {
             'observation_keys': ('observation', ),

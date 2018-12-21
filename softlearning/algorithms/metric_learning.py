@@ -15,6 +15,11 @@ from softlearning.environments.adapters.gym_adapter import (
     CustomAntEnv,
     CustomHumanoidEnv)
 
+from gym.envs.mujoco.swimmer import SwimmerEnv as GymSwimmerEnv
+from gym.envs.mujoco.ant import AntEnv as GymAntEnv
+from gym.envs.mujoco.half_cheetah import HalfCheetahEnv as GymHalfCheetahEnv
+from gym.envs.mujoco.humanoid import HumanoidEnv as GymHumanoidEnv
+
 from softlearning.visualization import point_2d_plotter
 
 
@@ -401,24 +406,14 @@ class MetricLearningSoftActorCritic(RLAlgorithm):
                     self._temporary_goal = path_last_observations[
                         min_distance_idx]
             elif isinstance(self._env.unwrapped,
-                            (RllabSwimmerEnv, RllabAntEnv, RllabHumanoidEnv)):
-                last_observations_positions = path_last_observations[:, -3:-1]
-                last_observations_distances = np.linalg.norm(
-                    last_observations_positions, ord=2, axis=1)
-
-                max_distance_idx = np.argmax(last_observations_distances)
-                max_distance = last_observations_distances[max_distance_idx]
-
-                current_distance = np.linalg.norm(
-                    self._temporary_goal[-3:-1], ord=2)
-                if max_distance > current_distance:
-                    self._temporary_goal = path_last_observations[
-                        max_distance_idx]
-            elif isinstance(self._env.unwrapped,
-                            (GymAntEnv,
+                            (GymSwimmerEnv,
+                             GymAntEnv,
                              GymHalfCheetahEnv,
                              GymHumanoidEnv)):
                 velocity_indices = {
+                    GymSwimmerEnv: slice(
+                        self._env.unwrapped.sim.data.qpos.size - 2,
+                        self._env.unwrapped.sim.data.qpos.size),
                     GymAntEnv: slice(
                         self._env.unwrapped.sim.data.qpos.size - 2,
                         self._env.unwrapped.sim.data.qpos.size),
@@ -442,7 +437,8 @@ class MetricLearningSoftActorCritic(RLAlgorithm):
                     self._temporary_goal = new_observations[
                         max_velocity_idx]
             elif isinstance(self._env.unwrapped,
-                            (CustomAntEnv,
+                            (CustomSwimmerEnv,
+                             CustomAntEnv,
                              CustomHumanoidEnv)):
                 if self._env.unwrapped._exclude_current_positions_from_observation:
                     raise NotImplementedError
@@ -461,24 +457,6 @@ class MetricLearningSoftActorCritic(RLAlgorithm):
                 if max_distance > current_distance:
                     self._temporary_goal = path_last_observations[
                         max_distance_idx]
-            elif isinstance(self._env.unwrapped,
-                            (GymInvertedPendulumEnv,
-                             GymInvertedDoublePendulumEnv)):
-                raise NotImplementedError
-            elif isinstance(self._env.unwrapped, FixedTargetReacherEnv):
-                last_distances_from_target = np.linalg.norm(
-                    path_last_observations[:, -3:], ord=2, axis=1)
-
-                min_distance_idx = np.argmin(last_distances_from_target)
-                min_distance = last_distances_from_target[min_distance_idx]
-
-                current_distance_from_target = np.linalg.norm(
-                    self._temporary_goal[-3:])
-                if min_distance < current_distance_from_target:
-                    self._temporary_goal = path_last_observations[
-                        min_distance_idx]
-            elif isinstance(self._env.unwrapped, SawyerPushAndReachXYZEnv):
-                self._temporary_goal = self._env.unwrapped._state_goal.copy()
             else:
                 raise NotImplementedError
 
@@ -577,12 +555,9 @@ class MetricLearningSoftActorCritic(RLAlgorithm):
         if self._plotter:
             self._plotter.draw()
 
-        if True or self._plot_distances:
+        if self._plot_distances:
             if isinstance(self._env.unwrapped, (Point2DEnv, Point2DWallEnv)):
                 point_2d_plotter.point_2d_plotter(
-                    self, iteration, training_paths, evaluation_paths)
-            elif isinstance(self._env.unwrapped, FixedTargetReacherEnv):
-                fixed_target_reacher_plotter.fixed_target_reacher_plotter(
                     self, iteration, training_paths, evaluation_paths)
 
         return diagnostics
