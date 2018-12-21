@@ -207,6 +207,7 @@ def plot_distances(figure,
                 observations_xy,
                 nx,
                 ny,
+                velocities=None,
                 observation_type=None)
             observations_2 = get_observations(
                 observations_xy,
@@ -215,7 +216,8 @@ def plot_distances(figure,
                 ny,
                 velocities=None,
                 observation_type=None)
-            actions = algorithm._policy.actions_np([observations_1])
+            with algorithm._policy.set_deterministic(True):
+                actions = algorithm._policy.actions_np([observations_1])
             # actions = np.zeros((observations_1.shape[0], 2))
             # inputs = algorithm._metric_learner._distance_estimator_inputs(
             #     observations_1, observations_2, actions)
@@ -223,7 +225,12 @@ def plot_distances(figure,
             X = np.reshape(observations_xy[:, 0], (nx, ny))
             Y = np.reshape(observations_xy[:, 1], (nx, ny))
 
-            Z = - algorithm._Qs[0].predict(inputs).reshape(nx, ny)
+            Zs = tuple(
+                Q.predict(inputs).reshape(nx, ny)
+                for Q in algorithm._Qs)
+            Z = np.min(Zs, axis=0)
+
+            # Z = - algorithm._Qs[0].predict(inputs).reshape(nx, ny)
 
             filled_contour = ax.contourf(
                 X, Y, Z,
@@ -317,10 +324,17 @@ def plot_Q(figure,
                 ny,
                 observation_type=None)
             actions = actions_xy
+            inputs = [observations_1, observations_2, actions]
+            Zs = tuple(
+                Q.predict(inputs).reshape(nx, ny)
+                for Q in algorithm._Qs)
+            Z = np.min(Zs, axis=0)
+
             # Z = algorithm._q_functions[0].eval(observations, actions).reshape(nx, ny)
-            Z = - algorithm._Qs[0].predict([
-                observations_1, observations_2, actions
-            ]).reshape(nx, ny)
+            # Z = algorithm._Qs[0].predict([
+            #     observations_1, observations_2, actions
+            # ]).reshape(nx, ny)
+
             contour = ax.contourf(
                 actions_X,
                 actions_Y,
@@ -357,28 +371,48 @@ def plot_V(figure,
     ax.set_xlim([min_x, max_x])
     ax.set_ylim([min_y, max_y])
 
-    if hasattr(algorithm, '_V'):
-        observations = get_observations(
-            observations_xy,
-            goals_xy[-1, :],
-            nx,
-            ny,
-            velocities=None,
-            observation_type=None)
-        X = np.reshape(observations_xy[:, 0], (nx, ny))
-        Y = np.reshape(observations_xy[:, 1], (nx, ny))
-        Z = np.reshape(algorithm._V.predict(
-            [observations_1, goals]), (nx, ny))
-        contour = ax.contourf(
-            X,
-            Y,
-            Z,
-            15,
-            linestyles='dashed',
-            cmap='PuBuGn')
+    observations = get_observations(
+        observations_xy,
+        goals_xy[-1, :],
+        nx,
+        ny,
+        velocities=None,
+        observation_type=None)
+    goals = get_observations(
+        algorithm._temporary_goal,
+        goals_xy[-1, :],
+        nx,
+        ny,
+        velocities=None,
+        observation_type=None)
+    X = np.reshape(observations_xy[:, 0], (nx, ny))
+    Y = np.reshape(observations_xy[:, 1], (nx, ny))
 
-        colorbar_ax, kw = mpl.colorbar.make_axes(ax, location='bottom',)
-        figure.colorbar(contour, cax=colorbar_ax, **kw)
+    if hasattr(algorithm, '_V'):
+        Z = np.reshape(algorithm._V.predict(
+            [observations, goals]), (nx, ny))
+    elif hasattr(algorithm, '_Qs'):
+        with algorithm._policy.set_deterministic(True):
+            actions = algorithm._policy.actions_np([observations])
+
+        Zs = tuple(
+            Q.predict([observations, goals, actions]).reshape(nx, ny)
+            for Q in algorithm._Qs)
+        Z = np.min(Zs, axis=0)
+    else:
+        raise NotImplementedError
+
+    contour = ax.contourf(
+        X,
+        Y,
+        Z,
+        levels=25,
+        linestyles='dashed',
+        extend='both',
+        cmap='PuBuGn')
+
+    colorbar_ax, kw = mpl.colorbar.make_axes(ax, location='bottom',)
+    figure.colorbar(contour, cax=colorbar_ax, **kw)
 
     if getattr(algorithm._env.unwrapped, 'fixed_goal', None) is not None:
         fixed_goal = algorithm._env._env.unwrapped.fixed_goal[:2]
