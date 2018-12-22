@@ -44,6 +44,8 @@ class MetricLearningSoftActorCritic(RLAlgorithm):
             action_prior='uniform',
             reparameterize=False,
 
+            temporary_goal_update_rule='operator_query_last_step',
+
             plot_distances=False,
             save_full_state=False,
             **kwargs):
@@ -53,9 +55,7 @@ class MetricLearningSoftActorCritic(RLAlgorithm):
         self._goal = getattr(env.unwrapped, 'fixed_goal', None)
         self._temporary_goal = None
         self._first_observation = None
-        # self._temporary_goal_update_rule = (
-        #     'farthest_estimate_from_first_observation')
-        self._temporary_goal_update_rule = 'operator_query_last_step'
+        self._temporary_goal_update_rule = temporary_goal_update_rule
 
         self._env = env
         self._policy = policy

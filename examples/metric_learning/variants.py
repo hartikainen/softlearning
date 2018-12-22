@@ -107,6 +107,12 @@ def get_variant_spec(universe, domain, task, policy):
                 'target_entropy': 'auto',
                 'reward_scale': 1.0,
                 'action_prior': 'uniform',
+
+                'temporary_goal_update_rule': tune.grid_search([
+                    'operator_query_last_step',
+                    'farthest_estimate_from_first_observation'
+                ]),
+
                 'plot_distances': True,
                 'save_full_state': False,
             }
