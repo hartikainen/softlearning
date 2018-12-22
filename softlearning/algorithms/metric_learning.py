@@ -350,8 +350,11 @@ class MetricLearningSoftActorCritic(RLAlgorithm):
         elif (self._temporary_goal_update_rule
               == 'farthest_estimate_from_first_observation'):
 
-            new_observations = getattr(
-                self._pool, 'observations.observation')[:self._pool.size]
+            new_observations = self._pool.last_n_batch(
+                min(self._pool.size, 100000),
+                field_name_filter='observations',
+                observation_keys=getattr(self._env, 'observation_keys', None),
+            )['observations']
             first_observations = np.tile(
                 self._first_observation[None, :],
                 (new_observations.shape[0], 1))
