@@ -151,6 +151,7 @@ def get_observations(positions,
 def plot_distances(figure,
                    grid_spec,
                    algorithm,
+                   get_distances_fn,
                    observations_xy,
                    goals_xy,
                    num_heatmaps=16):
@@ -163,20 +164,10 @@ def plot_distances(figure,
         subplots_per_side, subplots_per_side, subplot_spec=grid_spec)
 
     goal_estimate = algorithm._temporary_goal
-    reset_position = algorithm._env._env.unwrapped.get_reset_position()
 
     algorithm._previous_goals = getattr(algorithm, '_previous_goals', np.zeros((0, 2)))
     algorithm._previous_goals = np.append(
         algorithm._previous_goals, goal_estimate[None], axis=0)
-
-    # gridspec = mpl.gridspec.GridSpec(subplots_per_side*2, subplots_per_side)
-
-    # fig, subplots = plt.subplots(
-    #     subplots_per_side,
-    #     subplots_per_side,
-    #     sharex=True,
-    #     sharey=True,
-    #     figsize=(8.4, 8.4))
 
     V_star_axes = []
     V_star_axes_dict = {}
@@ -216,27 +207,15 @@ def plot_distances(figure,
                 ny,
                 velocities=None,
                 observation_type=None)
-            with algorithm._policy.set_deterministic(True):
-                actions = algorithm._policy.actions_np([observations_1])
-            # actions = np.zeros((observations_1.shape[0], 2))
-            # inputs = algorithm._metric_learner._distance_estimator_inputs(
-            #     observations_1, observations_2, actions)
-            inputs = [observations_1, observations_2, actions]
+
+            distances = get_distances_fn(observations_1, observations_2)
             X = np.reshape(observations_xy[:, 0], (nx, ny))
             Y = np.reshape(observations_xy[:, 1], (nx, ny))
-
-            Zs = tuple(
-                Q.predict(inputs).reshape(nx, ny)
-                for Q in algorithm._Qs)
-            Z = np.min(Zs, axis=0)
-
-            # Z = - algorithm._Qs[0].predict(inputs).reshape(nx, ny)
+            Z = distances.reshape(nx, ny)
 
             filled_contour = ax.contourf(
                 X, Y, Z,
-                # levels=np.arange(algorithm._metric_learner._max_distance),
-                # levels=np.arange(25),
-                levels=25,
+                levels=np.arange(algorithm.sampler._max_path_length),
                 extend='both',
                 cmap='PuBuGn')
 
@@ -281,6 +260,7 @@ def plot_distances(figure,
 def plot_Q(figure,
            grid_spec,
            algorithm,
+           get_Q_values_fn,
            observations_xy,
            goals_xy,
            num_heatmaps=16):
@@ -324,16 +304,9 @@ def plot_Q(figure,
                 ny,
                 observation_type=None)
             actions = actions_xy
-            inputs = [observations_1, observations_2, actions]
-            Zs = tuple(
-                Q.predict(inputs).reshape(nx, ny)
-                for Q in algorithm._Qs)
-            Z = np.min(Zs, axis=0)
-
-            # Z = algorithm._q_functions[0].eval(observations, actions).reshape(nx, ny)
-            # Z = algorithm._Qs[0].predict([
-            #     observations_1, observations_2, actions
-            # ]).reshape(nx, ny)
+            Z = get_Q_values_fn(
+                observations_1, observations_2, actions
+            ).reshape(nx, ny)
 
             contour = ax.contourf(
                 actions_X,
@@ -354,6 +327,7 @@ def plot_Q(figure,
 def plot_V(figure,
            grid_spec,
            algorithm,
+           get_V_values_fn,
            observations_xy,
            goals_xy,
            training_paths,
@@ -388,19 +362,7 @@ def plot_V(figure,
     X = np.reshape(observations_xy[:, 0], (nx, ny))
     Y = np.reshape(observations_xy[:, 1], (nx, ny))
 
-    if hasattr(algorithm, '_V'):
-        Z = np.reshape(algorithm._V.predict(
-            [observations, goals]), (nx, ny))
-    elif hasattr(algorithm, '_Qs'):
-        with algorithm._policy.set_deterministic(True):
-            actions = algorithm._policy.actions_np([observations])
-
-        Zs = tuple(
-            Q.predict([observations, goals, actions]).reshape(nx, ny)
-            for Q in algorithm._Qs)
-        Z = np.min(Zs, axis=0)
-    else:
-        raise NotImplementedError
+    Z = get_V_values_fn(observations, goals).reshape(nx, ny)
 
     contour = ax.contourf(
         X,
@@ -432,12 +394,6 @@ def plot_V(figure,
                color=(1.0, 0.0, 0.0, 1.0),
                label='temporary goal',
                marker='*')
-    # ax.arrow(
-    #     *goal_estimate,
-    #     # *goal_gradient[0],
-    #     *np.mean(algorithm.gradients, axis=0),
-    #     color='r')
-    # algorithm.gradients = np.zeros((0, 2))
     ax.scatter(algorithm._previous_goals[:-1, 0],
                algorithm._previous_goals[:-1, 1],
                s=(10 * RESOLUTION_MULTIPLIER) ** 2,
@@ -506,6 +462,7 @@ def plot_V(figure,
 def plot_distance_quiver(figure,
                          grid_spec,
                          algorithm,
+                         get_quiver_gradients_fn,
                          observations_xy,
                          goals_xy,
                          evaluation_paths):
@@ -561,14 +518,9 @@ def plot_distance_quiver(figure,
                 velocities=None,
                 observation_type=None)
 
-            actions = np.zeros((observations_1.shape[0], 2))
-            # inputs = algorithm._metric_learner._distance_estimator_inputs(
-            #     observations_1, observations_2, actions)
-            inputs = [observations_1, observations_2, actions]
             X = np.reshape(observations_xy[:, 0], (nx, ny))
             Y = np.reshape(observations_xy[:, 1], (nx, ny))
-
-            UV = -algorithm._metric_learner.quiver_gradients([inputs])[0]
+            UV = -get_quiver_gradients_fn(observations_1, observations_2)[0]
 
             GRADIENT_SCALE = RESOLUTION_MULTIPLIER
             U = np.reshape(UV[..., 0], (nx, ny)) * GRADIENT_SCALE
@@ -616,7 +568,14 @@ def plot_lagrange_multipliers(figure,
     pass
 
 
-def point_2d_plotter(algorithm, iteration, training_paths, evaluation_paths):
+def point_2d_plotter(algorithm,
+                     iteration,
+                     training_paths,
+                     evaluation_paths,
+                     get_distances_fn=None,
+                     get_quiver_gradients_fn=None,
+                     get_Q_values_fn=None,
+                     get_V_values_fn=None):
     log_base_dir = os.getcwd()
 
     heatmap_dir = os.path.join(log_base_dir, 'vf_heatmap')
@@ -626,7 +585,7 @@ def point_2d_plotter(algorithm, iteration, training_paths, evaluation_paths):
     PLOT = (
         'distances',
         'Q',
-        # 'distance-quiver',
+        'distance-quiver',
         'V',
         # 'lagrange-multipliers'
     )
@@ -634,25 +593,15 @@ def point_2d_plotter(algorithm, iteration, training_paths, evaluation_paths):
     num_heatmaps = 16
     subplots_per_side = int(np.sqrt(num_heatmaps))
 
-    # goal_space = algorithm._env._env.unwrapped.goal_space
-    # action_space = algorithm._env._env.unwrapped.action_space
-    # # min_x, min_y = goal_space.low[:2] * 2
-    # # max_x, max_y = goal_space.high[:2] * 2
-    # min_x, min_y = 0.3, -0.3
-    # max_x, max_y = 1.0, 0.3
-
     min_x, max_x = algorithm._env.unwrapped.observation_x_bounds
     min_y, max_y = algorithm._env.unwrapped.observation_y_bounds
 
     reset_position = algorithm._env._env.unwrapped.get_reset_position()
-    # np.array([ 0.6890015 , -0.14968373])
 
     if (False and algorithm._metric_learner.distance_estimator.layers[0].name
         == 'float_lookup_layer'):
         X = algorithm.evaluation_observations[:, 0]
         Y = algorithm.evaluation_observations[:, 1]
-        # x = np.arange(min_x, max_x).astype(np.float32)
-        # y = np.arange(min_y, max_y).astype(np.float32)
         nx = int(np.sqrt(X.shape[0]))
         ny = int(np.sqrt(Y.shape[0]))
         x = np.unique(X)
@@ -690,6 +639,7 @@ def point_2d_plotter(algorithm, iteration, training_paths, evaluation_paths):
         plot_distances(fig,
                        grid_spec[i],
                        algorithm,
+                       get_distances_fn,
                        observations_xy,
                        goals_xy,
                        num_heatmaps=num_heatmaps)
@@ -702,8 +652,7 @@ def point_2d_plotter(algorithm, iteration, training_paths, evaluation_paths):
                  size=15 * RESOLUTION_MULTIPLIER)
         i += 1
 
-    if ('distance-quiver' in PLOT
-        and algorithm._metric_learner.quiver_gradients is not None):
+    if 'distance-quiver' in PLOT and get_quiver_gradients_fn is not None:
         x_delta = (max_x - min_x) / 10.0
         y_delta = (max_y - min_y) / 10.0
         quiver_goals = np.array((
@@ -716,16 +665,14 @@ def point_2d_plotter(algorithm, iteration, training_paths, evaluation_paths):
         plot_distance_quiver(fig,
                              grid_spec[i],
                              algorithm,
+                             get_quiver_gradients_fn,
                              observations_xy,
                              quiver_goals,
                              evaluation_paths)
 
         quiver_title = (
-            # r"$\displaystyle\sum_{n=1}^\infty\frac{-e^{i\pi}}{2^n}$!"
             r"$\dfrac{d}{ds_{1}}d(s_{1}, g)$ for"
-            f"  {quiver_goals.shape[0]} different g"
-        )
-        # quiver_title = f"d(s1,g)/ds1 for {quiver_goals.shape[0]} different g"
+            f"  {quiver_goals.shape[0]} different g")
         x_min, x_max = grid_spec[i].get_position(fig).extents[[0, 2]]
         quiver_title_x_position = (x_max + x_min) / 2
 
@@ -735,22 +682,24 @@ def point_2d_plotter(algorithm, iteration, training_paths, evaluation_paths):
                  size=15 * RESOLUTION_MULTIPLIER)
         i += 1
 
-    if 'Q' in PLOT:
+    if 'Q' in PLOT and get_Q_values_fn is not None:
         plot_Q(fig,
                grid_spec[i],
                algorithm,
+               get_Q_values_fn,
                observations_xy,
                goals_xy,
                num_heatmaps=num_heatmaps)
         i += 1
 
-    if 'V' in PLOT:
+    if 'V' in PLOT and get_V_values_fn is not None:
         V_title = f"Value function with training/evaluation rollouts."
         x_min, x_max = grid_spec[i].get_position(fig).extents[[0, 2]]
         V_title_x_position = (x_max + x_min) / 2
         plot_V(fig,
                grid_spec[i],
                algorithm,
+               get_V_values_fn,
                observations_xy,
                goals_xy,
                training_paths,
@@ -776,24 +725,6 @@ def point_2d_plotter(algorithm, iteration, training_paths, evaluation_paths):
 
     fig.suptitle(f'iteration={iteration}',
                  fontsize=20 * RESOLUTION_MULTIPLIER)
-
-    # for optimal_path in algorithm._optimal_paths:
-    #     start, end = optimal_path[0, :], optimal_path[-1, :]
-    #     ax.plot(optimal_path[1:-1, 0], optimal_path[1:-1, 1])
-    #     ax.plot(*start, 'ro')
-    #     ax.plot(*end, 'kx')
-
-    # for observation_pair, preference in zip(
-    #         algorithm._preference_pool.observations[:algorithm._preference_pool.size],
-    #         algorithm._preference_pool.preferences[:algorithm._preference_pool.size]):
-    #     ax.plot(observation_pair[:, 0], observation_pair[:, 1], 'k:', linewidth=0.5)
-    #     ax.scatter(*observation_pair[preference], color='g', marker='o')
-    #     ax.scatter(*observation_pair[1-preference], color='r', marker='o')
-
-    # ax.text(
-    #     1, 1,
-    #     'queries used: {}'.format(algorithm._segment_pool.queries_used),
-    #     transform=ax.transAxes)
 
     max_iteration_len = int(math.ceil(math.log10(
         algorithm._epoch_length * algorithm._n_epochs)))

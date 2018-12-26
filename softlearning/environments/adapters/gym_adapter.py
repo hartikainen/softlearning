@@ -8,6 +8,8 @@ from multiworld.envs.pygame.point2d import Point2DEnv, Point2DWallEnv
 
 from .softlearning_env import SoftlearningEnv
 from softlearning.environments.gym.wrappers import NormalizeActionWrapper
+from softlearning.environments.gym.mujoco.fixed_target_reacher import (
+    FixedTargetReacherEnv)
 from softlearning.environments.gym.mujoco.ant_env import AntEnv as CustomAntEnv
 from softlearning.environments.gym.mujoco.humanoid_env import (
     HumanoidEnv as CustomHumanoidEnv)
@@ -103,6 +105,7 @@ GYM_ENVIRONMENTS = {
     'Reacher': {
         'Default': lambda: gym.envs.make('Reacher-v2'),
         'v2': lambda: gym.envs.make('Reacher-v2'),
+        'v2-fixed-target': FixedTargetReacherEnv,
     },
     'InvertedPendulum': {
         'Default': lambda: gym.envs.make('InvertedPendulum-v2'),

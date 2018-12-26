@@ -559,8 +559,35 @@ class MetricActorCritic(RLAlgorithm):
 
         if self._plot_distances:
             if isinstance(self._env.unwrapped, (Point2DEnv, Point2DWallEnv)):
+                def get_distances_fn(observations, goals):
+                    with self._policy.set_deterministic(True):
+                        actions = self._policy.actions_np([observations])
+                    inputs = [observations, goals, actions]
+                    distances = tuple(Q.predict(inputs) for Q in self._Qs)
+                    distances = np.min(distances, axis=0)
+                    return distances
+
+                def get_Q_values_fn(observations, goals, actions):
+                    inputs = [observations, goals, actions]
+                    Qs = tuple(Q.predict(inputs) for Q in self._Qs)
+                    Qs = np.min(Qs, axis=0)
+                    return Qs
+
+                def get_V_values_fn(observations, goals):
+                    with self._policy.set_deterministic(True):
+                        actions = self._policy.actions_np([observations])
+                    V_values = get_Q_values_fn(observations, goals, actions)
+                    return V_values
+
                 point_2d_plotter.point_2d_plotter(
-                    self, iteration, training_paths, evaluation_paths)
+                    self,
+                    iteration,
+                    training_paths=training_paths,
+                    evaluation_paths=evaluation_paths,
+                    get_distances_fn=get_distances_fn,
+                    get_quiver_gradients_fn=None,
+                    get_Q_values_fn=get_Q_values_fn,
+                    get_V_values_fn=get_V_values_fn)
 
         return diagnostics
 

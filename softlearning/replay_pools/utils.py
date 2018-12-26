@@ -4,7 +4,8 @@ from . import (
     simple_replay_pool,
     extra_policy_info_replay_pool,
     union_pool,
-    goal_pool)
+    goal_pool,
+    distance_pool)
 
 
 POOL_CLASSES = {
@@ -13,6 +14,7 @@ POOL_CLASSES = {
         extra_policy_info_replay_pool.ExtraPolicyInfoReplayPool),
     'UnionPool': union_pool.UnionPool,
     'GoalPool': goal_pool.GoalPool,
+    'DistancePool': distance_pool.DistancePool,
 }
 
 DEFAULT_REPLAY_POOL = 'SimpleReplayPool'
