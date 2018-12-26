@@ -38,6 +38,7 @@ class SAC(RLAlgorithm):
             target_entropy='auto',
             discount=0.99,
             tau=0.01,
+            target_initialization_tau=None,
             target_update_interval=1,
             action_prior='uniform',
             reparameterize=False,
@@ -92,6 +93,7 @@ class SAC(RLAlgorithm):
 
         self._discount = discount
         self._tau = tau
+        self._target_initialization_tau = target_initialization_tau
         self._target_update_interval = target_update_interval
         self._action_prior = action_prior
 
@@ -332,7 +334,8 @@ class SAC(RLAlgorithm):
         self._training_ops.update({'policy_train_op': policy_train_op})
 
     def _init_training(self):
-        self._update_target()
+        """Initialize Q_targets with hard update."""
+        self._update_target(tau=self._target_initialization_tau)
 
     def _update_target(self, tau=None):
         tau = tau or self._tau

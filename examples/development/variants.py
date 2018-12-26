@@ -58,6 +58,9 @@ ALGORITHM_PARAMS_BASE = {
         'discount': 0.99,
         'target_update_interval': 1,
         'tau': 0.005,
+        'target_initialization_tau': tune.grid_search([
+            1.0, 5e-3, 0.3
+        ]),
         'target_entropy': 'auto',
         'reward_scale': 1.0,
         'store_extra_policy_info': False,
