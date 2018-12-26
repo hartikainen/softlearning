@@ -113,7 +113,7 @@ class MetricLearningAlgorithm(SAC):
         elif (self._temporary_goal_update_rule ==
               'farthest_estimate_from_first_observation'):
             new_observations = self._pool.last_n_batch(
-                self._pool.size,
+                min(self._pool.size, int(1e5)),
                 field_name_filter='observations',
                 observation_keys=getattr(self._env, 'observation_keys', None),
             )['observations']
