@@ -18,9 +18,11 @@ VALUE_FUNCTIONS = {
     'double_feedforward_Q_function': lambda *args, **kwargs: (
         create_double_value_function(
             vanilla.create_feedforward_Q_function, *args, **kwargs)),
-    'double_metric_Q_function': lambda *args, **kwargs: (
+    'double_state_action_goal_Q_function': lambda *args, **kwargs: (
         create_double_value_function(
-            metric_learning.create_metric_Q_function, *args, **kwargs))
+            metric_learning.create_state_action_goal_Q_function,
+            *args,
+            **kwargs))
 }
 
 

@@ -81,7 +81,7 @@ def get_variant_spec(universe, domain, task, policy):
             },
         },
         'Q_params': {
-            'type': 'double_metric_Q_function',
+            'type': 'double_state_action_goal_Q_function',
             'kwargs': {
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
             }

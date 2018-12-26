@@ -4,12 +4,12 @@ from softlearning.models.feedforward import feedforward_model
 from . import utils
 
 
-def create_metric_Q_function(observation_shape,
-                             action_shape,
-                             *args,
-                             observation_preprocessor=None,
-                             name="metric_Q",
-                             **kwargs):
+def create_state_action_goal_Q_function(observation_shape,
+                                        action_shape,
+                                        *args,
+                                        observation_preprocessor=None,
+                                        name="metric_Q",
+                                        **kwargs):
     input_shapes = (observation_shape, observation_shape, action_shape)
     preprocessors = (observation_preprocessor, None, None)
 
