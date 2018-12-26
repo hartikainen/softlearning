@@ -23,7 +23,7 @@ from gym.envs.mujoco.humanoid import HumanoidEnv as GymHumanoidEnv
 from softlearning.visualization import point_2d_plotter
 
 
-class MetricLearningSoftActorCritic(RLAlgorithm):
+class MetricActorCritic(RLAlgorithm):
 
     def __init__(
             self,
@@ -50,7 +50,7 @@ class MetricLearningSoftActorCritic(RLAlgorithm):
             save_full_state=False,
             **kwargs):
 
-        super(MetricLearningSoftActorCritic, self).__init__(**kwargs)
+        super(MetricActorCritic, self).__init__(**kwargs)
 
         self._goal = getattr(env.unwrapped, 'fixed_goal', None)
         self._temporary_goal = None
