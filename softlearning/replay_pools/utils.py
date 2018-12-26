@@ -4,7 +4,7 @@ from . import (
     simple_replay_pool,
     extra_policy_info_replay_pool,
     union_pool,
-    metric_learning_pool)
+    goal_pool)
 
 
 POOL_CLASSES = {
@@ -12,7 +12,7 @@ POOL_CLASSES = {
     'ExtraPolicyInfoReplayPool': (
         extra_policy_info_replay_pool.ExtraPolicyInfoReplayPool),
     'UnionPool': union_pool.UnionPool,
-    'MetricLearningPool': metric_learning_pool.MetricLearningPool,
+    'GoalPool': goal_pool.GoalPool,
 }
 
 DEFAULT_REPLAY_POOL = 'SimpleReplayPool'

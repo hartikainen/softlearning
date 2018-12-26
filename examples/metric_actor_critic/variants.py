@@ -118,7 +118,7 @@ def get_variant_spec(universe, domain, task, policy):
             }
         },
         'replay_pool_params': {
-            'type': 'MetricLearningPool',
+            'type': 'GoalPool',
             'kwargs': {
                 'max_size': 1e6,
             }
