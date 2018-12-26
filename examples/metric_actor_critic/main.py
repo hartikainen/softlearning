@@ -11,7 +11,7 @@ from softlearning.value_functions.utils import get_Q_function_from_variant
 
 from softlearning.misc.utils import set_seed, initialize_tf_variables
 
-from examples.metric_learning.variants import get_variant_spec
+from .variants import get_variant_spec
 from examples.utils import (
     parse_universe_domain_task,
     get_parser,
