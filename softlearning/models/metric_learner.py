@@ -23,8 +23,7 @@ class MetricLearner(Serializable):
                  train_every_n_steps=1,
                  n_train_repeat=1,
                  distance_estimator_kwargs=None,
-                 lambda_estimator=None,
-                 te_lambda_estimator=None,
+                 lambda_estimators=None,
                  distance_estimator=None,
                  condition_with_action=False,
                  distance_input_type='full',
@@ -44,8 +43,7 @@ class MetricLearner(Serializable):
         self._condition_with_action = condition_with_action
         self._distance_input_type = distance_input_type
 
-        self.lambda_estimator = lambda_estimator
-        self.te_lambda_estimator = te_lambda_estimator
+        self.lambda_estimators = lambda_estimators
 
         self._constraint_exp_multiplier = constraint_exp_multiplier
         self._objective_type = objective_type
@@ -226,7 +224,7 @@ class MetricLearner(Serializable):
 
         target_values = tf.ones_like(distance_predictions) * self._max_distance
         max_distance_constraints, _ = self._compute_constraints(
-            self.lambda_estimator,
+            self.lambda_estimators['max_distance'],
             inputs,
             distance_predictions,
             target_values)
@@ -244,7 +242,7 @@ class MetricLearner(Serializable):
 
         target_values = distances
         step_constraints, _ = self._compute_constraints(
-            self.lambda_estimator,
+            self.lambda_estimators['step'],
             inputs,
             distance_predictions,
             target_values)
@@ -271,7 +269,7 @@ class MetricLearner(Serializable):
         target_values = tf.fill(
             tf.shape(distance_predictions), self._zero_constraint_threshold)
         zero_constraints, _ = self._compute_constraints(
-            self.lambda_estimator,
+            self.lambda_estimators['zero'],
             inputs,
             distance_predictions,
             target_values)
@@ -299,7 +297,7 @@ class MetricLearner(Serializable):
         lambda_inputs = tf.concat((inputs, observations[1]), axis=-1)
         target_values = d01 + d12
         triangle_inequality_constraints, lambdas = self._compute_constraints(
-             self.te_lambda_estimator,
+             self.lambda_estimators['triangle_inequality'],
              lambda_inputs,
              distance_predictions,
              target_values)
@@ -339,13 +337,6 @@ class MetricLearner(Serializable):
             + triangle_inequality_constraint
             + max_distance_constraint)
 
-        lambda_loss = self.lambda_loss = -(
-            step_constraint
-            + zero_constraint
-            + max_distance_constraint)
-
-        te_lambda_loss = self.te_lambda_loss = -triangle_inequality_constraint
-
         lagrangian_optimizer = tf.train.AdamOptimizer(
             learning_rate=self._distance_learning_rate)
 
@@ -353,41 +344,49 @@ class MetricLearner(Serializable):
             loss=lagrangian_loss,
             var_list=self.distance_estimator.trainable_variables)
 
+        lambda_losses = self.lambda_losses = {
+            'step': step_constraint,
+            'zero': zero_constraint,
+            'max_distance': max_distance_constraint,
+            'triangle_inequality': triangle_inequality_constraint,
+        }
+
+        assert set(self.lambda_estimators.keys()) == set(lambda_losses.keys())
+
         lambda_optimizer = tf.train.AdamOptimizer(
             learning_rate=self._lambda_learning_rate)
+        lambda_grads_and_vars = {}
 
-        lambda_grads_and_vars = lambda_optimizer.compute_gradients(
-            loss=lambda_loss,
-            var_list=self.lambda_estimator.trainable_variables)
+        for lambda_name in lambda_losses.keys():
+            lambda_loss = -lambda_losses[lambda_name]
 
-        te_lambda_optimizer = tf.train.AdamOptimizer(
-            learning_rate=self._lambda_learning_rate)
+            grads_and_vars = lambda_optimizer.compute_gradients(
+                loss=lambda_loss,
+                var_list=self.lambda_estimators[
+                    lambda_name].trainable_variables)
 
-        te_lambda_grads_and_vars = te_lambda_optimizer.compute_gradients(
-            loss=te_lambda_loss,
-            var_list=self.te_lambda_estimator.trainable_variables)
+            lambda_grads_and_vars[lambda_name] = grads_and_vars
 
         all_gradients = [
             gradient for gradient, _ in
             lagrangian_grads_and_vars
-            + lambda_grads_and_vars
-            + te_lambda_grads_and_vars
+            + sum(lambda_grads_and_vars.values(), [])
             if gradient is not None
         ]
 
         with tf.control_dependencies(all_gradients):
             lagrangian_train_op = lagrangian_optimizer.apply_gradients(
                 lagrangian_grads_and_vars)
-            lambda_train_op = (
-                lambda_optimizer.apply_gradients(lambda_grads_and_vars))
-            te_lambda_train_op = (
-                te_lambda_optimizer.apply_gradients(te_lambda_grads_and_vars))
+
+            lambda_train_ops = {
+                # lambda_key: lambda_optimizer[lambda_key].apply_gradients(
+                lambda_key: lambda_optimizer.apply_gradients(
+                    lambda_grads_and_vars[lambda_key])
+                for lambda_key in lambda_losses.keys()
+            }
 
         self._distance_train_ops = (
-            lagrangian_train_op,
-            lambda_train_op,
-            te_lambda_train_op,
-        )
+            lagrangian_train_op, *lambda_train_ops.values())
 
     def _get_feed_dict(self, iteration, batch):
         """Construct TensorFlow feed_dict from sample batch."""
@@ -447,22 +446,23 @@ class MetricLearner(Serializable):
          triangle_inequality_constraints,
          max_distance_constraints,
          lagrangian_loss,
-         lambda_loss,
-         te_lambda_loss) = self._session.run((
+         lambda_losses) = self._session.run((
              self.objectives,
              self.step_constraints,
              self.zero_constraints,
              self.triangle_inequality_constraints,
              self.max_distance_constraints,
              self.lagrangian_loss,
-             self.lambda_loss,
-             self.te_lambda_loss
+             self.lambda_losses,
          ), feed_dict)
 
         result = OrderedDict((
             ('lagrangian_loss-mean', np.mean(lagrangian_loss)),
-            ('lambda_loss-mean', np.mean(lambda_loss)),
-            ('te_lambda_loss-mean', np.mean(te_lambda_loss)),
+
+            *[
+                (f'lambda_losses[{lambda_name}]', np.mean(lambda_loss))
+                for lambda_name, lambda_loss in lambda_losses.items()
+            ],
 
             ('objectives-mean', np.mean(objectives)),
             ('objectives-std', np.std(objectives)),

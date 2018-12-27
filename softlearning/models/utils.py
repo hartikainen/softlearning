@@ -6,8 +6,11 @@ from .distance_estimator import get_distance_estimator_from_variant
 
 
 def get_metric_learner_from_variant(variant, env):
-    lambda_estimator = get_lambda_estimator_from_variant(variant)
-    te_lambda_estimator = get_lambda_estimator_from_variant(variant)
+    lambda_estimators = {
+        lambda_name: get_lambda_estimator_from_variant(variant)
+        for lambda_name in
+        ['step', 'zero', 'max_distance', 'triangle_inequality']
+    }
 
     distance_estimator = get_distance_estimator_from_variant(variant)
 
@@ -19,8 +22,7 @@ def get_metric_learner_from_variant(variant, env):
         'env': env,
         'observation_shape': env.active_observation_shape,
         'action_shape': env.action_space.shape,
-        'lambda_estimator': lambda_estimator,
-        'te_lambda_estimator': te_lambda_estimator,
+        'lambda_estimators': lambda_estimators,
         'distance_estimator': distance_estimator,
     })
 
