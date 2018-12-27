@@ -286,7 +286,8 @@ class RLAlgorithm(tf.contrib.checkpoint.Checkpointable):
         trained_enough = (
             self._train_steps_this_epoch
             > self._max_train_repeat_per_timestep * self._timestep)
-        if trained_enough: return
+        if trained_enough:
+            assert False, "MetricLearner should not be here!"
 
         for i in range(self._n_train_repeat):
             self._do_training(
