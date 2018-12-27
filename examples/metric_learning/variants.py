@@ -69,6 +69,8 @@ MAX_PATH_LENGTH_PER_DOMAIN = {
     'Point2DEnv': 50
 }
 
+NUM_CHECKPOINTS = 10
+
 
 def get_variant_spec(universe, domain, task, policy):
     variant_spec = {
@@ -227,8 +229,10 @@ def get_variant_spec(universe, domain, task, policy):
         'run_params': {
             'seed': tune.sample_from(
                 lambda spec: np.random.randint(0, 10000)),
-            'checkpoint_at_end': False,
-            'checkpoint_frequency': 0,
+            'checkpoint_at_end': True,
+            'checkpoint_frequency': NUM_EPOCHS_PER_DOMAIN.get(
+                domain, DEFAULT_NUM_EPOCHS) // NUM_CHECKPOINTS,
+            'checkpoint_replay_pool': False,
         },
     }
 
