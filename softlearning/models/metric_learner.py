@@ -114,14 +114,6 @@ class MetricLearner(Serializable):
         self._init_distance_update()
         self._init_quiver_ops()
 
-    @property
-    def trainable_variables(self):
-        trainable_variables = (
-            self.distance_estimator.trainable_variables
-            + self.lambda_estimator.trainable_variables
-            + self.te_lambda_estimator.trainable_variables)
-        return trainable_variables
-
     def _init_placeholders(self):
         """Create input placeholders for the MetricLearner algorithm."""
         self.distance_pairs_observations_ph = tf.placeholder(
