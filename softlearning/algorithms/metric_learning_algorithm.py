@@ -108,7 +108,7 @@ class MetricLearningAlgorithm(SAC):
 
             current_distance = np.linalg.norm(self._temporary_goal -
                                               self._first_observation)
-            if max_distance > current_distance:
+            if max_distance >= current_distance:
                 self._temporary_goal = new_observations[max_distance_idx]
         elif (self._temporary_goal_update_rule ==
               'farthest_estimate_from_first_observation'):
@@ -134,7 +134,7 @@ class MetricLearningAlgorithm(SAC):
                     self._temporary_goal[None, :],
                     np.zeros((1, *self._action_shape)),
                 ))[0, 0]
-            if max_distance > current_distance:
+            if max_distance >= current_distance:
                 self._temporary_goal = new_observations[max_distance_idx]
         elif (self._temporary_goal_update_rule == 'operator_query_last_step'):
             new_observations = np.concatenate(
@@ -231,7 +231,7 @@ class MetricLearningAlgorithm(SAC):
 
     def _timestep_before_hook(self, *args, **kwargs):
         if ((self._timestep % self.sampler._max_path_length)
-            >= self.sampler._max_path_length * 0.8):
+            >= self.sampler._max_path_length * 0.75):
             self.sampler.initialize(
                 self._env, self._initial_exploration_policy, self._pool)
             # self.sampler.initialize(

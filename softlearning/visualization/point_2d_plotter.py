@@ -584,7 +584,7 @@ def point_2d_plotter(algorithm,
 
     PLOT = (
         'distances',
-        'Q',
+        # 'Q',
         'distance-quiver',
         'V',
         # 'lagrange-multipliers'
