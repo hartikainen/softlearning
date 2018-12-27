@@ -186,6 +186,7 @@ def get_variant_spec(universe, domain, task, policy):
 
                 'constraint_exp_multiplier': 0.3,
                 'objective_type': 'squared',
+                'step_constraint_coeff': 1.0,
 
                 'zero_constraint_threshold': 0.0,
 

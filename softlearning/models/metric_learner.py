@@ -28,6 +28,7 @@ class MetricLearner(Serializable):
                  condition_with_action=False,
                  distance_input_type='full',
                  constraint_exp_multiplier=1.0,
+                 step_constraint_coeff=1.0,
                  objective_type='linear',
                  zero_constraint_threshold=0.1,
                  max_distance=None):
@@ -46,6 +47,7 @@ class MetricLearner(Serializable):
         self.lambda_estimators = lambda_estimators
 
         self._constraint_exp_multiplier = constraint_exp_multiplier
+        self._step_constraint_coeff = step_constraint_coeff
         self._objective_type = objective_type
         self._zero_constraint_threshold = zero_constraint_threshold
 
@@ -324,7 +326,7 @@ class MetricLearner(Serializable):
 
         lagrangian_loss = self.lagrangian_loss = (
             - objective
-            + step_constraint
+            + step_constraint * self._step_constraint_coeff
             + zero_constraint
             + triangle_inequality_constraint
             + max_distance_constraint)
