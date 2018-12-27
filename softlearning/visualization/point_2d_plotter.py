@@ -598,26 +598,13 @@ def point_2d_plotter(algorithm,
 
     reset_position = algorithm._env._env.unwrapped.get_reset_position()
 
-    if (False and algorithm._metric_learner.distance_estimator.layers[0].name
-        == 'float_lookup_layer'):
-        X = algorithm.evaluation_observations[:, 0]
-        Y = algorithm.evaluation_observations[:, 1]
-        nx = int(np.sqrt(X.shape[0]))
-        ny = int(np.sqrt(Y.shape[0]))
-        x = np.unique(X)
-        y = np.unique(Y)
-        goals_x = x[
-            np.linspace(0, nx, subplots_per_side, endpoint=False, dtype=int)]
-        goals_y = y[
-            np.linspace(0, ny, subplots_per_side, endpoint=False, dtype=int)]
-    else:
-        nx = ny = 100
-        x = np.linspace(min_x, max_x, nx)
-        y = np.linspace(min_y, max_y, ny)
-        X, Y = np.meshgrid(x, y)
+    nx = ny = 100
+    x = np.linspace(min_x, max_x, nx)
+    y = np.linspace(min_y, max_y, ny)
+    X, Y = np.meshgrid(x, y)
 
-        goals_x = np.linspace(min_x, max_x, subplots_per_side + 2)[1:-1]
-        goals_y = np.linspace(min_y, max_y, subplots_per_side + 2)[1:-1]
+    goals_x = np.linspace(min_x, max_x, subplots_per_side + 2)[1:-1]
+    goals_y = np.linspace(min_y, max_y, subplots_per_side + 2)[1:-1]
 
     observations_xy = np.stack([X, Y], axis=-1).reshape(-1, 2)
 

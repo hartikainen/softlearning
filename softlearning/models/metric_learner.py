@@ -11,63 +11,6 @@ from softlearning.environments.adapters.gym_adapter import (
     CustomHumanoidEnv)
 
 
-class FloatLookupLayer(tf.keras.layers.Layer):
-    def __init__(self, all_observation_pairs, **kwargs):
-        self.all_observation_pairs = all_observation_pairs
-        self.precision = 5
-        self.separator = '|'
-
-        x = np.reshape(
-            self.all_observation_pairs,
-            (self.all_observation_pairs.shape[0],
-             np.prod(self.all_observation_pairs.shape[1:3])))
-
-        x = self.to_np_string(x)
-        x = np.unique(x)
-        self.keys = x.astype(bytes)
-        self.values = np.arange(x.shape[0])
-        self.num_observation_pairs = all_observation_pairs.shape[0]
-
-        super(FloatLookupLayer, self).__init__(**kwargs)
-
-    def to_np_string(self, inputs):
-        strs = np.vectorize(
-            lambda e: f'{e:.0{self.precision}f}')(inputs)
-        outputs = np.array([self.separator.join(row) for row in strs])
-        return outputs
-
-    def to_tf_string(self, inputs):
-        outputs = tf.reduce_join(
-            tf.as_string(inputs, precision=self.precision),
-            separator=self.separator,
-            axis=-1)
-        return outputs
-
-    def build(self, input_shape):
-        self.table = tf.contrib.lookup.index_table_from_tensor(
-            mapping=self.keys, num_oov_buckets=0, default_value=-1)
-
-        self.distance_estimates = self.add_weight(
-            name='distance_estimates',
-            shape=(self.num_observation_pairs, 1),
-            initializer='uniform',
-            trainable=True)
-
-    def call(self, inputs):
-        x = self.to_tf_string(inputs)
-        variable_idx = self.table.lookup(x)
-        out = tf.gather(self.distance_estimates, variable_idx)
-        return out
-
-    def compute_output_shape(self, input_shape):
-        return tf.TensorShape((input_shape[0], 1))
-
-
-FloatLookupModel = lambda *args, **kwargs: tf.keras.Sequential((
-    FloatLookupLayer(*args, **kwargs),
-))
-
-
 class MetricLearner(Serializable):
     """MetricLearner."""
 
@@ -226,51 +169,11 @@ class MetricLearner(Serializable):
 
         inputs = tf.keras.layers.Input(shape=input_shape[1:].as_list())
 
-        if self.distance_estimator.layers[0].name != 'float_lookup_layer':
-            distance_predictions = self.distance_estimator(inputs)[:, 0]
-            quiver_gradients = tf.keras.backend.gradients(
-                distance_predictions, [inputs])
-            gradients_fn = tf.keras.backend.function(
-                [inputs], quiver_gradients)
-        else:
-            n_actions = 9
-            possible_actions = tf.reshape(tf.stack(tf.meshgrid(
-                [-1.0, 0.0, 1.0],
-                [-1.0, 0.0, 1.0],
-            ), axis=-1), (n_actions, 2))
-
-            s1 = inputs[:, :2]
-            s2 = inputs[:, 2:]
-
-            s1_new = tf.tile(s1[None], (n_actions, 1, 1))
-            s2_new = tf.tile(s2[None], (n_actions, 1, 1))
-
-            s1_new = s1_new + possible_actions[:, None, :]
-
-            old_shape = tf.shape(s1_new)
-
-            # s1_new = tf.reshape(
-            #     s1_new,
-            #     (old_shape[0] * old_shape[1],
-            #      old_shape[2]))
-            # s2_new = tf.reshape(
-            #     s2_new,
-            #     (old_shape[0] * old_shape[1],
-            #      old_shape[2]))
-
-            # new_inputs = tf.concat((s1_new, s2_new), axis=-1)
-
-            # distance_predictions = self.distance_estimator(new_inputs)[:, 0]
-            # distance_predictions = tf.reshape(
-            #     distance_predictions,
-            #     (old_shape[0] * old_shape[1]))
-            # new_inputs = tf.reshape(
-            #     new_inputs,
-            #     (old_shape[0] * old_shape[1], old_shape[2] * 2))
-
-            # max_indices = tf.argmax(distance_predictions, axis=0)
-
-            gradients_fn = None
+        distance_predictions = self.distance_estimator(inputs)[:, 0]
+        quiver_gradients = tf.keras.backend.gradients(
+            distance_predictions, [inputs])
+        gradients_fn = tf.keras.backend.function(
+            [inputs], quiver_gradients)
 
         self.quiver_gradients = gradients_fn
 
