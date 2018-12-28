@@ -409,9 +409,8 @@ class MetricLearner(Serializable):
         """Runs the operations for updating training and target ops."""
         if iteration % self._train_every_n_steps > 0: return
 
-        for i in range(self.__n_train_repeat):
-            feed_dict = self._get_feed_dict(iteration, batch)
-            self._session.run(self._distance_train_ops, feed_dict)
+        feed_dict = self._get_feed_dict(iteration, batch)
+        self._session.run(self._distance_train_ops, feed_dict)
 
     def _evaluate(self, observations, actions, y):
         inputs = self._distance_estimator_inputs(

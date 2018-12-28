@@ -247,7 +247,10 @@ class MetricLearningAlgorithm(SAC):
 
     def _do_training(self, iteration, batch):
         super(MetricLearningAlgorithm, self)._do_training(iteration, batch)
-        self._metric_learner._do_training(iteration, batch)
+
+        for i in range(self._metric_learner._MetricLearner__n_train_repeat):
+            self._metric_learner._do_training(iteration, batch)
+            batch = self._training_batch()
 
     def _get_feed_dict(self, iteration, batch):
         feed_dict = super(MetricLearningAlgorithm, self)._get_feed_dict(
