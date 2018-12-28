@@ -194,14 +194,14 @@ def plot_distances(figure,
 
             goal_position = goals_xy[i, :]
             observations_1 = get_observations(
-                goal_position,
+                observations_xy,
                 observations_xy,
                 nx,
                 ny,
                 velocities=None,
                 observation_type=None)
             observations_2 = get_observations(
-                observations_xy,
+                goal_position,
                 observations_xy,
                 nx,
                 ny,
@@ -235,7 +235,7 @@ def plot_distances(figure,
             ax.scatter(*goal_position,
                        s=(6 * RESOLUTION_MULTIPLIER) ** 2,
                        color='blue',
-                       marker='o',
+                       marker='*',
                        label='s1')
 
             # if i == num_heatmaps - 1:
@@ -630,7 +630,7 @@ def point_2d_plotter(algorithm,
                        observations_xy,
                        goals_xy,
                        num_heatmaps=num_heatmaps)
-        distances_title = f"d(s1,s2) for {goals_xy.shape[0]} different s1"
+        distances_title = f"d(s1,s2) for {goals_xy.shape[0]} different s2"
         x_min, x_max = grid_spec[i].get_position(fig).extents[[0, 2]]
         distances_title_x_position = (x_max + x_min) / 2
         fig.text(*(distances_title_x_position, 0.9),
