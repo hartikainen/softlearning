@@ -60,7 +60,7 @@ NUM_EPOCHS_PER_DOMAIN = {
     'HandReach': int(1e4 + 1),
     'DClaw3': int(5e2 + 1),
     'ImageDClaw3': int(5e3 + 1),
-    'Point2DEnv': int(100 + 1)
+    'Point2DEnv': int(30 + 1)
 }
 
 
@@ -136,19 +136,16 @@ def get_variant_spec(universe, domain, task, policy):
             'type': 'DistancePool',
             'kwargs': {
                 'max_size': int(1e6),
-                'on_policy_window': tune.grid_search([
-                    2000, 4000, 8000,
-                ]),
-                # lambda spec: (
-                #     2 * spec.get('config', spec)
-                #     ['sampler_params']
-                #     ['kwargs']
-                #     ['max_path_length']
-                #     if (spec.get('config', spec)
-                #         ['metric_learner_params']
-                #         ['type']
-                #         == 'OnPolicyMetricLearner')
-                #     else None),
+                'on_policy_window': lambda spec: (
+                    2 * spec.get('config', spec)
+                    ['sampler_params']
+                    ['kwargs']
+                    ['max_path_length']
+                    if (spec.get('config', spec)
+                        ['metric_learner_params']
+                        ['type']
+                        == 'OnPolicyMetricLearner')
+                    else None),
                 'max_pair_distance': None,
                 'path_length': variant_equals(
                     'sampler_params',
@@ -174,19 +171,18 @@ def get_variant_spec(universe, domain, task, policy):
             'kwargs': {
                 'distance_learning_rate': 3e-4,
                 'lambda_learning_rate': 3e-4,
-                'train_every_n_steps': tune.grid_search([16, 32, 64, 128]),
-                # 'train_every_n_steps': lambda spec: (
-                #     {
-                #         'OnPolicyMetricLearner': 128,
-                #         'MetricLearner': 1,
-                #     }[spec.get('config', spec)
-                #       ['metric_learner_params']
-                #       ['type']]),
+                'train_every_n_steps': lambda spec: (
+                    {
+                        'OnPolicyMetricLearner': 128,
+                        'MetricLearner': 1,
+                    }[spec.get('config', spec)
+                      ['metric_learner_params']
+                      ['type']]),
                 'n_train_repeat': 1,
 
-                'constraint_exp_multiplier': 0.3,
-                'objective_type': 'squared',
-                'step_constraint_coeff': 1.0,
+                'constraint_exp_multiplier': 0.0,
+                'objective_type': 'linear',
+                'step_constraint_coeff': 1e-1,
 
                 'zero_constraint_threshold': 0.0,
 
