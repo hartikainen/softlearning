@@ -74,7 +74,7 @@ NUM_EPOCHS_PER_DOMAIN = {
     'Hopper': int(3e3 + 1),
     'HalfCheetah': int(3e3 + 1),
     'Walker': int(3e3 + 1),
-    'Ant': int(3e3 + 1),
+    'Ant': int(1e4 + 1),
     'Humanoid': int(1e4 + 1),
     'Pusher2d': int(2e3 + 1),
     'HandManipulatePen': int(1e4 + 1),
@@ -188,12 +188,12 @@ def get_variant_spec(universe, domain, task, policy):
         },
         'metric_learner_params': {
             'type': tune.grid_search([
-                'OnPolicyMetricLearner',
-                # 'MetricLearner',
+                # 'OnPolicyMetricLearner',
+                'MetricLearner',
             ]),
             'kwargs': {
                 'distance_learning_rate': 3e-4,
-                'lambda_learning_rate': 3e-4,
+                'lambda_learning_rate': 1e-4,
                 'train_every_n_steps': lambda spec: (
                     {
                         'OnPolicyMetricLearner': 128,
@@ -203,9 +203,9 @@ def get_variant_spec(universe, domain, task, policy):
                       ['type']]),
                 'n_train_repeat': 1,
 
-                'constraint_exp_multiplier': 0.0,
-                'objective_type': 'linear',
-                'step_constraint_coeff': 1e-1,
+                'constraint_exp_multiplier': 0.3,
+                'objective_type': 'squared',
+                'step_constraint_coeff': 1.0,
 
                 'zero_constraint_threshold': 0.0,
 
