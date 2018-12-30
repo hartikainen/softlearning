@@ -72,7 +72,7 @@ DEFAULT_NUM_EPOCHS = 200
 NUM_EPOCHS_PER_DOMAIN = {
     'Swimmer': int(3e3 + 1),
     'Hopper': int(3e3 + 1),
-    'HalfCheetah': int(3e3 + 1),
+    'HalfCheetah': int(1e4 + 1),
     'Walker': int(3e3 + 1),
     'Ant': int(3e3 + 1),
     'Humanoid': int(1e4 + 1),
@@ -159,16 +159,17 @@ def get_variant_spec(universe, domain, task, policy):
             'type': 'DistancePool',
             'kwargs': {
                 'max_size': int(1e6),
-                'on_policy_window': lambda spec: (
-                    2 * spec.get('config', spec)
-                    ['sampler_params']
-                    ['kwargs']
-                    ['max_path_length']
-                    if (spec.get('config', spec)
-                        ['metric_learner_params']
-                        ['type']
-                        == 'OnPolicyMetricLearner')
-                    else None),
+                'on_policy_window': tune.grid_search([1000, 2000, 4000, 8000]),
+                # 'on_policy_window': lambda spec: (
+                #     2 * spec.get('config', spec)
+                #     ['sampler_params']
+                #     ['kwargs']
+                #     ['max_path_length']
+                #     if (spec.get('config', spec)
+                #         ['metric_learner_params']
+                #         ['type']
+                #         == 'OnPolicyMetricLearner')
+                #     else None),
                 'max_pair_distance': None,
                 'path_length': variant_equals(
                     'sampler_params',
@@ -194,13 +195,14 @@ def get_variant_spec(universe, domain, task, policy):
             'kwargs': {
                 'distance_learning_rate': 3e-4,
                 'lambda_learning_rate': 3e-4,
-                'train_every_n_steps': lambda spec: (
-                    {
-                        'OnPolicyMetricLearner': 128,
-                        'MetricLearner': 1,
-                    }[spec.get('config', spec)
-                      ['metric_learner_params']
-                      ['type']]),
+                'train_every_n_steps': tune.grid_search([32, 64, 128, 256]),
+                # lambda spec: (
+                #     {
+                #         'OnPolicyMetricLearner': 128,
+                #         'MetricLearner': 1,
+                #     }[spec.get('config', spec)
+                #       ['metric_learner_params']
+                #       ['type']]),
                 'n_train_repeat': 1,
 
                 'constraint_exp_multiplier': 0.0,
@@ -221,7 +223,7 @@ def get_variant_spec(universe, domain, task, policy):
                 ]),
                 'distance_input_type': tune.grid_search([
                     'full',
-                    'xy_coordinates',
+                    # 'xy_coordinates',
                     # 'xy_velocities',
                 ]),
             },
