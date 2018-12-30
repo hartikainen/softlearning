@@ -14,13 +14,17 @@ ENV_PARAMS = {
         },
     },
     'Ant': {
-        'CustomDefault': {
+        'Custom': {
             'exclude_current_positions_from_observation': False,
+            'terminate_when_unhealthy': False,
+            'healthy_reward': 1.0,
         },
     },
     'Humanoid': {
-        'CustomDefault': {
+        'Custom': {
             'exclude_current_positions_from_observation': False,
+            'terminate_when_unhealthy': False,
+            'healthy_reward': 1.0,
         },
     },
     'Point2DEnv': {
