@@ -72,7 +72,7 @@ DEFAULT_NUM_EPOCHS = 200
 NUM_EPOCHS_PER_DOMAIN = {
     'Swimmer': int(3e3 + 1),
     'Hopper': int(3e3 + 1),
-    'HalfCheetah': int(3e3 + 1),
+    'HalfCheetah': int(1e4 + 1),
     'Walker': int(3e3 + 1),
     'Ant': int(1e4 + 1),
     'Humanoid': int(1e4 + 1),
@@ -127,7 +127,7 @@ def get_variant_spec(universe, domain, task, policy):
                     domain, DEFAULT_NUM_EPOCHS),
                 'train_every_n_steps': 1,
                 'n_train_repeat': 1,
-                'n_initial_exploration_steps': int(1e3),
+                'n_initial_exploration_steps': int(0),
                 'reparameterize': True,
                 'eval_render_mode': None,
                 'eval_n_episodes': 1,
@@ -151,7 +151,7 @@ def get_variant_spec(universe, domain, task, policy):
                 ]),
                 'use_distance_for': tune.grid_search([
                     'reward',
-                    # 'value',
+                    'value',
                 ]),
             }
         },
@@ -183,7 +183,7 @@ def get_variant_spec(universe, domain, task, policy):
                     domain, DEFAULT_MAX_PATH_LENGTH),
                 'min_pool_size': MAX_PATH_LENGTH_PER_DOMAIN.get(
                     domain, DEFAULT_MAX_PATH_LENGTH),
-                'batch_size': 512,
+                'batch_size': 256,
             }
         },
         'metric_learner_params': {
@@ -193,7 +193,7 @@ def get_variant_spec(universe, domain, task, policy):
             ]),
             'kwargs': {
                 'distance_learning_rate': 3e-4,
-                'lambda_learning_rate': 1e-4,
+                'lambda_learning_rate': 3e-4,
                 'train_every_n_steps': lambda spec: (
                     {
                         'OnPolicyMetricLearner': 128,
@@ -201,11 +201,12 @@ def get_variant_spec(universe, domain, task, policy):
                     }[spec.get('config', spec)
                       ['metric_learner_params']
                       ['type']]),
-                'n_train_repeat': 1,
+                'n_train_repeat': tune.grid_search([1, 2, 4]),
 
-                'constraint_exp_multiplier': 0.3,
-                'objective_type': 'squared',
-                'step_constraint_coeff': 1.0,
+                'constraint_exp_multiplier': 0.0,
+                'objective_type': 'linear',
+                'step_constraint_coeff': tune.grid_search([
+                    1e-3, 1e-2, 1e-1, 1.0]),
 
                 'zero_constraint_threshold': 0.0,
 
@@ -221,7 +222,7 @@ def get_variant_spec(universe, domain, task, policy):
                 ]),
                 'distance_input_type': tune.grid_search([
                     'full',
-                    'xy_coordinates',
+                    # 'xy_coordinates',
                     # 'xy_velocities',
                 ]),
             },
