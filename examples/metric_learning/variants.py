@@ -20,6 +20,25 @@ ENV_PARAMS = {
             'healthy_reward': 1.0,
         },
     },
+    'HalfCheetah': {
+        'Custom': {
+            'exclude_current_positions_from_observation': False,
+        },
+    },
+    'Hopper': {
+        'Custom': {
+            'exclude_current_positions_from_observation': False,
+            'terminate_when_unhealthy': False,
+            'healthy_reward': 1.0,
+        },
+    },
+    'Walker': {
+        'Custom': {
+            'exclude_current_positions_from_observation': False,
+            'terminate_when_unhealthy': False,
+            'healthy_reward': 1.0,
+        },
+    },
     'Humanoid': {
         'Custom': {
             'exclude_current_positions_from_observation': False,
