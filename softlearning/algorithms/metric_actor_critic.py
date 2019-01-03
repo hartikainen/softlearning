@@ -13,7 +13,10 @@ from softlearning.environments.adapters.gym_adapter import (
     Point2DWallEnv,
     CustomSwimmerEnv,
     CustomAntEnv,
-    CustomHumanoidEnv)
+    CustomHumanoidEnv,
+    CustomHalfCheetahEnv,
+    CustomHopperEnv,
+    CustomWalker2dEnv)
 
 from gym.envs.mujoco.swimmer import SwimmerEnv as GymSwimmerEnv
 from gym.envs.mujoco.ant import AntEnv as GymAntEnv
@@ -442,7 +445,10 @@ class MetricActorCritic(RLAlgorithm):
             elif isinstance(self._env.unwrapped,
                             (CustomSwimmerEnv,
                              CustomAntEnv,
-                             CustomHumanoidEnv)):
+                             CustomHumanoidEnv,
+                             CustomHalfCheetahEnv,
+                             CustomHopperEnv,
+                             CustomWalker2dEnv)):
                 if self._env.unwrapped._exclude_current_positions_from_observation:
                     raise NotImplementedError
 

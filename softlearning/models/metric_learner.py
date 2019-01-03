@@ -8,7 +8,10 @@ from serializable import Serializable
 from softlearning.environments.adapters.gym_adapter import (
     CustomSwimmerEnv,
     CustomAntEnv,
-    CustomHumanoidEnv)
+    CustomHumanoidEnv,
+    CustomHalfCheetahEnv,
+    CustomHopperEnv,
+    CustomWalker2dEnv)
 
 
 class MetricLearner(Serializable):
@@ -79,7 +82,12 @@ class MetricLearner(Serializable):
 
         elif self._distance_input_type == 'xy_coordinates':
             if isinstance(self._env.unwrapped,
-                          (CustomSwimmerEnv, CustomAntEnv, CustomHumanoidEnv)):
+                          (CustomSwimmerEnv,
+                           CustomAntEnv,
+                           CustomHumanoidEnv,
+                           CustomHalfCheetahEnv,
+                           CustomHopperEnv,
+                           CustomWalker2dEnv)):
                 if (self._env.unwrapped
                     ._exclude_current_positions_from_observation):
                     raise NotImplementedError
@@ -89,7 +97,16 @@ class MetricLearner(Serializable):
 
         elif self._distance_input_type == 'xy_velocities':
             if isinstance(self._env.unwrapped,
-                          (CustomSwimmerEnv, CustomAntEnv, CustomHumanoidEnv)):
+                          (CustomSwimmerEnv,
+                           CustomAntEnv,
+                           CustomHumanoidEnv,
+                           CustomHalfCheetahEnv,
+                           CustomHopperEnv,
+                           CustomWalker2dEnv)):
+                if (self._env.unwrapped
+                    ._exclude_current_positions_from_observation):
+                    raise NotImplementedError
+
                 qvel_start_idx = self._env.unwrapped.sim.data.qpos.size
                 qvel_end_idx = qvel_start_idx + 2
 

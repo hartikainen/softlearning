@@ -9,7 +9,7 @@ DEFAULT_LAYER_SIZE = 256
 
 ENV_PARAMS = {
     'Swimmer': {
-        'CustomDefault': {
+        'Custom': {
             'exclude_current_positions_from_observation': False,
         },
     },

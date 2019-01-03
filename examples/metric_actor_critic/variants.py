@@ -9,18 +9,41 @@ DEFAULT_LAYER_SIZE = 256
 
 ENV_PARAMS = {
     'Swimmer': {
-        'CustomDefault': {
+        'Custom': {
             'exclude_current_positions_from_observation': False,
         },
     },
     'Ant': {
-        'CustomDefault': {
+        'Custom': {
+            'exclude_current_positions_from_observation': False,
+            'terminate_when_unhealthy': False,
+            'healthy_reward': 1.0,
+        },
+    },
+    'HalfCheetah': {
+        'Custom': {
             'exclude_current_positions_from_observation': False,
         },
     },
-    'Humanoid': {
-        'CustomDefault': {
+    'Hopper': {
+        'Custom': {
             'exclude_current_positions_from_observation': False,
+            'terminate_when_unhealthy': False,
+            'healthy_reward': 1.0,
+        },
+    },
+    'Walker': {
+        'Custom': {
+            'exclude_current_positions_from_observation': False,
+            'terminate_when_unhealthy': False,
+            'healthy_reward': 1.0,
+        },
+    },
+    'Humanoid': {
+        'Custom': {
+            'exclude_current_positions_from_observation': False,
+            'terminate_when_unhealthy': False,
+            'healthy_reward': 1.0,
         },
     },
     'Point2DEnv': {

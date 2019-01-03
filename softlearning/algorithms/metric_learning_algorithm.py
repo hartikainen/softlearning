@@ -11,8 +11,15 @@ from gym.envs.mujoco.inverted_pendulum import (InvertedPendulumEnv as
 
 from softlearning.algorithms.sac import SAC, td_target
 from softlearning.environments.adapters.gym_adapter import (
-    Point2DEnv, Point2DWallEnv, CustomSwimmerEnv, CustomAntEnv,
-    CustomHumanoidEnv, FixedTargetReacherEnv)
+    Point2DEnv,
+    Point2DWallEnv,
+    CustomSwimmerEnv,
+    CustomAntEnv,
+    CustomHumanoidEnv,
+    CustomHalfCheetahEnv,
+    CustomHopperEnv,
+    CustomWalker2dEnv,
+    FixedTargetReacherEnv)
 
 
 class MetricLearningAlgorithm(SAC):
@@ -181,7 +188,12 @@ class MetricLearningAlgorithm(SAC):
                     self._temporary_goal = new_observations[max_velocity_idx]
             elif isinstance(
                     self._env.unwrapped,
-                    (CustomSwimmerEnv, CustomAntEnv, CustomHumanoidEnv)):
+                    (CustomSwimmerEnv,
+                     CustomAntEnv,
+                     CustomHumanoidEnv,
+                     CustomHalfCheetahEnv,
+                     CustomHopperEnv,
+                     CustomWalker2dEnv)):
                 if self._env.unwrapped._exclude_current_positions_from_observation:
                     raise NotImplementedError
                 position_idx = slice(0, 2)
@@ -308,7 +320,12 @@ class MetricLearningAlgorithm(SAC):
                 result[key] = value
 
         elif isinstance(self._env.unwrapped,
-                        (CustomSwimmerEnv, CustomAntEnv, CustomHumanoidEnv)):
+                        (CustomSwimmerEnv,
+                         CustomAntEnv,
+                         CustomHumanoidEnv,
+                         CustomHalfCheetahEnv,
+                         CustomHopperEnv,
+                         CustomWalker2dEnv)):
             if self._env.unwrapped._exclude_current_positions_from_observation:
                 raise NotImplementedError
             all_observations = np.concatenate(
