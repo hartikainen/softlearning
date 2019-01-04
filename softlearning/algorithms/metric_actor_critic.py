@@ -23,8 +23,6 @@ from gym.envs.mujoco.ant import AntEnv as GymAntEnv
 from gym.envs.mujoco.half_cheetah import HalfCheetahEnv as GymHalfCheetahEnv
 from gym.envs.mujoco.humanoid import HumanoidEnv as GymHumanoidEnv
 
-from softlearning.visualization import point_2d_plotter
-
 
 class MetricActorCritic(RLAlgorithm):
 
@@ -565,6 +563,8 @@ class MetricActorCritic(RLAlgorithm):
 
         if self._plot_distances:
             if isinstance(self._env.unwrapped, (Point2DEnv, Point2DWallEnv)):
+                from softlearning.visualization import point_2d_plotter
+
                 def get_distances_fn(observations, goals):
                     with self._policy.set_deterministic(True):
                         actions = self._policy.actions_np([observations])
