@@ -228,12 +228,10 @@ class GoalLearner(SAC):
         for path in paths:
             path['next_observations'] = path['observations'][1:]
             path['observations'] = path['observations'][:-1]
-            self._pool.add_samples(
-                num_samples=path['observations'].shape[0],
-                **{
-                    k: v for k, v in path.items()
-                    if k in self._pool.fields
-                })
+            self._pool.add_samples({
+                k: v for k, v in path.items()
+                if k in self._pool.fields_attrs
+            })
 
         super(GoalLearner, self)._initial_exploration_hook(
             initial_exploration_policy)
@@ -324,9 +322,7 @@ class GoalLearner(SAC):
             'preferences': preferences
         }
 
-        self._preference_pool.add_samples(
-            num_samples=preferences.shape[0],
-            **preference_pool_samples)
+        self._preference_pool.add_samples(preference_pool_samples)
 
     def _training_batch(self, batch_size=None):
         batch_size = batch_size or self.sampler._batch_size
