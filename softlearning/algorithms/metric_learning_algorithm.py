@@ -46,11 +46,6 @@ class MetricLearningAlgorithm(SAC):
         self._temporary_goal_ph = tf.placeholder(
             tf.float32, shape=self._env.observation_space.shape, name='goal')
 
-    def _initialize_tf_variables(self):
-        super(MetricLearningAlgorithm, self)._initialize_tf_variables()
-        self._sess.run(tf.tables_initializer())
-        self._metric_learner._initialize_tf_variables()
-
     def _get_Q_target(self):
         goals = tf.tile(self._temporary_goal_ph[None, :],
                         (tf.shape(self._observations_ph)[0], 1))
@@ -429,3 +424,14 @@ class MetricLearningAlgorithm(SAC):
                     self, iteration, training_paths, evaluation_paths)
 
         return diagnostics
+
+    @property
+    def tf_saveables(self):
+        tf_saveables = super(MetricLearningAlgorithm, self).tf_saveables
+
+        tf_saveables.update({
+            f'_metric_learner_{key}': value
+            for key, value in self._metric_learner.tf_saveables.items()
+        })
+
+        return tf_saveables
