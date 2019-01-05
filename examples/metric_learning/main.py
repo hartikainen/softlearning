@@ -1,5 +1,8 @@
 import os
 import copy
+import pickle
+
+import tensorflow as tf
 
 from softlearning.environments.utils import get_environment_from_variant
 from softlearning.algorithms.utils import get_algorithm_from_variant
@@ -42,9 +45,66 @@ class MetricExperimentRunner(ExperimentRunner):
             pool=replay_pool,
             sampler=sampler,
             metric_learner=metric_learner,
+            session=self._session,
         )
 
         initialize_tf_variables(self._session, only_uninitialized=True)
+
+        self._built = True
+
+    def _restore(self, checkpoint_dir):
+        assert isinstance(checkpoint_dir, str), checkpoint_dir
+
+        checkpoint_dir = checkpoint_dir.rstrip('/')
+
+        with self._session.as_default():
+            pickle_path = self._pickle_path(checkpoint_dir)
+            with open(pickle_path, 'rb') as f:
+                pickleable = pickle.load(f)
+
+        env = self.env = pickleable['env']
+
+        replay_pool = self.replay_pool = (
+            get_replay_pool_from_variant(self._variant, env))
+
+        if self._variant['run_params'].get('checkpoint_replay_pool', False):
+            self._restore_replay_pool(checkpoint_dir)
+
+        sampler = self.sampler = pickleable['sampler']
+        Qs = self.Qs = pickleable['Qs']
+        # policy = self.policy = pickleable['policy']
+        policy = self.policy = (
+            get_policy_from_variant(self._variant, env, Qs))
+        self.policy.set_weights(pickleable['policy_weights'])
+        initial_exploration_policy = self.initial_exploration_policy = (
+            get_policy('UniformPolicy', env))
+
+        metric_learner = get_metric_learner_from_variant(self._variant, env)
+
+        self.algorithm = get_algorithm_from_variant(
+            variant=self._variant,
+            env=self.env,
+            policy=policy,
+            initial_exploration_policy=initial_exploration_policy,
+            Qs=Qs,
+            pool=replay_pool,
+            sampler=sampler,
+            metric_learner=metric_learner,
+            session=self._session)
+        self.algorithm.__setstate__(pickleable['algorithm'].__getstate__())
+
+        initialize_tf_variables(self._session, only_uninitialized=True)
+
+        tf_checkpoint = self._get_tf_checkpoint()
+        status = tf_checkpoint.restore(tf.train.latest_checkpoint(
+            os.path.split(self._tf_checkpoint_prefix(checkpoint_dir))[0]))
+
+        status.assert_consumed().run_restore_ops(self._session)
+
+        # TODO(hartikainen): target Qs should either be checkpointed
+        # or pickled.
+        for Q, Q_target in zip(self.algorithm._Qs, self.algorithm._Q_targets):
+            Q_target.set_weights(Q.get_weights())
 
         self._built = True
 

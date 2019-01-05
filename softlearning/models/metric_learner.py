@@ -348,8 +348,8 @@ class MetricLearner(Serializable):
             + triangle_inequality_constraint
             + max_distance_constraint)
 
-        lagrangian_optimizer = tf.train.AdamOptimizer(
-            learning_rate=self._distance_learning_rate)
+        lagrangian_optimizer = self._lagrangian_optimizer = (
+            tf.train.AdamOptimizer(learning_rate=self._distance_learning_rate))
 
         lagrangian_grads_and_vars = lagrangian_optimizer.compute_gradients(
             loss=lagrangian_loss,
@@ -364,7 +364,7 @@ class MetricLearner(Serializable):
 
         assert set(self.lambda_estimators.keys()) == set(lambda_losses.keys())
 
-        lambda_optimizer = tf.train.AdamOptimizer(
+        lambda_optimizer = self._lambda_optimizer = tf.train.AdamOptimizer(
             learning_rate=self._lambda_learning_rate)
         lambda_grads_and_vars = {}
 
@@ -496,6 +496,13 @@ class MetricLearner(Serializable):
 
         return result
 
+    @property
+    def tf_saveables(self):
+        return {
+            '_lagrangian_optimizer': self._lagrangian_optimizer,
+            '_lambda_optimizer': self._lambda_optimizer,
+        }
+
 
 class OnPolicyMetricLearner(MetricLearner):
     def _init_distance_update(self):
@@ -512,7 +519,7 @@ class OnPolicyMetricLearner(MetricLearner):
             predictions=distance_predictions[:, None],
             weights=0.5)
 
-        distance_optimizer = tf.train.AdamOptimizer(
+        distance_optimizer = self._distance_optimizer = tf.train.AdamOptimizer(
             learning_rate=self._distance_learning_rate)
         distance_grads_and_vars = distance_optimizer.compute_gradients(
             loss=distance_loss,
@@ -529,3 +536,10 @@ class OnPolicyMetricLearner(MetricLearner):
         return OrderedDict((
             ('distance_loss-mean', np.mean(distance_loss)),
         ))
+
+    @property
+    def tf_saveables(self):
+        return {
+            '_distance_optimizer': self._distance_optimizer,
+            'distance_estimator': self.distance_estimator
+        }
