@@ -165,7 +165,7 @@ def get_variant_spec(universe, domain, task, policy):
             'type': 'DistancePool',
             'kwargs': {
                 'max_size': int(1e6),
-                'on_policy_window': tune.grid_search([1000, 2000, 4000, 8000]),
+                'on_policy_window': 2000,
                 # 'on_policy_window': lambda spec: (
                 #     2 * spec.get('config', spec)
                 #     ['sampler_params']
@@ -201,7 +201,7 @@ def get_variant_spec(universe, domain, task, policy):
             'kwargs': {
                 'distance_learning_rate': 3e-4,
                 'lambda_learning_rate': 3e-4,
-                'train_every_n_steps': tune.grid_search([32, 64, 128, 256]),
+                'train_every_n_steps': 128,
                 # lambda spec: (
                 #     {
                 #         'OnPolicyMetricLearner': 128,
