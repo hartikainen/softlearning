@@ -79,9 +79,9 @@ NUM_EPOCHS_PER_DOMAIN = {
     'Swimmer': int(3e3 + 1),
     'Hopper': int(3e3 + 1),
     'HalfCheetah': int(1e4 + 1),
-    'Walker': int(3e3 + 1),
-    'Ant': int(3e3 + 1),
-    'Humanoid': int(1e4 + 1),
+    'Walker': int(1e4 + 1),
+    'Ant': int(1e4 + 1),
+    'Humanoid': int(3e4 + 1),
     'Pusher2d': int(2e3 + 1),
     'HandManipulatePen': int(1e4 + 1),
     'HandManipulateEgg': int(1e4 + 1),
@@ -190,7 +190,7 @@ def get_variant_spec(universe, domain, task, policy):
                     domain, DEFAULT_MAX_PATH_LENGTH),
                 'min_pool_size': MAX_PATH_LENGTH_PER_DOMAIN.get(
                     domain, DEFAULT_MAX_PATH_LENGTH),
-                'batch_size': 512,
+                'batch_size': 256,
             }
         },
         'metric_learner_params': {
