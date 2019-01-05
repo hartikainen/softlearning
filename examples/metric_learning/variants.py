@@ -11,6 +11,7 @@ ENV_PARAMS = {
     'Swimmer': {
         'Custom': {
             'exclude_current_positions_from_observation': False,
+            'reset_noise_scale': 0,
         },
     },
     'Ant': {
@@ -18,11 +19,13 @@ ENV_PARAMS = {
             'exclude_current_positions_from_observation': False,
             'terminate_when_unhealthy': False,
             'healthy_reward': 1.0,
+            'reset_noise_scale': 0,
         },
     },
     'HalfCheetah': {
         'Custom': {
             'exclude_current_positions_from_observation': False,
+            'reset_noise_scale': 0,
         },
     },
     'Hopper': {
@@ -30,6 +33,7 @@ ENV_PARAMS = {
             'exclude_current_positions_from_observation': False,
             'terminate_when_unhealthy': False,
             'healthy_reward': 1.0,
+            'reset_noise_scale': 0,
         },
     },
     'Walker': {
@@ -37,6 +41,7 @@ ENV_PARAMS = {
             'exclude_current_positions_from_observation': False,
             'terminate_when_unhealthy': False,
             'healthy_reward': 1.0,
+            'reset_noise_scale': 0,
         },
     },
     'Humanoid': {
@@ -44,6 +49,7 @@ ENV_PARAMS = {
             'exclude_current_positions_from_observation': False,
             'terminate_when_unhealthy': False,
             'healthy_reward': 1.0,
+            'reset_noise_scale': 0,
         },
     },
     'Point2DEnv': {
