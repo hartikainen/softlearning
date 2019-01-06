@@ -11,6 +11,7 @@ from softlearning.environments.gym.wrappers import NormalizeActionWrapper
 from softlearning.environments.gym.mujoco.fixed_target_reacher import (
     FixedTargetReacherEnv)
 from softlearning.environments.gym.mujoco.ant_env import AntEnv as CustomAntEnv
+
 from softlearning.environments.gym.mujoco.humanoid_env import (
     HumanoidEnv as CustomHumanoidEnv)
 from softlearning.environments.gym.mujoco.walker2d_env import (
@@ -30,6 +31,12 @@ from softlearning.environments.gym.mujoco.image_pusher import (
     BlindForkReacherEnv)
 from softlearning.environments.gym.multi_goal import MultiGoalEnv
 
+from softlearning.environments.gym.mujoco.maze.ant_maze_env import AntMazeEnv
+from softlearning.environments.gym.mujoco.maze.swimmer_maze_env import (
+    SwimmerMazeEnv)
+from softlearning.environments.gym.mujoco.maze.humanoid_maze_env import (
+    HumanoidMazeEnv)
+
 
 def raise_on_use_wrapper(e):
     def raise_on_use(*args, **kwargs):
@@ -42,17 +49,20 @@ GYM_ENVIRONMENTS = {
         'v2': lambda: gym.envs.make('Swimmer-v2'),
         'Custom': CustomSwimmerEnv,
         'Default': lambda: gym.envs.make('Swimmer-v2'),
+        'Maze': SwimmerMazeEnv,
     },
     'Ant': {
         'v2': lambda: gym.envs.make('Ant-v2'),
         'Custom': CustomAntEnv,
         'Default': lambda: gym.envs.make('Ant-v2'),
+        'Maze': AntMazeEnv,
     },
     'Humanoid': {
         'v2': lambda: gym.envs.make('Humanoid-v2'),
         'Standup-v2': lambda: gym.envs.make('HumanoidStandup-v2'),
         'Custom': CustomHumanoidEnv,
         'Default': lambda: gym.envs.make('Humanoid-v2'),
+        'Maze': HumanoidMazeEnv,
     },
     'Hopper': {
         'v2': lambda: gym.envs.make('Hopper-v2'),
