@@ -10,7 +10,7 @@ from gym.envs.mujoco import mujoco_env
 from .utils import create_maze
 
 
-class BaseMazeEnv():
+class BaseMazeEnv(object):
     MODEL_CLASS = None
 
     def __init__(
@@ -91,7 +91,7 @@ class BaseMazeEnv():
                         worldbody,
                         "geom",
 
-                        name=f"target_{i}_{j}",
+                        name=f"target",
                         pos=" ".join(map(str, element_position)),
                         size=" ".join(map(str, element_size)),
                         type="sphere",
@@ -105,12 +105,11 @@ class BaseMazeEnv():
         if make_contacts:
             torso = tree.find(".//body[@name='torso']")
             geoms = torso.findall(".//geom")
+
             for geom in geoms:
                 if 'name' not in geom.attrib:
-                    from pprint import pprint; import ipdb; ipdb.set_trace(context=30)
-
-                    raise Exception("Every geom of the torso must have a name "
-                                    "defined")
+                    raise ValueError(
+                        "Every geom of the torso must have a name defined")
 
             contact = ET.SubElement(
                 tree.find("."), "contact"
@@ -137,7 +136,19 @@ class BaseMazeEnv():
         return self.inner_env.reset(*args, **kwargs)
 
     def step(self, *args, **kwargs):
-        return self.inner_env.step(*args, **kwargs)
+        observation, reward, done, info = self.inner_env.step(*args, **kwargs)
+
+        xy_position = self.inner_env.sim.data.qpos[:2]
+        target_position = self.inner_env.sim.data.get_geom_xpos('target')[:2]
+
+        l2_distance_to_target = np.linalg.norm(
+            xy_position - target_position, ord=2)
+
+        info.update({
+            'maze/l2_distance_to_target': l2_distance_to_target
+        })
+
+        return observation, reward, done, info
 
     def render(self, *args, **kwargs):
         return self.inner_env.render(*args, **kwargs)
@@ -157,3 +168,7 @@ class BaseMazeEnv():
     @property
     def metadata(self):
         return self.inner_env.metadata
+
+    @property
+    def unwrapped(self):
+        return self.inner_env.unwrapped
