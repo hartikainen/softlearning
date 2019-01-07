@@ -337,7 +337,7 @@ class MetricLearningAlgorithm(SAC):
                 self._metric_learner.distance_estimator.predict(
                     self._metric_learner._distance_estimator_inputs(
                         all_observations, temporary_goals, all_actions))[:, 0])
-            l2_distances_from_goal_xy = np.linalg.norm(
+            l2_distances_from_goal = np.linalg.norm(
                 all_xy_positions - temporary_goals[:, :2], ord=2, axis=1)
             goal_l2_distance_from_origin = np.linalg.norm(
                 self._temporary_goal[:2], ord=2)
@@ -349,13 +349,17 @@ class MetricLearningAlgorithm(SAC):
                         np.zeros((1, *all_actions.shape[1:]))))[0, 0])
 
             result['max_xy_distance'] = max_xy_distance
-            result['min_goal_distance'] = np.min(distances_from_goal)
-            result['min_l2_distance_to_goal_xy'] = np.min(
-                l2_distances_from_goal_xy)
+            result['min_distance_from_goal'] = np.min(distances_from_goal)
+            result['min_l2_distance_from_goal'] = np.min(
+                l2_distances_from_goal)
             result['goal_l2_distance_from_origin'] = (
                 goal_l2_distance_from_origin)
             result['goal_estimated_distance_from_origin'] = (
                 goal_estimated_distance_from_origin)
+            result['goal_x'] = self._temporary_goal[0]
+            result['goal_y'] = self._temporary_goal[1]
+            result['full_goal'] = np.array2string(
+                self._temporary_goal, max_line_width=float('inf'))
 
         return result
 
