@@ -13,12 +13,21 @@ ENV_PARAMS = {
             'exclude_current_positions_from_observation': False,
             'reset_noise_scale': 0,
         },
+        'Maze': {
+            'exclude_current_positions_from_observation': False,
+            'reset_noise_scale': 0,
+        },
     },
     'Ant': {
         'Custom': {
             'exclude_current_positions_from_observation': False,
             'terminate_when_unhealthy': False,
             'healthy_reward': 1.0,
+            'reset_noise_scale': 0,
+        },
+        'Maze': {
+            'exclude_current_positions_from_observation': False,
+            'terminate_when_unhealthy': False,
             'reset_noise_scale': 0,
         },
     },
@@ -46,6 +55,12 @@ ENV_PARAMS = {
     },
     'Humanoid': {
         'Custom': {
+            'exclude_current_positions_from_observation': False,
+            'terminate_when_unhealthy': False,
+            'healthy_reward': 1.0,
+            'reset_noise_scale': 0,
+        },
+        'Maze': {
             'exclude_current_positions_from_observation': False,
             'terminate_when_unhealthy': False,
             'healthy_reward': 1.0,
