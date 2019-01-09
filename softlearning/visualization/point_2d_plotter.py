@@ -402,7 +402,7 @@ def plot_V(figure,
                label="past temporary goals")
 
     for i, training_path in enumerate(training_paths):
-        observations = training_path['observations']
+        observations = training_path['observations.observation']
 
         if observations.shape[1] == 11:
             # Reacher
@@ -425,7 +425,7 @@ def plot_V(figure,
         ax.scatter(*positions[-1], color='y', marker='x')
 
     for path in evaluation_paths:
-        observations = path['observations']
+        observations = path['observations.observation']
         assert observations.shape[1] == 2, observations.shape
         positions = observations
 
