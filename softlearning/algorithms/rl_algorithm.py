@@ -150,7 +150,7 @@ class RLAlgorithm(tf.contrib.checkpoint.Checkpointable):
                 samples_now = self.sampler._total_samples
                 self._timestep = samples_now - start_samples
 
-                if samples_now >= start_samples + self._epoch_length:
+                if samples_now >= start_samples + self._epoch_length and self.ready_to_train:
                     break
 
                 self._timestep_before_hook()

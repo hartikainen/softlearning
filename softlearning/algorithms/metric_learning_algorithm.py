@@ -237,8 +237,7 @@ class MetricLearningAlgorithm(SAC):
         self._update_temporary_goal(training_paths)
 
     def _timestep_before_hook(self, *args, **kwargs):
-        if ((self._timestep % self.sampler._max_path_length)
-            >= self.sampler._max_path_length * 0.75):
+        if (self.sampler._path_length >= self.sampler._max_path_length * 0.75):
             self.sampler.initialize(
                 self._env, self._initial_exploration_policy, self._pool)
             # self.sampler.initialize(
