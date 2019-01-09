@@ -323,7 +323,8 @@ class MetricActorCritic(RLAlgorithm):
     def _update_temporary_goal(self, training_paths):
         if self._temporary_goal_update_rule == 'closest_l2_from_goal':
             new_observations = np.concatenate([
-                path['observations'] for path in training_paths], axis=0)
+                path.get('observations', path.get('observations.observation'))
+                for path in training_paths], axis=0)
             new_distances = np.linalg.norm(
                 new_observations - self._goal, axis=1)
 
@@ -337,7 +338,8 @@ class MetricActorCritic(RLAlgorithm):
         elif (self._temporary_goal_update_rule
               == 'farthest_l2_from_first_observation'):
             new_observations = np.concatenate([
-                path['observations'] for path in training_paths], axis=0)
+                path.get('observations', path.get('observations.observation'))
+                for path in training_paths], axis=0)
             new_distances = np.linalg.norm(
                 new_observations - self._first_observation, axis=1)
 
@@ -351,42 +353,34 @@ class MetricActorCritic(RLAlgorithm):
         elif (self._temporary_goal_update_rule
               == 'farthest_estimate_from_first_observation'):
 
-            new_observations = self._pool.last_n_batch(
+            new_batch = self._pool.last_n_batch(
                 min(self._pool.size, 100000),
-                field_name_filter='observations',
+                field_name_filter=lambda x: 'observations' in x,
                 observation_keys=getattr(self._env, 'observation_keys', None),
-            )['observations']
+            )
+            new_observations = new_batch.get(
+                'observations', new_batch.get('observations.observation'))
             first_observations = np.tile(
                 self._first_observation[None, :],
                 (new_observations.shape[0], 1))
-            actions = self._policy.actions_np([first_observations])
-            new_distances = tuple(
-                Q.predict([
-                    np.tile(self._first_observation[None, :],
-                            (new_observations.shape[0], 1)),
-                    new_observations,
-                    actions,
-                ])
-                for Q in self._Qs)
 
-            new_distances = - np.min(new_distances, axis=0)
+            new_distances = self._get_distance_values(
+                first_observations, new_observations)
+
             max_distance_idx = np.argmax(new_distances)
             max_distance = new_distances[max_distance_idx]
 
-            current_distances = tuple(
-                Q.predict([
-                    self._first_observation[None, :],
-                    self._temporary_goal[None, :],
-                    self._policy.actions_np([self._first_observation[None, :]]),
-                ])
-                for Q in self._Qs)
-            current_distance = - np.min(current_distances)
+            current_distance = self._get_distance_values(
+                self._first_observation[None, :],
+                self._temporary_goal[None, :])[0]
+
             if max_distance > current_distance:
                 self._temporary_goal = new_observations[max_distance_idx]
 
         elif (self._temporary_goal_update_rule == 'operator_query_last_step'):
             new_observations = np.concatenate([
-                path['observations'] for path in training_paths], axis=0)
+                path.get('observations', path.get('observations.observation'))
+                for path in training_paths], axis=0)
             path_last_observations = new_observations[
                 -1::-self.sampler._max_path_length]
             if isinstance(self._env.unwrapped, (Point2DEnv, Point2DWallEnv)):
@@ -472,8 +466,7 @@ class MetricActorCritic(RLAlgorithm):
         self._update_temporary_goal(training_paths)
 
     def _timestep_before_hook(self, *args, **kwargs):
-        if ((self._timestep % self.sampler._max_path_length)
-            >= self.sampler._max_path_length * 0.8):
+        if (self.sampler._path_length >= self.sampler._max_path_length * 0.75):
             self.sampler.initialize(
                 self._env, self._initial_exploration_policy, self._pool)
             # self.sampler.initialize(
@@ -521,6 +514,68 @@ class MetricActorCritic(RLAlgorithm):
 
         return feed_dict
 
+    def _get_Q_values(self, observations, goals, actions=None):
+        if actions is None:
+            with self._policy.set_deterministic(True):
+                actions = self._policy.actions_np([observations])
+        inputs = [observations, goals, actions]
+        Qs = tuple(Q.predict(inputs) for Q in self._Qs)
+        Qs = np.min(Qs, axis=0)
+        return Qs
+
+    def _get_distance_values(self, observations, goals, actions=None):
+        Qs = self._get_Q_values(observations, goals, actions)
+        distances = -1.0 * Qs
+        return distances
+
+    def _evaluate_rollouts(self, paths, env):
+        result = OrderedDict()
+
+        if isinstance(self._env.unwrapped,
+                      (CustomSwimmerEnv,
+                       CustomAntEnv,
+                       CustomHumanoidEnv,
+                       CustomHalfCheetahEnv,
+                       CustomHopperEnv,
+                       CustomWalker2dEnv)):
+            if self._env.unwrapped._exclude_current_positions_from_observation:
+                raise NotImplementedError
+            all_observations = np.concatenate(
+                [path['observations'] for path in paths], axis=0)
+            all_actions = np.concatenate(
+                [path['actions'] for path in paths], axis=0)
+            all_xy_positions = all_observations[:, :2]
+            all_xy_distances = np.linalg.norm(all_xy_positions, ord=2, axis=1)
+            max_xy_distance = np.max(all_xy_distances)
+
+            temporary_goals = np.tile(self._temporary_goal[None, :],
+                                      (all_observations.shape[0], 1))
+            distances_from_goal = self._get_distance_values(
+                all_observations, temporary_goals, all_actions)[:, 0]
+            l2_distances_from_goal = np.linalg.norm(
+                all_xy_positions - temporary_goals[:, :2], ord=2, axis=1)
+            goal_l2_distance_from_origin = np.linalg.norm(
+                self._temporary_goal[:2], ord=2)
+            goal_estimated_distance_from_origin = self._get_distance_values(
+                self._first_observation[None, :],
+                self._temporary_goal[None, :],
+                np.zeros((1, *all_actions.shape[1:])))[0, 0]
+
+            result['max_xy_distance'] = max_xy_distance
+            result['min_distance_from_goal'] = np.min(distances_from_goal)
+            result['min_l2_distance_from_goal'] = np.min(
+                l2_distances_from_goal)
+            result['goal_l2_distance_from_origin'] = (
+                goal_l2_distance_from_origin)
+            result['goal_estimated_distance_from_origin'] = (
+                goal_estimated_distance_from_origin)
+            result['goal_x'] = self._temporary_goal[0]
+            result['goal_y'] = self._temporary_goal[1]
+            result['full_goal'] = np.array2string(
+                self._temporary_goal, max_line_width=float('inf'))
+
+        return result
+
     def get_diagnostics(self,
                         iteration,
                         batch,
@@ -552,7 +607,7 @@ class MetricActorCritic(RLAlgorithm):
         })
 
         policy_diagnostics = self._policy.get_diagnostics(
-            batch['observations'])
+            batch.get('observations', batch.get('observations.observation')))
         diagnostics.update({
             f'policy/{key}': value
             for key, value in policy_diagnostics.items()
@@ -565,24 +620,9 @@ class MetricActorCritic(RLAlgorithm):
             if isinstance(self._env.unwrapped, (Point2DEnv, Point2DWallEnv)):
                 from softlearning.visualization import point_2d_plotter
 
-                def get_distances_fn(observations, goals):
-                    with self._policy.set_deterministic(True):
-                        actions = self._policy.actions_np([observations])
-                    inputs = [observations, goals, actions]
-                    distances = tuple(Q.predict(inputs) for Q in self._Qs)
-                    distances = np.min(distances, axis=0)
-                    return distances
-
-                def get_Q_values_fn(observations, goals, actions):
-                    inputs = [observations, goals, actions]
-                    Qs = tuple(Q.predict(inputs) for Q in self._Qs)
-                    Qs = np.min(Qs, axis=0)
-                    return Qs
-
                 def get_V_values_fn(observations, goals):
-                    with self._policy.set_deterministic(True):
-                        actions = self._policy.actions_np([observations])
-                    V_values = get_Q_values_fn(observations, goals, actions)
+                    V_values = self._get_Q_values(
+                        observations, goals, actions=None)
                     return V_values
 
                 point_2d_plotter.point_2d_plotter(
@@ -590,9 +630,9 @@ class MetricActorCritic(RLAlgorithm):
                     iteration,
                     training_paths=training_paths,
                     evaluation_paths=evaluation_paths,
-                    get_distances_fn=get_distances_fn,
+                    get_distances_fn=self._get_distance_values,
                     get_quiver_gradients_fn=None,
-                    get_Q_values_fn=get_Q_values_fn,
+                    get_Q_values_fn=self._get_Q_values,
                     get_V_values_fn=get_V_values_fn)
 
         return diagnostics

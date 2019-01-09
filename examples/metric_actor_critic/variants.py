@@ -144,6 +144,8 @@ def get_variant_spec(universe, domain, task, policy):
             'type': 'GoalPool',
             'kwargs': {
                 'max_size': 1e6,
+                'path_length': MAX_PATH_LENGTH_PER_DOMAIN.get(
+                    domain, DEFAULT_MAX_PATH_LENGTH)
             }
         },
         'sampler_params': {
