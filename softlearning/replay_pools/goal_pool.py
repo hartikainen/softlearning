@@ -23,10 +23,14 @@ class GoalPool(SimpleReplayPool):
             indices, observation_keys=observation_keys, **kwargs)
 
         goal_indices = (
-            (indices // self._path_length)
+            ((indices // self._path_length) * self._path_length)
             + random_int_with_variable_range(
                 (indices % self._path_length), self._path_length))
         # goal_indices = self.random_indices(indices.size)
+
+        assert np.all(
+            (goal_indices // self._path_length)
+            == (indices // self._path_length))
 
         assert np.all((goal_indices - indices) < self._path_length)
         assert np.all(goal_indices >= 0)
