@@ -37,7 +37,7 @@ def plot_walls(ax, walls):
     wall_patch_collection = PatchCollection(
         wall_rectangles,
         facecolor='black',
-        edgecolor='black')
+        edgecolor=None)
 
     ax.add_collection(wall_patch_collection)
 
@@ -376,12 +376,6 @@ def plot_V(figure,
     colorbar_ax, kw = mpl.colorbar.make_axes(ax, location='bottom',)
     figure.colorbar(contour, cax=colorbar_ax, **kw)
 
-    if getattr(algorithm._env.unwrapped, 'fixed_goal', None) is not None:
-        fixed_goal = algorithm._env._env.unwrapped.fixed_goal[:2]
-        goals_xy[-1, :] = fixed_goal
-    else:
-        fixed_goal = None
-
     ax.scatter(*goals_xy[-1],
                s=(10 * RESOLUTION_MULTIPLIER) ** 2,
                color='blue',
@@ -401,28 +395,29 @@ def plot_V(figure,
                marker='*',
                label="past temporary goals")
 
+    training_path_cmap = plt.cm.get_cmap('hsv', len(training_paths))
     for i, training_path in enumerate(training_paths):
-        observations = training_path['observations.observation']
+        positions = training_path['observations.observation']
+        target_positions = training_path['observations.desired_goal']
 
-        if observations.shape[1] == 11:
-            # Reacher
-            assert np.all(observations[:, :2] == observations[:, 2:4])
-            positions = observations[:, :2]
-            target_positions = observations[:, 4:6]
-            observation_target_distances = observations[:, -3:-1]
-            assert np.allclose(
-                observation_target_distances,
-                positions - target_positions, rtol=1e-01)
-        elif observations.shape[1] == 2:
-            positions = observations
+        assert np.allclose(target_positions[0], target_positions)
+
+        target_position = target_positions[0]
+
+        color = training_path_cmap(i)
 
         ax.plot(positions[:, 0],
                 positions[:, 1],
-                'y:',
+                color=color,
+                linestyle=':',
                 linewidth=1.0,
                 label="training paths" if i == 0 else None)
-        ax.scatter(*positions[0], color='y', marker='o')
-        ax.scatter(*positions[-1], color='y', marker='x')
+        ax.scatter(*positions[0], color=color, marker='o')
+        ax.scatter(*positions[-1], color=color, marker='x')
+        ax.scatter(*target_position,
+                   s=(10 * RESOLUTION_MULTIPLIER) * 1.5,
+                   color=color,
+                   marker='*')
 
     for path in evaluation_paths:
         observations = path['observations.observation']
@@ -457,6 +452,9 @@ def plot_V(figure,
         loc='center',
         bbox_to_anchor=rightmost_rectangle.get_bbox(),
         bbox_transform=ax.transData)
+
+    for spine in ('top', 'right', 'bottom', 'left'):
+        ax.spines[spine].set_visible(False)
 
 
 def plot_distance_quiver(figure,
