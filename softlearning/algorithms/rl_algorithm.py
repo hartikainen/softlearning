@@ -181,9 +181,6 @@ class RLAlgorithm(tf.contrib.checkpoint.Checkpointable):
             else:
                 evaluation_metrics = {}
 
-            self._epoch_after_hook(training_paths)
-            gt.stamp('epoch_after_hook')
-
             sampler_diagnostics = self.sampler.get_diagnostics()
 
             diagnostics = self.get_diagnostics(
@@ -191,6 +188,9 @@ class RLAlgorithm(tf.contrib.checkpoint.Checkpointable):
                 batch=self._evaluation_batch(),
                 training_paths=training_paths,
                 evaluation_paths=evaluation_paths)
+
+            self._epoch_after_hook(training_paths)
+            gt.stamp('epoch_after_hook')
 
             time_diagnostics = gt.get_times().stamps.itrs
 
