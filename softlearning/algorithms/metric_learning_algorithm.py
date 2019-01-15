@@ -10,6 +10,7 @@ from gym.envs.mujoco.inverted_pendulum import (InvertedPendulumEnv as
                                                GymInvertedPendulumEnv)
 
 from softlearning.algorithms.sac import SAC, td_target
+from softlearning.utils.numpy import softmax
 from softlearning.environments.adapters.gym_adapter import (
     Point2DEnv,
     Point2DWallEnv,
@@ -112,8 +113,9 @@ class MetricLearningAlgorithm(SAC):
                                               self._first_observation)
             if max_distance >= current_distance:
                 self._temporary_goal = new_observations[max_distance_idx]
-        elif (self._temporary_goal_update_rule ==
-              'farthest_estimate_from_first_observation'):
+        elif (self._temporary_goal_update_rule in
+              ('farthest_estimate_from_first_observation',
+               'random_weighted_estimate_from_first_observation')):
             new_observations = self._pool.last_n_batch(
                 min(self._pool.size, int(1e5)),
                 field_name_filter='observations',
@@ -127,17 +129,25 @@ class MetricLearningAlgorithm(SAC):
                     np.zeros((new_observations.shape[0], *self._action_shape)),
                 ))[:, 0]
 
-            max_distance_idx = np.argmax(new_distances)
-            max_distance = new_distances[max_distance_idx]
+            if (self._temporary_goal_update_rule
+                == 'farthest_estimate_from_first_observation'):
+                max_distance_idx = np.argmax(new_distances)
+                max_distance = new_distances[max_distance_idx]
 
-            current_distance = self._metric_learner.distance_estimator.predict(
-                self._metric_learner._distance_estimator_inputs(
-                    self._first_observation[None, :],
-                    self._temporary_goal[None, :],
-                    np.zeros((1, *self._action_shape)),
-                ))[0, 0]
-            if max_distance >= current_distance:
-                self._temporary_goal = new_observations[max_distance_idx]
+                current_distance = self._metric_learner.distance_estimator.predict(
+                    self._metric_learner._distance_estimator_inputs(
+                        self._first_observation[None, :],
+                        self._temporary_goal[None, :],
+                        np.zeros((1, *self._action_shape)),
+                    ))[0, 0]
+
+                if max_distance >= current_distance:
+                    self._temporary_goal = new_observations[max_distance_idx]
+            elif (self._temporary_goal_update_rule
+                  == 'random_weighted_estimate_from_first_observation'):
+                self._temporary_goal = new_observations[np.random.choice(
+                    new_distances.size, p=softmax(new_distances))]
+
         elif (self._temporary_goal_update_rule == 'operator_query_last_step'):
             new_observations = np.concatenate(
                 [path['observations'] for path in training_paths], axis=0)
@@ -234,9 +244,11 @@ class MetricLearningAlgorithm(SAC):
 
     def _epoch_after_hook(self, training_paths):
         self._previous_training_paths = training_paths
-        self._update_temporary_goal(training_paths)
 
     def _timestep_before_hook(self, *args, **kwargs):
+        if self.sampler._path_length == 0:
+            self._update_temporary_goal(self.sampler.get_last_n_paths(1))
+
         if (self.sampler._path_length >= self.sampler._max_path_length * 0.75):
             self.sampler.initialize(
                 self._env, self._initial_exploration_policy, self._pool)
