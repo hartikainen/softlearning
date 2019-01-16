@@ -215,7 +215,8 @@ def plot_distances(figure,
 
             filled_contour = ax.contourf(
                 X, Y, Z,
-                levels=np.arange(algorithm.sampler._max_path_length),
+                levels=np.arange(
+                    int(algorithm.sampler._max_path_length * 1.2)),
                 extend='both',
                 cmap='PuBuGn')
 
@@ -395,7 +396,7 @@ def plot_V(figure,
                marker='*',
                label="past temporary goals")
 
-    training_path_cmap = plt.cm.get_cmap('hsv', len(training_paths))
+    training_path_cmap = plt.cm.get_cmap('Set1', len(training_paths))
     for i, training_path in enumerate(training_paths):
         positions = training_path['observations.observation']
         target_positions = training_path['observations.desired_goal']
@@ -415,7 +416,7 @@ def plot_V(figure,
         ax.scatter(*positions[0], color=color, marker='o')
         ax.scatter(*positions[-1], color=color, marker='x')
         ax.scatter(*target_position,
-                   s=(10 * RESOLUTION_MULTIPLIER) * 1.5,
+                   s=(10 * RESOLUTION_MULTIPLIER) ** 1.5,
                    color=color,
                    marker='*')
 
