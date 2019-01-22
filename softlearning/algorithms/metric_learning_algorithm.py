@@ -31,9 +31,11 @@ class MetricLearningAlgorithm(SAC):
                  use_distance_for='reward',
                  temporary_goal_update_rule='closest_l2_from_goal',
                  plot_distances=False,
+                 supervise_every_n_steps=1,
                  **kwargs):
         self._use_distance_for = use_distance_for
         self._plot_distances = plot_distances
+        self._supervise_every_n_steps = supervise_every_n_steps
         self._metric_learner = metric_learner
         self._goal = getattr(env.unwrapped, 'fixed_goal', None)
         self._temporary_goal = None
@@ -139,49 +141,20 @@ class MetricLearningAlgorithm(SAC):
             if max_distance >= current_distance:
                 self._temporary_goal = new_observations[max_distance_idx]
         elif (self._temporary_goal_update_rule == 'operator_query_last_step'):
+            should_not_supervise = (
+                self._total_timestep % self._supervise_every_n_steps > 0)
+            if should_not_supervise:
+                return
+
+            use_last_n_paths = (
+                self._supervise_every_n_steps // self.sampler._max_path_length)
+
             new_observations = np.concatenate(
-                [path['observations'] for path in training_paths], axis=0)
-            path_last_observations = new_observations[-1::-self.sampler.
-                                                      _max_path_length]
-            if isinstance(self._env.unwrapped, (Point2DEnv, Point2DWallEnv)):
-                goals = np.tile(
-                    self._goal, (path_last_observations.shape[0], 1))
-                last_observations_distances = (
-                    self._env.unwrapped.get_optimal_paths(
-                        path_last_observations, goals))
-
-                min_distance_idx = np.argmin(last_observations_distances)
-                min_distance = last_observations_distances[min_distance_idx]
-
-                current_distance = self._env.unwrapped.get_optimal_paths(
-                    self._temporary_goal[None, :], self._goal[None, :])
-                if min_distance < current_distance:
-                    self._temporary_goal = path_last_observations[
-                        min_distance_idx]
-            elif isinstance(self._env.unwrapped,
-                            (GymAntEnv, GymHalfCheetahEnv, GymHumanoidEnv)):
-                velocity_indices = {
-                    GymAntEnv:
-                    slice(self._env.unwrapped.sim.data.qpos.size - 2,
-                          self._env.unwrapped.sim.data.qpos.size),
-                    GymHalfCheetahEnv:
-                    slice(self._env.unwrapped.sim.data.qpos.size - 1,
-                          self._env.unwrapped.sim.data.qpos.size),
-                    GymHumanoidEnv:
-                    slice(self._env.unwrapped.sim.data.qpos.size - 2,
-                          self._env.unwrapped.sim.data.qpos.size),
-                }[type(self._env.unwrapped)]
-                new_velocities = new_observations[:, velocity_indices]
-                new_velocities = np.linalg.norm(new_velocities, ord=2, axis=1)
-
-                max_velocity_idx = np.argmax(new_velocities)
-                max_velocity = new_velocities[max_velocity_idx]
-
-                current_velocity = np.linalg.norm(
-                    self._temporary_goal[velocity_indices], ord=2)
-                if max_velocity > current_velocity:
-                    self._temporary_goal = new_observations[max_velocity_idx]
-            elif isinstance(
+                [path.get('observations.observation', path.get('observations'))
+                 for path in training_paths[-use_last_n_paths:]], axis=0)
+            last_observations = new_observations[-1::-self.sampler.
+                                                 _max_path_length]
+            if isinstance(
                     self._env.unwrapped,
                     (CustomSwimmerEnv,
                      CustomAntEnv,
@@ -191,38 +164,18 @@ class MetricLearningAlgorithm(SAC):
                      CustomWalker2dEnv)):
                 if self._env.unwrapped._exclude_current_positions_from_observation:
                     raise NotImplementedError
-                position_idx = slice(0, 2)
-                last_observations_positions = path_last_observations[
-                    :, position_idx]
-                last_observations_distances = np.linalg.norm(
-                    last_observations_positions, ord=2, axis=1)
+                last_observations_x_positions = last_observations[:, 0:1]
+                last_observations_distances = last_observations_x_positions
 
                 max_distance_idx = np.argmax(last_observations_distances)
                 max_distance = last_observations_distances[max_distance_idx]
 
-                current_distance = np.linalg.norm(
-                    self._temporary_goal[position_idx], ord=2)
+                current_distance = self._temporary_goal[0]
                 if max_distance > current_distance:
-                    self._temporary_goal = path_last_observations[
-                        max_distance_idx]
-            elif isinstance(
-                    self._env.unwrapped,
-                    (GymInvertedPendulumEnv, GymInvertedDoublePendulumEnv)):
+                    self._temporary_goal = last_observations[max_distance_idx]
+            else:
                 raise NotImplementedError
-            elif isinstance(self._env.unwrapped, FixedTargetReacherEnv):
-                last_distances_from_target = np.linalg.norm(
-                    path_last_observations[:, -3:], ord=2, axis=1)
 
-                min_distance_idx = np.argmin(last_distances_from_target)
-                min_distance = last_distances_from_target[min_distance_idx]
-
-                current_distance_from_target = np.linalg.norm(
-                    self._temporary_goal[-3:])
-                if min_distance < current_distance_from_target:
-                    self._temporary_goal = path_last_observations[
-                        min_distance_idx]
-            elif isinstance(self._env.unwrapped, SawyerPushAndReachXYZEnv):
-                self._temporary_goal = self._env.unwrapped._state_goal.copy()
         elif (self._temporary_goal_update_rule == 'random'):
             self._temporary_goal = self._env.unwrapped.sample_goal(
             )['desired_goal']

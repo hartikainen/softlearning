@@ -19,13 +19,11 @@ ENV_PARAMS = {
             'exclude_current_positions_from_observation': False,
             'terminate_when_unhealthy': False,
             'healthy_reward': 1.0,
-            'reset_noise_scale': 0,
         },
     },
     'HalfCheetah': {
         'Custom': {
             'exclude_current_positions_from_observation': False,
-            'reset_noise_scale': 0,
         },
     },
     'Hopper': {
@@ -151,10 +149,12 @@ def get_variant_spec(universe, domain, task, policy):
                 'plot_distances': True,
                 'temporary_goal_update_rule': tune.grid_search([
                     # 'closest_l2_from_goal',
-                    'farthest_estimate_from_first_observation',
-                    # 'operator_query_last_step',
+                    # 'farthest_estimate_from_first_observation',
+                    'operator_query_last_step',
                     # 'random',
                 ]),
+                'supervise_every_n_steps': tune.grid_search([
+                    30000, 1000, 3000, 10000, 100000]),
                 'use_distance_for': tune.grid_search([
                     'reward',
                     # 'value',
