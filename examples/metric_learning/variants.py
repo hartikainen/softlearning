@@ -100,18 +100,47 @@ NUM_CHECKPOINTS = 10
 
 
 def get_supervision_schedule_params(domain):
-    DECAY_STEPS = {
-        'HalfCheetah': (300.0, 1000.0),
-        'Ant': (1000.0, 3000.0),
+    DECAY_STEPS_AND_LABELS_EVERY_N_STEPS = {
+        'HalfCheetah': (
+            (100.0, 1),
+            (100.0, 2),
+            (100.0, 4),
+
+            (300.0, 2),
+            (300.0, 4),
+            (300.0, 8),
+            (300.0, 16),
+
+            (1000.0, 4),
+            (1000.0, 8),
+            (1000.0, 16),
+        ),
+        'Ant': (
+            (300.0, 1),
+
+            (1000.0, 2),
+            (1000.0, 4),
+            (1000.0, 8),
+            (1000.0, 16),
+
+            (3000.0, 4),
+            (3000.0, 8),
+            (3000.0, 16),
+        )
     }[domain]
-    LABEL_EVERY_N_STEPS = [2, 4, 8, 16, 32]
+    SCHEDULER_TYPES = ('linear', 'logarithmic')
+    # DECAY_STEPS = {
+    #     'HalfCheetah': (300.0, 1000.0),
+    #     'Ant': (1000.0, 3000.0),
+    # }[domain]
+    # LABEL_EVERY_N_STEPS = (2, 4, 8, 16, 32)
     return tune.grid_search([
         {
             'type': scheduler_type,
             'kwargs': {
                 'start_labels': 1,
                 'decay_steps': decay_steps,
-                'end_labels': decay_steps / label_every_n_steps,
+                'end_labels': decay_steps / labels_every_n_steps,
                 **(
                     {'decay_rate': 0.25}
                     if scheduler_type == 'logarithmic'
@@ -119,9 +148,11 @@ def get_supervision_schedule_params(domain):
                 )
             }
         }
-        for label_every_n_steps in LABEL_EVERY_N_STEPS
-        for scheduler_type in ('linear', 'logarithmic')
-        for decay_steps in DECAY_STEPS
+        for scheduler_type
+        in SCHEDULER_TYPES
+
+        for decay_steps, labels_every_n_steps
+        in DECAY_STEPS_AND_LABELS_EVERY_N_STEPS
     ])
 
 
