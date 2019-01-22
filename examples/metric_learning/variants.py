@@ -99,6 +99,32 @@ MAX_PATH_LENGTH_PER_DOMAIN = {
 NUM_CHECKPOINTS = 10
 
 
+def get_supervision_schedule_params(domain):
+    DECAY_STEPS = {
+        'HalfCheetah': (300.0, 1000.0),
+        'Ant': (1000.0, 3000.0),
+    }[domain]
+    LABEL_EVERY_N_STEPS = [2, 4, 8, 16, 32]
+    return tune.grid_search([
+        {
+            'type': scheduler_type,
+            'kwargs': {
+                'start_labels': 1,
+                'decay_steps': decay_steps,
+                'end_labels': decay_steps / label_every_n_steps,
+                **(
+                    {'decay_rate': 0.25}
+                    if scheduler_type == 'logarithmic'
+                    else {}
+                )
+            }
+        }
+        for label_every_n_steps in LABEL_EVERY_N_STEPS
+        for scheduler_type in ('linear', 'logarithmic')
+        for decay_steps in DECAY_STEPS
+    ])
+
+
 def get_variant_spec(universe, domain, task, policy):
     variant_spec = {
         'prefix': '{}/{}/{}'.format(universe, domain, task),
@@ -153,8 +179,8 @@ def get_variant_spec(universe, domain, task, policy):
                     'operator_query_last_step',
                     # 'random',
                 ]),
-                'supervise_every_n_steps': tune.grid_search([
-                    30000, 1000, 3000, 10000, 100000]),
+                'supervision_schedule_params': get_supervision_schedule_params(
+                    domain),
                 'use_distance_for': tune.grid_search([
                     'reward',
                     # 'value',

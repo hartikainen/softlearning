@@ -261,6 +261,10 @@ def launch_experiments_ray(variant_specs,
     datetime_prefix = datetimestamp()
     experiment_id = '-'.join((datetime_prefix, args.exp_name))
 
+    def trial_name_creator(trial):
+        seed = trial.config['run_params']['seed']
+        return f"{trial.trial_id}-seed={seed}"
+
     tune.run_experiments(
         {
             "{}-{}".format(experiment_id, i): {
@@ -280,6 +284,7 @@ def launch_experiments_ray(variant_specs,
                     if args.checkpoint_at_end is not None
                     else variant_spec['run_params'].get('checkpoint_at_end', True)
                 ),
+                'trial_name_creator': tune.function(trial_name_creator),
                 'restore': args.restore,  # Defaults to None
             }
             for i, variant_spec in enumerate(variant_specs)

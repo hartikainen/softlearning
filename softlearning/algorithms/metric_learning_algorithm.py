@@ -22,6 +22,72 @@ from softlearning.environments.adapters.gym_adapter import (
     FixedTargetReacherEnv)
 
 
+class LogarithmicLabelScheduler(object):
+    def __init__(self,
+                 decay_steps,
+                 end_labels,
+                 start_labels=None,
+                 start_labels_frac=None,
+                 decay_rate=1e-2):
+        assert (start_labels is None) or (start_labels_frac is None)
+        self._start_labels = int(
+            start_labels
+            if start_labels is not None
+            else start_labels_frac * end_labels)
+        self._decay_steps = decay_steps
+        self._end_labels = end_labels
+        self._decay_rate = decay_rate
+
+    @property
+    def num_pretrain_labels(self):
+        return self._start_labels
+
+    def num_labels(self, time_step):
+        """Return the number of labels desired at this point in time."""
+        decayed_labels = (
+            (self._start_labels - self._end_labels)
+            * self._decay_rate ** (time_step / self._decay_steps)
+            + self._end_labels)
+
+        return int(decayed_labels)
+
+
+class LinearLabelScheduler(object):
+    def __init__(self,
+                 decay_steps,
+                 end_labels,
+                 start_labels=None,
+                 start_labels_frac=None,
+                 power=1.0):
+        assert (start_labels is None) or (start_labels_frac is None)
+        self._start_labels = int(
+            start_labels
+            if start_labels is not None
+            else start_labels_frac * end_labels)
+        self._decay_steps = decay_steps
+        self._end_labels = end_labels
+        self._power = power
+
+    @property
+    def num_pretrain_labels(self):
+        return self._start_labels
+
+    def num_labels(self, time_step):
+        time_step = min(time_step, self._decay_steps)
+        decayed_labels = (
+            (self._start_labels - self._end_labels)
+            * (1 - time_step / self._decay_steps) ** (self._power)
+            + self._end_labels)
+
+        return int(decayed_labels)
+
+
+PREFERENCE_SCHEDULERS = {
+    'linear': LinearLabelScheduler,
+    'logarithmic': LogarithmicLabelScheduler,
+}
+
+
 class MetricLearningAlgorithm(SAC):
 
     def __init__(self,
@@ -31,11 +97,19 @@ class MetricLearningAlgorithm(SAC):
                  use_distance_for='reward',
                  temporary_goal_update_rule='closest_l2_from_goal',
                  plot_distances=False,
-                 supervise_every_n_steps=1,
+                 supervision_schedule_params=None,
                  **kwargs):
         self._use_distance_for = use_distance_for
         self._plot_distances = plot_distances
-        self._supervise_every_n_steps = supervise_every_n_steps
+
+        assert supervision_schedule_params is not None
+        self._supervision_schedule_params = supervision_schedule_params
+        self._supervision_scheduler = PREFERENCE_SCHEDULERS[
+            supervision_schedule_params['type']](
+                **supervision_schedule_params['kwargs'])
+        self._supervision_labels_used = 0
+        self._last_supervision_epoch = -1
+
         self._metric_learner = metric_learner
         self._goal = getattr(env.unwrapped, 'fixed_goal', None)
         self._temporary_goal = None
@@ -141,13 +215,21 @@ class MetricLearningAlgorithm(SAC):
             if max_distance >= current_distance:
                 self._temporary_goal = new_observations[max_distance_idx]
         elif (self._temporary_goal_update_rule == 'operator_query_last_step'):
-            should_not_supervise = (
-                self._total_timestep % self._supervise_every_n_steps > 0)
-            if should_not_supervise:
+            expected_num_supervision_labels = (
+                self._supervision_scheduler.num_labels(self._epoch))
+            should_supervise = (
+                expected_num_supervision_labels > self._supervision_labels_used)
+
+            if not should_supervise:
                 return
 
+            self._supervision_labels_used += 1
+            num_epochs_since_last_supervision = (
+                self._epoch - self._last_supervision_epoch)
+            self._last_supervision_epoch = self._epoch
+
             use_last_n_paths = (
-                self._supervise_every_n_steps // self.sampler._max_path_length)
+                num_epochs_since_last_supervision // self.sampler._max_path_length)
 
             new_observations = np.concatenate(
                 [path.get('observations.observation', path.get('observations'))
@@ -327,6 +409,8 @@ class MetricLearningAlgorithm(SAC):
             for key, value in
             metric_learner_diagnostics.items()
         ])
+
+        diagnostics['supervision_labels_used'] = self._supervision_labels_used
 
         if self._plot_distances:
             if isinstance(self._env.unwrapped, (Point2DEnv, Point2DWallEnv)):
