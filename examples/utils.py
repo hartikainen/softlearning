@@ -289,5 +289,7 @@ def launch_experiments_ray(variant_specs,
             }
             for i, variant_spec in enumerate(variant_specs)
         },
+        with_server=True,
+        server_port=4321,
         scheduler=scheduler,
     )
