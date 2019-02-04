@@ -1,14 +1,11 @@
 import os
 import copy
 import glob
-from distutils.util import strtobool
 import pickle
-from pprint import pprint
 import sys
 
 import tensorflow as tf
 from ray import tune
-from deepdiff import DeepDiff
 
 from softlearning.environments.utils import get_environment_from_variant
 from softlearning.algorithms.utils import get_algorithm_from_variant
@@ -18,14 +15,7 @@ from softlearning.samplers.utils import get_sampler_from_variant
 from softlearning.value_functions.utils import get_Q_function_from_variant
 
 from softlearning.misc.utils import set_seed, initialize_tf_variables
-
-from examples.utils import (
-    parse_universe_domain_task,
-    get_parser,
-    launch_experiments_ray)
-from examples.development.variants import (
-    get_variant_spec,
-    get_variant_spec_image)
+from examples.instrument import run_example_local
 
 
 class ExperimentRunner(tune.Trainable):
@@ -54,15 +44,14 @@ class ExperimentRunner(tune.Trainable):
             get_policy('UniformPolicy', env))
 
         self.algorithm = get_algorithm_from_variant(
-            variant=variant,
-            env=env,
+            variant=self._variant,
+            env=self.env,
             policy=policy,
             initial_exploration_policy=initial_exploration_policy,
             Qs=Qs,
             pool=replay_pool,
             sampler=sampler,
-            session=self._session,
-        )
+            session=self._session)
 
         initialize_tf_variables(self._session, only_uninitialized=True)
 
@@ -145,7 +134,7 @@ class ExperimentRunner(tune.Trainable):
         experience_paths = [
             self._replay_pool_pickle_path(checkpoint_dir)
             for checkpoint_dir in sorted(glob.iglob(
-                    os.path.join(experiment_root, 'checkpoint_*')))
+                os.path.join(experiment_root, 'checkpoint_*')))
         ]
 
         for experience_path in experience_paths:
@@ -160,18 +149,6 @@ class ExperimentRunner(tune.Trainable):
             pickle_path = self._pickle_path(checkpoint_dir)
             with open(pickle_path, 'rb') as f:
                 pickleable = pickle.load(f)
-
-        variant_diff = DeepDiff(self._variant, pickleable['variant'])
-
-        if variant_diff:
-            print("Your current variant is different from the checkpointed"
-                  " variable. Please make sure that the differences are"
-                  " expected. Differences:")
-            pprint(variant_diff)
-
-            if not strtobool(
-                    input("Continue despite the variant differences?\n")):
-                sys.exit(0)
 
         env = self.env = pickleable['env']
 
@@ -208,40 +185,25 @@ class ExperimentRunner(tune.Trainable):
         status.assert_consumed().run_restore_ops(self._session)
         initialize_tf_variables(self._session, only_uninitialized=True)
 
-        # TODO(hartikainen): target Qs should either be checkpointed
-        # or pickled.
+        # TODO(hartikainen): target Qs should either be checkpointed or pickled.
         for Q, Q_target in zip(self.algorithm._Qs, self.algorithm._Q_targets):
             Q_target.set_weights(Q.get_weights())
 
         self._built = True
 
 
-def main():
-    args = get_parser().parse_args()
+def main(argv=None):
+    """Run ExperimentRunner locally on ray.
 
-    universe, domain, task = parse_universe_domain_task(args)
+    To run this example on cloud (e.g. gce/ec2), use the setup scripts:
+    'softlearning launch_example_{gce,ec2} examples.development <options>'.
 
-    if ('image' in task.lower()
-        or 'blind' in task.lower()
-        or 'image' in domain.lower()):
-        variant_spec = get_variant_spec_image(
-            universe, domain, task, args.policy)
-    else:
-        variant_spec = get_variant_spec(universe, domain, task, args.policy)
-
-    variant_spec['mode'] = args.mode
-
-    if args.checkpoint_replay_pool is not None:
-        variant_spec['run_params']['checkpoint_replay_pool'] = (
-            args.checkpoint_replay_pool)
-
-    local_dir_base = (
-        '~/ray_results/local'
-        if args.mode in ('local', 'debug')
-        else '~/ray_results')
-    local_dir = os.path.join(local_dir_base, universe, domain, task)
-    launch_experiments_ray([variant_spec], args, local_dir, ExperimentRunner)
+    Run 'softlearning launch_example_{gce,ec2} --help' for further
+    instructions.
+    """
+    # __package__ should be `development.main`
+    run_example_local(__package__, argv)
 
 
 if __name__ == '__main__':
-    main()
+    main(argv=sys.argv[1:])

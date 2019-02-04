@@ -27,7 +27,6 @@ class SAC(RLAlgorithm):
             self,
             env,
             policy,
-            initial_exploration_policy,
             Qs,
             pool,
             plotter=None,
@@ -72,7 +71,6 @@ class SAC(RLAlgorithm):
 
         self._env = env
         self._policy = policy
-        self._initial_exploration_policy = initial_exploration_policy
 
         self._Qs = Qs
         self._Q_targets = tuple(tf.keras.models.clone_model(Q) for Q in Qs)
@@ -420,12 +418,16 @@ class SAC(RLAlgorithm):
 
     @property
     def tf_saveables(self):
-        return {
+        saveables = {
             '_policy_optimizer': self._policy_optimizer,
             **{
                 f'Q_optimizer_{i}': optimizer
                 for i, optimizer in enumerate(self._Q_optimizers)
             },
             '_log_alpha': self._log_alpha,
-            '_alpha_optimizer': self._alpha_optimizer,
         }
+
+        if hasattr(self, '_alpha_optimizer'):
+            saveables['_alpha_optimizer'] = self._alpha_optimizer
+
+        return saveables

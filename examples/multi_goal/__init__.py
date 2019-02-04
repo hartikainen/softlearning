@@ -7,8 +7,8 @@ In particular, the examples are exposed to the command line interface
 
 
 def get_trainable_class(*args, **kwargs):
-    from .main import ExperimentRunner
-    return ExperimentRunner
+    from .main import run_experiment
+    return run_experiment
 
 
 def get_variant_spec(command_line_args, *args, **kwargs):
@@ -20,4 +20,12 @@ def get_variant_spec(command_line_args, *args, **kwargs):
 def get_parser():
     from examples.utils import get_parser
     parser = get_parser()
+
+    for dest, value in (('universe', 'gym'),
+                        ('task', 'MultiGoal'),
+                        ('domain', 'Default')):
+        option = next(x for x in parser._actions if x.dest == dest)
+        option.default = value
+        option.choices = {value}
+
     return parser
