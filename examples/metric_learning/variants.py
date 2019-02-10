@@ -86,20 +86,6 @@ ENV_PARAMS = {
             'wall_shape': tune.grid_search(['zigzag']),
             'discretize': False,
         }
-    },
-    'CurriculumPointEnv': {
-        'Default': {},
-        'Maze': {
-            'maze_id': 11,
-            # 'maze_size_scaling': 1,
-        },
-    },
-    'CurriculumAntEnv': {
-        'Default': {},
-        'Maze': {
-            'maze_id': 0,
-            # 'maze_size_scaling': 1,
-        },
     }
 }
 
