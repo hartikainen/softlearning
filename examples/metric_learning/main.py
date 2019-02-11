@@ -1,6 +1,7 @@
 import os
 import copy
 import pickle
+import sys
 
 import tensorflow as tf
 
@@ -13,12 +14,8 @@ from softlearning.value_functions.utils import get_Q_function_from_variant
 from softlearning.models.utils import get_metric_learner_from_variant
 from softlearning.misc.utils import initialize_tf_variables
 
-from examples.utils import (
-    parse_universe_domain_task,
-    get_parser,
-    launch_experiments_ray)
 from examples.development.main import ExperimentRunner
-from .variants import get_variant_spec
+from examples.instrument import run_example_local
 
 
 class MetricExperimentRunner(ExperimentRunner):
@@ -109,22 +106,17 @@ class MetricExperimentRunner(ExperimentRunner):
         self._built = True
 
 
-def main():
-    args = get_parser().parse_args()
+def main(argv=None):
+    """Run ExperimentRunner locally on ray.
 
-    universe, domain, task = parse_universe_domain_task(args)
+    To run this example on cloud (e.g. gce/ec2), use the setup scripts:
+    'softlearning launch_example_{gce,ec2} examples.development <options>'.
 
-    variant_spec = get_variant_spec(universe, domain, task, args.policy)
-    variant_spec['mode'] = args.mode
-
-    local_dir_base = (
-        '~/ray_results/local'
-        if args.mode in ('local', 'debug')
-        else '~/ray_results')
-    local_dir = os.path.join(local_dir_base, universe, domain, task)
-    launch_experiments_ray(
-        [variant_spec], args, local_dir, MetricExperimentRunner)
+    Run 'softlearning launch_example_{gce,ec2} --help' for further
+    instructions.
+    """
+    run_example_local('examples.metric_learning', argv)
 
 
 if __name__ == '__main__':
-    main()
+    main(argv=sys.argv[1:])

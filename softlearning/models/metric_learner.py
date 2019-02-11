@@ -3,65 +3,75 @@ from collections import OrderedDict
 import numpy as np
 import tensorflow as tf
 
-from serializable import Serializable
+from softlearning.environments.gym.mujoco.swimmer import (
+    SwimmerEnv as CustomSwimmerEnv)
+from softlearning.environments.gym.mujoco.ant import (
+    AntEnv as CustomAntEnv)
+from softlearning.environments.gym.mujoco.humanoid import (
+    HumanoidEnv as CustomHumanoidEnv)
+from softlearning.environments.gym.mujoco.half_cheetah import (
+    HalfCheetahEnv as CustomHalfCheetahEnv)
+from softlearning.environments.gym.mujoco.hopper import (
+    HopperEnv as CustomHopperEnv)
+from softlearning.environments.gym.mujoco.walker2d import (
+    Walker2dEnv as CustomWalker2dEnv)
 
-from softlearning.environments.adapters.gym_adapter import (
-    CustomSwimmerEnv,
-    CustomAntEnv,
-    CustomHumanoidEnv,
-    CustomHalfCheetahEnv,
-    CustomHopperEnv,
-    CustomWalker2dEnv)
 
+class MetricLearner(object):
+    """Base class for metric learners.
 
-class MetricLearner(Serializable):
-    """MetricLearner."""
+    MetricLearner provides the base functionality for training metric learner.
+    It does not specify how the metric learning estimator is trained and thus
+    the training logic should be implemented in the child class.
+    """
 
     def __init__(self,
                  env,
                  observation_shape,
                  action_shape,
                  distance_learning_rate=3e-4,
-                 lambda_learning_rate=1e-3,
                  train_every_n_steps=1,
                  n_train_repeat=1,
-                 distance_estimator_kwargs=None,
-                 lambda_estimators=None,
                  distance_estimator=None,
                  condition_with_action=False,
-                 distance_input_type='full',
-                 constraint_exp_multiplier=1.0,
-                 step_constraint_coeff=1.0,
-                 objective_type='linear',
-                 zero_constraint_threshold=0.1,
-                 max_distance=None):
-        self._Serializable__initialize(locals())
-
+                 distance_input_type='full'):
         self._env = env
         self._observation_shape = observation_shape
         self._action_shape = action_shape
         self._distance_learning_rate = distance_learning_rate
-        self._lambda_learning_rate = lambda_learning_rate
 
         self.distance_estimator = distance_estimator
         self._condition_with_action = condition_with_action
         self._distance_input_type = distance_input_type
 
-        self.lambda_estimators = lambda_estimators
-
-        self._constraint_exp_multiplier = constraint_exp_multiplier
-        self._step_constraint_coeff = step_constraint_coeff
-        self._objective_type = objective_type
-        self._zero_constraint_threshold = zero_constraint_threshold
-
-        self._max_distance = max_distance
-
         self._train_every_n_steps = train_every_n_steps
-        self.__n_train_repeat = n_train_repeat
+        self._n_train_repeat = n_train_repeat
 
         self._session = tf.keras.backend.get_session()
 
         self._build()
+
+    def _build(self, *args, **kwargs):
+        self._init_placeholders()
+        self._init_distance_update()
+        self._init_quiver_ops()
+
+    def _init_placeholders(self):
+        """Create input placeholders for the MetricLearner algorithm."""
+        self.distance_pairs_observations_ph = tf.placeholder(
+            tf.float32,
+            shape=(None, 2, *self._observation_shape),
+            name='distance_pairs_observations')
+
+        self.distance_pairs_actions_ph = tf.placeholder(
+            tf.float32,
+            shape=(None, 2, *self._action_shape),
+            name='distance_pairs_actions')
+
+        self.distance_pairs_distances_ph = tf.placeholder(
+            tf.float32,
+            shape=(None, ),
+            name='distance_pairs_distances')
 
     def _distance_estimator_inputs(self,
                                    observations1,
@@ -128,27 +138,89 @@ class MetricLearner(Serializable):
         inputs = concat_fn(to_concat, axis=-1)
         return inputs
 
-    def _build(self, *args, **kwargs):
-        self._init_placeholders()
-        self._init_distance_update()
-        self._init_quiver_ops()
+    def _init_quiver_ops(self):
+        input_shape = self._distance_estimator_inputs(
+            self.distance_pairs_observations_ph[:, 0, ...],
+            self.distance_pairs_observations_ph[:, 1, ...],
+            self.distance_pairs_actions_ph[:, 0, ...],).shape
+
+        inputs = tf.keras.layers.Input(shape=input_shape[1:].as_list())
+
+        distance_predictions = self.distance_estimator(inputs)[:, 0]
+        quiver_gradients = tf.keras.backend.gradients(
+            distance_predictions, [inputs])
+        gradients_fn = tf.keras.backend.function(
+            [inputs], quiver_gradients)
+
+        self.quiver_gradients = gradients_fn
+
+    def _get_feed_dict(self, iteration, batch):
+        """Construct TensorFlow feed_dict from sample batch."""
+        feed_dict = {
+            self.distance_pairs_observations_ph: (
+                batch['distance_pairs_observations']),
+            self.distance_pairs_actions_ph: (
+                batch['distance_pairs_actions']),
+            self.distance_pairs_distances_ph: (
+                batch['distance_pairs_distances']),
+        }
+
+        return feed_dict
+
+    def _do_training(self, iteration, batch):
+        """Runs the operations for updating training and target ops."""
+        if iteration % self._train_every_n_steps > 0: return
+
+        feed_dict = self._get_feed_dict(iteration, batch)
+        self._session.run(self._distance_train_ops, feed_dict)
+
+    def _evaluate(self, observations, actions, y):
+        inputs = self._distance_estimator_inputs(
+            observations[:, 0], observations[:, 1], actions)
+        distance_predictions = self.distance_estimator.predict(inputs)[:, 0]
+        errors = distance_predictions - y
+        mean_abs_error = np.mean(np.abs(errors))
+
+        evaluation_results = {
+            'distance-mean_absolute_error': mean_abs_error,
+        }
+
+        return evaluation_results
+
+    @property
+    def tf_saveables(self):
+        raise NotImplementedError
+
+
+class HingeMetricLearner(MetricLearner):
+    """MetricLearner."""
+
+    def __init__(self,
+                 lambda_learning_rate=1e-3,
+                 lambda_estimators=None,
+                 constraint_exp_multiplier=1.0,
+                 step_constraint_coeff=1.0,
+                 objective_type='linear',
+                 zero_constraint_threshold=0.1,
+                 max_distance=None,
+                 **kwargs):
+        self._lambda_learning_rate = lambda_learning_rate
+
+        self.lambda_estimators = lambda_estimators
+
+        self._constraint_exp_multiplier = constraint_exp_multiplier
+        self._step_constraint_coeff = step_constraint_coeff
+        self._objective_type = objective_type
+        self._zero_constraint_threshold = zero_constraint_threshold
+
+        self._max_distance = max_distance
+
+        super(HingeMetricLearner, self).__init__(**kwargs)
 
     def _init_placeholders(self):
-        """Create input placeholders for the MetricLearner algorithm."""
-        self.distance_pairs_observations_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, 2, *self._observation_shape),
-            name='distance_pairs_observations')
+        """Create input placeholders for the HingeMetricLearner algorithm."""
 
-        self.distance_pairs_actions_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, 2, *self._action_shape),
-            name='distance_pairs_actions')
-
-        self.distance_pairs_distances_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, ),
-            name='distance_pairs_distances')
+        super(HingeMetricLearner, self)._init_placeholders()
 
         self.distance_triples_observations_ph = tf.placeholder(
             tf.float32,
@@ -169,22 +241,6 @@ class MetricLearner(Serializable):
             tf.float32,
             shape=(None, 2, *self._action_shape),
             name='distance_objectives_actions')
-
-    def _init_quiver_ops(self):
-        input_shape = self._distance_estimator_inputs(
-            self.distance_pairs_observations_ph[:, 0, ...],
-            self.distance_pairs_observations_ph[:, 1, ...],
-            self.distance_pairs_actions_ph[:, 0, ...],).shape
-
-        inputs = tf.keras.layers.Input(shape=input_shape[1:].as_list())
-
-        distance_predictions = self.distance_estimator(inputs)[:, 0]
-        quiver_gradients = tf.keras.backend.gradients(
-            distance_predictions, [inputs])
-        gradients_fn = tf.keras.backend.function(
-            [inputs], quiver_gradients)
-
-        self.quiver_gradients = gradients_fn
 
     def _get_objectives(self):
         observations = tf.unstack(
@@ -400,15 +456,10 @@ class MetricLearner(Serializable):
             lagrangian_train_op, *lambda_train_ops.values())
 
     def _get_feed_dict(self, iteration, batch):
-        """Construct TensorFlow feed_dict from sample batch."""
-        feed_dict = {
-            self.distance_pairs_observations_ph: (
-                batch['distance_pairs_observations']),
-            self.distance_pairs_actions_ph: (
-                batch['distance_pairs_actions']),
-            self.distance_pairs_distances_ph: (
-                batch['distance_pairs_distances']),
+        feed_dict = super(HingeMetricLearner, self)._get_feed_dict(
+            iteration, batch)
 
+        feed_dict.update({
             self.distance_triples_observations_ph: (
                 batch['distance_triples_observations']),
             self.distance_triples_actions_ph: (
@@ -418,29 +469,9 @@ class MetricLearner(Serializable):
                 batch['distance_objectives_observations']),
             self.distance_objectives_actions_ph: (
                 batch['distance_objectives_actions']),
-        }
+        })
 
         return feed_dict
-
-    def _do_training(self, iteration, batch):
-        """Runs the operations for updating training and target ops."""
-        if iteration % self._train_every_n_steps > 0: return
-
-        feed_dict = self._get_feed_dict(iteration, batch)
-        self._session.run(self._distance_train_ops, feed_dict)
-
-    def _evaluate(self, observations, actions, y):
-        inputs = self._distance_estimator_inputs(
-            observations[:, 0], observations[:, 1], actions)
-        distance_predictions = self.distance_estimator.predict(inputs)[:, 0]
-        errors = distance_predictions - y
-        mean_abs_error = np.mean(np.abs(errors))
-
-        evaluation_results = {
-            'distance-mean_absolute_error': mean_abs_error,
-        }
-
-        return evaluation_results
 
     def get_diagnostics(self,
                         iteration,

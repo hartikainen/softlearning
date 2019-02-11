@@ -9,36 +9,36 @@ DEFAULT_LAYER_SIZE = 256
 
 ENV_PARAMS = {
     'Swimmer': {
-        'Custom': {
+        'Parameterizable-v0': {
             'exclude_current_positions_from_observation': False,
             'reset_noise_scale': 0,
         },
-        'Maze': {
+        'Maze-v0': {
             'exclude_current_positions_from_observation': False,
             'reset_noise_scale': 0,
         },
     },
     'Ant': {
-        'Custom': {
+        'Parameterizable-v0': {
             'exclude_current_positions_from_observation': False,
             'terminate_when_unhealthy': False,
             'healthy_reward': 1.0,
             'reset_noise_scale': 0,
         },
-        'Maze': {
+        'Maze-v0': {
             'exclude_current_positions_from_observation': False,
             'terminate_when_unhealthy': False,
             'reset_noise_scale': 0,
         },
     },
     'HalfCheetah': {
-        'Custom': {
+        'Parameterizable-v0': {
             'exclude_current_positions_from_observation': False,
             'reset_noise_scale': 0,
         },
     },
     'Hopper': {
-        'Custom': {
+        'Parameterizable-v0': {
             'exclude_current_positions_from_observation': False,
             'terminate_when_unhealthy': False,
             'healthy_reward': 1.0,
@@ -46,7 +46,7 @@ ENV_PARAMS = {
         },
     },
     'Walker': {
-        'Custom': {
+        'Parameterizable-v0': {
             'exclude_current_positions_from_observation': False,
             'terminate_when_unhealthy': False,
             'healthy_reward': 1.0,
@@ -54,13 +54,13 @@ ENV_PARAMS = {
         },
     },
     'Humanoid': {
-        'Custom': {
+        'Parameterizable-v0': {
             'exclude_current_positions_from_observation': False,
             'terminate_when_unhealthy': False,
             'healthy_reward': 1.0,
             'reset_noise_scale': 0,
         },
-        'Maze': {
+        'Maze-v0': {
             'exclude_current_positions_from_observation': False,
             'terminate_when_unhealthy': False,
             'healthy_reward': 1.0,
@@ -68,12 +68,12 @@ ENV_PARAMS = {
         },
     },
     'Point2DEnv': {
-        'Default': {
+        'Default-v0': {
             'observation_keys': ('observation', ),
             'fixed_goal': (5.0, 5.0),
             'reset_positions': ((-5.0, -5.0), ),
         },
-        'Wall': {
+        'Wall-v0': {
             'observation_keys': ('observation', ),
             'fixed_goal': (5.0, 5.0),
             # 'fixed_goal': (0.0, 0.0),
@@ -83,6 +83,7 @@ ENV_PARAMS = {
                 (-5.0, -4.0),
                 # (-5.0, -3.0),
             ),
+            # 'reset_positions': None,
             'wall_shape': tune.grid_search(['zigzag']),
             'discretize': False,
         }
@@ -116,7 +117,57 @@ MAX_PATH_LENGTH_PER_DOMAIN = {
 NUM_CHECKPOINTS = 10
 
 
-def get_variant_spec(universe, domain, task, policy):
+def get_variant_spec(args):
+    universe, domain, task = args.universe, args.domain, args.task
+    max_path_length = MAX_PATH_LENGTH_PER_DOMAIN.get(
+        domain, DEFAULT_MAX_PATH_LENGTH)
+
+    def metric_learner_kwargs(spec):
+        spec = spec.get('config', spec)
+
+        shared_kwargs = {
+            'distance_learning_rate': 3e-4,
+            'n_train_repeat': 1,
+
+            'condition_with_action': tune.grid_search([
+                # True,
+                False
+            ]),
+            'distance_input_type': tune.grid_search([
+                'full',
+                # 'xy_coordinates',
+                # 'xy_velocities',
+            ]),
+        }
+
+        if spec['metric_learner_params']['type'] == 'OnPolicyMetricLearner':
+            kwargs = {
+                **shared_kwargs,
+                **{
+                    'train_every_n_steps': 1,
+                }
+            }
+        elif spec['metric_learner_params']['type'] == 'HingeMetricLearner':
+            kwargs = {
+                **shared_kwargs,
+                **{
+                    'train_every_n_steps': 1,
+
+                    'lambda_learning_rate': 3e-4,
+                    'constraint_exp_multiplier': 0.0,
+                    'objective_type': 'linear',
+                    'step_constraint_coeff': 1.0,
+
+                    'zero_constraint_threshold': 0.0,
+
+                    'max_distance': 10 + max_path_length,
+                }
+            }
+        else:
+            raise NotImplementedError(spec['metric_learner_params']['type'])
+
+        return kwargs
+
     variant_spec = {
         'prefix': '{}/{}/{}'.format(universe, domain, task),
         'domain': domain,
@@ -148,7 +199,7 @@ def get_variant_spec(universe, domain, task, policy):
                     domain, DEFAULT_NUM_EPOCHS),
                 'train_every_n_steps': 1,
                 'n_train_repeat': 1,
-                'n_initial_exploration_steps': int(0),
+                'n_initial_exploration_steps': int(1000),
                 'reparameterize': True,
                 'eval_render_mode': None,
                 'eval_n_episodes': 1,
@@ -172,7 +223,7 @@ def get_variant_spec(universe, domain, task, policy):
                 ]),
                 'use_distance_for': tune.grid_search([
                     'reward',
-                    'value',
+                    # 'value',
                 ]),
             }
         },
@@ -180,73 +231,31 @@ def get_variant_spec(universe, domain, task, policy):
             'type': 'DistancePool',
             'kwargs': {
                 'max_size': int(1e6),
-                'on_policy_window': lambda spec: (
-                    2 * spec.get('config', spec)
-                    ['sampler_params']
-                    ['kwargs']
-                    ['max_path_length']
+                'on_policy_window': tune.sample_from(lambda spec: (
+                    2 * max_path_length
                     if (spec.get('config', spec)
                         ['metric_learner_params']
                         ['type']
                         == 'OnPolicyMetricLearner')
-                    else None),
+                    else None)),
                 'max_pair_distance': None,
-                'path_length': variant_equals(
-                    'sampler_params',
-                    'kwargs',
-                    'max_path_length')
+                'path_length': max_path_length
             }
         },
         'sampler_params': {
             'type': 'SimpleSampler',
             'kwargs': {
-                'max_path_length': MAX_PATH_LENGTH_PER_DOMAIN.get(
-                    domain, DEFAULT_MAX_PATH_LENGTH),
-                'min_pool_size': MAX_PATH_LENGTH_PER_DOMAIN.get(
-                    domain, DEFAULT_MAX_PATH_LENGTH),
+                'max_path_length': max_path_length,
+                'min_pool_size': max_path_length,
                 'batch_size': 256,
             }
         },
         'metric_learner_params': {
             'type': tune.grid_search([
-                # 'OnPolicyMetricLearner',
-                'MetricLearner',
+                'OnPolicyMetricLearner',
+                # 'HingeMetricLearner',
             ]),
-            'kwargs': {
-                'distance_learning_rate': 3e-4,
-                'lambda_learning_rate': 3e-4,
-                'train_every_n_steps': lambda spec: (
-                    {
-                        'OnPolicyMetricLearner': 128,
-                        'MetricLearner': 1,
-                    }[spec.get('config', spec)
-                      ['metric_learner_params']
-                      ['type']]),
-                'n_train_repeat': tune.grid_search([1, 2, 4]),
-
-                'constraint_exp_multiplier': 0.0,
-                'objective_type': 'linear',
-                'step_constraint_coeff': tune.grid_search([
-                    1e-3, 1e-2, 1e-1, 1.0]),
-
-                'zero_constraint_threshold': 0.0,
-
-                'max_distance': lambda spec: (
-                    10 + spec.get('config', spec)
-                    ['sampler_params']
-                    ['kwargs']
-                    ['max_path_length']),
-
-                'condition_with_action': tune.grid_search([
-                    # True,
-                    False
-                ]),
-                'distance_input_type': tune.grid_search([
-                    'full',
-                    # 'xy_coordinates',
-                    # 'xy_velocities',
-                ]),
-            },
+            'kwargs': tune.sample_from(metric_learner_kwargs),
         },
         'distance_estimator_params': {
             'type': 'FeedforwardDistanceEstimator',

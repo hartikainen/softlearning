@@ -8,15 +8,19 @@ from tensorflow.python.training import training_util
 from .rl_algorithm import RLAlgorithm
 from .sac import td_target
 
-from softlearning.environments.adapters.gym_adapter import (
-    Point2DEnv,
-    Point2DWallEnv,
-    CustomSwimmerEnv,
-    CustomAntEnv,
-    CustomHumanoidEnv,
-    CustomHalfCheetahEnv,
-    CustomHopperEnv,
-    CustomWalker2dEnv)
+from multiworld.envs.pygame.point2d import Point2DEnv, Point2DWallEnv
+from softlearning.environments.gym.mujoco.swimmer import (
+    SwimmerEnv as CustomSwimmerEnv)
+from softlearning.environments.gym.mujoco.ant import (
+    AntEnv as CustomAntEnv)
+from softlearning.environments.gym.mujoco.humanoid import (
+    HumanoidEnv as CustomHumanoidEnv)
+from softlearning.environments.gym.mujoco.half_cheetah import (
+    HalfCheetahEnv as CustomHalfCheetahEnv)
+from softlearning.environments.gym.mujoco.hopper import (
+    HopperEnv as CustomHopperEnv)
+from softlearning.environments.gym.mujoco.walker2d import (
+    Walker2dEnv as CustomWalker2dEnv)
 
 from gym.envs.mujoco.swimmer import SwimmerEnv as GymSwimmerEnv
 from gym.envs.mujoco.ant import AntEnv as GymAntEnv

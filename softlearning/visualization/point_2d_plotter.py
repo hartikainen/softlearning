@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
 import matplotlib as mpl
-mpl.use('TkAgg')
+mpl.use('Agg')
 
 
 RESOLUTION_MULTIPLIER = 2.0
@@ -208,6 +208,9 @@ def plot_distances(figure,
                 velocities=None,
                 observation_type=None)
 
+            if i - goals_xy.shape[0] == -1:
+                observations_2, observations_1 = observations_1, observations_2
+
             distances = get_distances_fn(observations_1, observations_2)
             X = np.reshape(observations_xy[:, 0], (nx, ny))
             Y = np.reshape(observations_xy[:, 1], (nx, ny))
@@ -236,7 +239,7 @@ def plot_distances(figure,
             ax.scatter(*goal_position,
                        s=(6 * RESOLUTION_MULTIPLIER) ** 2,
                        color='blue',
-                       marker='*',
+                       marker=('o' if i - goals_xy.shape[0] == -1 else '*'),
                        label='s1')
 
             # if i == num_heatmaps - 1:
@@ -346,6 +349,8 @@ def plot_V(figure,
     ax.set_xlim([min_x, max_x])
     ax.set_ylim([min_y, max_y])
 
+    reset_position = algorithm._env._env.unwrapped.get_reset_position()
+
     observations = get_observations(
         observations_xy,
         goals_xy[-1, :],
@@ -354,7 +359,7 @@ def plot_V(figure,
         velocities=None,
         observation_type=None)
     goals = get_observations(
-        algorithm._temporary_goal,
+        reset_position,
         goals_xy[-1, :],
         nx,
         ny,
@@ -377,18 +382,11 @@ def plot_V(figure,
     colorbar_ax, kw = mpl.colorbar.make_axes(ax, location='bottom',)
     figure.colorbar(contour, cax=colorbar_ax, **kw)
 
-    ax.scatter(*goals_xy[-1],
+    ax.scatter(*reset_position,
                s=(10 * RESOLUTION_MULTIPLIER) ** 2,
-               color='blue',
-               marker='*',
-               label='final goal')
-
-    goal_estimate = algorithm._temporary_goal
-    ax.scatter(*goal_estimate,
-               s=(10 * RESOLUTION_MULTIPLIER) ** 2,
-               color=(1.0, 0.0, 0.0, 1.0),
-               label='temporary goal',
-               marker='*')
+               color=(0.0, 0.0, 1.0, 1.0),
+               label='reset position',
+               marker='o')
     ax.scatter(algorithm._previous_goals[:-1, 0],
                algorithm._previous_goals[:-1, 1],
                s=(10 * RESOLUTION_MULTIPLIER) ** 2,
@@ -396,16 +394,16 @@ def plot_V(figure,
                marker='*',
                label="past temporary goals")
 
-    training_path_cmap = plt.cm.get_cmap('Set1', len(training_paths))
+    training_cmap = plt.cm.get_cmap('Set1', len(training_paths))
     for i, training_path in enumerate(training_paths):
         positions = training_path['observations.observation']
         target_positions = training_path['observations.desired_goal']
 
         assert np.allclose(target_positions[0], target_positions)
+        assert observations.shape[1] == 2, observations.shape
 
         target_position = target_positions[0]
-
-        color = training_path_cmap(i)
+        color = training_cmap(i)
 
         ax.plot(positions[:, 0],
                 positions[:, 1],
@@ -420,23 +418,35 @@ def plot_V(figure,
                    color=color,
                    marker='*')
 
-    for path in evaluation_paths:
-        observations = path['observations.observation']
-        assert observations.shape[1] == 2, observations.shape
-        positions = observations
+    evaluation_cmap = plt.cm.get_cmap('Set2', len(evaluation_paths))
+    for i, evaluation_path in enumerate(evaluation_paths):
+        positions = evaluation_path['observations.observation']
+        target_positions = evaluation_path['observations.desired_goal']
 
-        ax.plot(positions[:, 0], positions[:, 1],
-                'k:',
+        assert np.allclose(target_positions[0], target_positions)
+        assert observations.shape[1] == 2, observations.shape
+
+        target_position = target_positions[0]
+        color = evaluation_cmap(i)
+
+        ax.plot(positions[:, 0],
+                positions[:, 1],
+                color=color,
+                linestyle=':',
                 linewidth=1.0 * RESOLUTION_MULTIPLIER,
-                label="evaluation paths")
+                label="evaluation paths" if i == 0 else None)
         ax.scatter(*positions[0],
-                   color='black',
+                   color=color,
                    marker='o',
                    s=15 * RESOLUTION_MULTIPLIER)
         ax.scatter(*positions[-1],
-                   color='black',
+                   color=color,
                    marker='x',
                    s=15 * RESOLUTION_MULTIPLIER)
+        ax.scatter(*target_position,
+                   s=(10 * RESOLUTION_MULTIPLIER) ** 2.0,
+                   color=color,
+                   marker='*')
 
     wall_collection, wall_rectangles = plot_walls(
         ax, algorithm._env.unwrapped.walls)
@@ -613,8 +623,8 @@ def point_2d_plotter(algorithm,
     goals_xy = np.stack([goals_X, goals_Y], axis=-1).reshape(-1, 2)
 
     goal_estimate = algorithm._temporary_goal
-    goals_xy[-2, :] = goal_estimate
-    goals_xy[-3, :] = reset_position
+    # goals_xy[-2, :] = goal_estimate
+    goals_xy[-1, :] = reset_position
 
     RESOLUTION = RESOLUTION_MULTIPLIER * 8.4
     fig = plt.figure(figsize=(RESOLUTION * len(PLOT), RESOLUTION), frameon=False)

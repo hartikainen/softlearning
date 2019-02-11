@@ -8,19 +8,24 @@ from gym.envs.mujoco.inverted_double_pendulum import (
     InvertedDoublePendulumEnv as GymInvertedDoublePendulumEnv)
 from gym.envs.mujoco.inverted_pendulum import (InvertedPendulumEnv as
                                                GymInvertedPendulumEnv)
+from multiworld.envs.pygame.point2d import Point2DEnv, Point2DWallEnv
+
 
 from softlearning.algorithms.sac import SAC, td_target
 from softlearning.utils.numpy import softmax
-from softlearning.environments.adapters.gym_adapter import (
-    Point2DEnv,
-    Point2DWallEnv,
-    CustomSwimmerEnv,
-    CustomAntEnv,
-    CustomHumanoidEnv,
-    CustomHalfCheetahEnv,
-    CustomHopperEnv,
-    CustomWalker2dEnv,
-    FixedTargetReacherEnv)
+
+from softlearning.environments.gym.mujoco.swimmer import (
+    SwimmerEnv as CustomSwimmerEnv)
+from softlearning.environments.gym.mujoco.ant import (
+    AntEnv as CustomAntEnv)
+from softlearning.environments.gym.mujoco.humanoid import (
+    HumanoidEnv as CustomHumanoidEnv)
+from softlearning.environments.gym.mujoco.half_cheetah import (
+    HalfCheetahEnv as CustomHalfCheetahEnv)
+from softlearning.environments.gym.mujoco.hopper import (
+    HopperEnv as CustomHopperEnv)
+from softlearning.environments.gym.mujoco.walker2d import (
+    Walker2dEnv as CustomWalker2dEnv)
 
 
 class MetricLearningAlgorithm(SAC):
@@ -45,7 +50,9 @@ class MetricLearningAlgorithm(SAC):
     def _init_placeholders(self):
         super(MetricLearningAlgorithm, self)._init_placeholders()
         self._temporary_goal_ph = tf.placeholder(
-            tf.float32, shape=self._env.observation_space.shape, name='goal')
+            tf.float32,
+            shape=self._env.observation_space.shape,
+            name='temporary_goal')
 
     def _get_Q_target(self):
         goals = tf.tile(self._temporary_goal_ph[None, :],
@@ -241,12 +248,19 @@ class MetricLearningAlgorithm(SAC):
 
         if isinstance(self._env.unwrapped, (Point2DEnv, Point2DWallEnv)):
             self._env.unwrapped.optimal_policy.set_goal(self._temporary_goal)
+            self._env.unwrapped.fixed_goal = self._temporary_goal
 
     def _epoch_after_hook(self, training_paths):
         self._previous_training_paths = training_paths
 
     def _timestep_before_hook(self, *args, **kwargs):
         if self.sampler._path_length == 0:
+            if self._first_observation is None:
+                first_sample = self._pool.batch_by_indices(0)
+                self._first_observation = first_sample.get(
+                    'observations.observation', first_sample['observations'])
+                self._temporary_goal = self._first_observation.copy()
+
             self._update_temporary_goal(self.sampler.get_last_n_paths(1))
 
         if (self.sampler._path_length >= self.sampler._max_path_length * 0.75):
@@ -263,12 +277,28 @@ class MetricLearningAlgorithm(SAC):
             if self.sampler.policy is not self._policy:
                 assert isinstance(self._env.unwrapped, Point2DEnv)
 
-    def _do_training(self, iteration, batch):
-        super(MetricLearningAlgorithm, self)._do_training(iteration, batch)
+    def _do_training_repeats(self, timestep):
+        """Repeat training _n_train_repeat times every _train_every_n_steps"""
+        if timestep % self._train_every_n_steps > 0: return
+        trained_enough = (
+            self._train_steps_this_epoch
+            > self._max_train_repeat_per_timestep * self._timestep)
 
-        for i in range(self._metric_learner._MetricLearner__n_train_repeat):
-            self._metric_learner._do_training(iteration, batch)
-            batch = self._training_batch()
+        if trained_enough:
+            raise ValueError("Should not be here")
+
+        for i in range(self._n_train_repeat):
+            self._do_training(
+                iteration=timestep,
+                batch=self._training_batch())
+
+        for i in range(self._metric_learner._n_train_repeat):
+            self._metric_learner._do_training(
+                iteration=timestep,
+                batch=self._training_batch())
+
+        self._num_train_steps += self._n_train_repeat
+        self._train_steps_this_epoch += self._n_train_repeat
 
     def _get_feed_dict(self, iteration, batch):
         feed_dict = super(MetricLearningAlgorithm, self)._get_feed_dict(
@@ -324,6 +354,13 @@ class MetricLearningAlgorithm(SAC):
 
             for key, value in full_results.items():
                 result[key] = value
+
+            all_observations = np.concatenate(
+                [path['observations.observation'] for path in paths], axis=0)
+            all_xy_positions = all_observations[:, :2]
+            all_xy_distances = np.linalg.norm(all_xy_positions, ord=2, axis=1)
+            max_xy_distance = np.max(all_xy_distances)
+            result['max_xy_distance'] = max_xy_distance
 
         elif isinstance(self._env.unwrapped,
                         (CustomSwimmerEnv,
@@ -402,16 +439,18 @@ class MetricLearningAlgorithm(SAC):
                             inputs))
                     return distances
 
-                def get_Q_values_fn(observations, _, actions):
+                def get_Q_values_fn(observations, goals, actions):
+                    # TODO(hartikainen): in point 2d plotter, make sure that
+                    # the observations and goals work correctly.
                     inputs = [observations, actions]
                     Qs = tuple(Q.predict(inputs) for Q in self._Qs)
                     Qs = np.min(Qs, axis=0)
                     return Qs
 
-                def get_V_values_fn(observations, _):
+                def get_V_values_fn(observations, goals):
                     with self._policy.set_deterministic(True):
                         actions = self._policy.actions_np([observations])
-                    V_values = get_Q_values_fn(observations, _, actions)
+                    V_values = get_Q_values_fn(observations, goals, actions)
                     return V_values
 
                 def get_quiver_gradients_fn(observations, goals):
