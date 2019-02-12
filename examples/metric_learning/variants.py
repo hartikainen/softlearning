@@ -21,13 +21,12 @@ ENV_PARAMS = {
     'Ant': {
         'Parameterizable-v0': {
             'exclude_current_positions_from_observation': False,
-            'terminate_when_unhealthy': False,
-            'healthy_reward': 1.0,
+            'terminate_when_unhealthy': True,
             'reset_noise_scale': 0,
         },
         'Maze-v0': {
             'exclude_current_positions_from_observation': False,
-            'terminate_when_unhealthy': False,
+            'terminate_when_unhealthy': True,
             'reset_noise_scale': 0,
         },
     },
@@ -40,7 +39,7 @@ ENV_PARAMS = {
     'Hopper': {
         'Parameterizable-v0': {
             'exclude_current_positions_from_observation': False,
-            'terminate_when_unhealthy': False,
+            'terminate_when_unhealthy': True,
             'healthy_reward': 1.0,
             'reset_noise_scale': 0,
         },
@@ -48,22 +47,19 @@ ENV_PARAMS = {
     'Walker': {
         'Parameterizable-v0': {
             'exclude_current_positions_from_observation': False,
-            'terminate_when_unhealthy': False,
-            'healthy_reward': 1.0,
+            'terminate_when_unhealthy': True,
             'reset_noise_scale': 0,
         },
     },
     'Humanoid': {
         'Parameterizable-v0': {
             'exclude_current_positions_from_observation': False,
-            'terminate_when_unhealthy': False,
-            'healthy_reward': 1.0,
+            'terminate_when_unhealthy': True,
             'reset_noise_scale': 0,
         },
         'Maze-v0': {
             'exclude_current_positions_from_observation': False,
-            'terminate_when_unhealthy': False,
-            'healthy_reward': 1.0,
+            'terminate_when_unhealthy': True,
             'reset_noise_scale': 0,
         },
     },
@@ -115,6 +111,22 @@ MAX_PATH_LENGTH_PER_DOMAIN = {
 }
 
 NUM_CHECKPOINTS = 10
+
+
+def fixed_path_length(spec):
+    domain = spec.get('config', spec)['domain']
+    env_params = spec.get('config', spec)['env_params']
+
+    if domain == 'Point2DEnv':
+        return not env_params.get('terminate_on_success', False)
+    if domain in (
+            'Swimmer', 'HalfCheetah', 'CurriculumPointEnv'):
+        return True
+    else:
+        if domain in ('Ant', 'Humanoid', 'Hopper', 'Walker'):
+            return not env_params.get('terminate_when_unhealthy', True)
+
+    raise NotImplementedError
 
 
 def get_variant_spec(args):
@@ -233,14 +245,16 @@ def get_variant_spec(args):
             'kwargs': {
                 'max_size': int(1e6),
                 'on_policy_window': tune.sample_from(lambda spec: (
-                    2 * max_path_length
-                    if (spec.get('config', spec)
-                        ['metric_learner_params']
-                        ['type']
-                        == 'OnPolicyMetricLearner')
-                    else None)),
+                    {
+                        'OnPolicyMetricLearner': 2 * max_path_length
+                    }.get(spec.get('config', spec)
+                          ['metric_learner_params']
+                          ['type'],
+                          None)
+                )),
                 'max_pair_distance': None,
-                'path_length': max_path_length
+                'path_length': max_path_length,
+                'fixed_path_length': tune.sample_from(fixed_path_length),
             }
         },
         'sampler_params': {
@@ -249,6 +263,11 @@ def get_variant_spec(args):
                 'max_path_length': max_path_length,
                 'min_pool_size': max_path_length,
                 'batch_size': 256,
+                'store_last_n_paths': tune.sample_from(lambda spec: (
+                    1 + spec.get('config', spec)
+                    ['algorithm_params']
+                    ['kwargs']
+                    ['epoch_length'] // max_path_length)),
             }
         },
         'metric_learner_params': {
