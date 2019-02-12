@@ -2,7 +2,8 @@ import multiprocessing
 import argparse
 from distutils.util import strtobool
 import json
-from ray import tune
+
+from ray.tune import sample_from
 
 import softlearning.algorithms.utils as alg_utils
 import softlearning.environments.utils as env_utils
@@ -292,4 +293,4 @@ def variant_equals(*keys):
 
         return node
 
-    return tune.sample_from(get_from_spec)
+    return sample_from(get_from_spec)
