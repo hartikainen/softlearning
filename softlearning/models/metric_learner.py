@@ -170,7 +170,6 @@ class MetricLearner(object):
     def _do_training(self, iteration, batch):
         """Runs the operations for updating training and target ops."""
         if iteration % self._train_every_n_steps > 0: return
-
         feed_dict = self._get_feed_dict(iteration, batch)
         self._session.run(self._distance_train_ops, feed_dict)
 

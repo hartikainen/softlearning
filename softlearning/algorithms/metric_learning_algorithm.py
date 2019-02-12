@@ -51,15 +51,12 @@ class MetricLearningAlgorithm(SAC):
 
     def _init_placeholders(self):
         super(MetricLearningAlgorithm, self)._init_placeholders()
-        self._temporary_goal_ph = tf.placeholder(
+        self._goals_ph = tf.placeholder(
             tf.float32,
             shape=self._env.observation_space.shape,
-            name='temporary_goal')
+            name='goals')
 
     def _get_Q_target(self):
-        goals = tf.tile(self._temporary_goal_ph[None, :],
-                        (tf.shape(self._observations_ph)[0], 1))
-
         if self._use_distance_for == 'reward':
             next_actions = self._policy.actions([self._next_observations_ph])
             next_log_pis = self._policy.log_pis([self._next_observations_ph],
@@ -73,7 +70,7 @@ class MetricLearningAlgorithm(SAC):
             next_value = min_next_Q - self._alpha * next_log_pis
 
             inputs = self._metric_learner._distance_estimator_inputs(
-                self._observations_ph, goals, self._actions_ph)
+                self._observations_ph, self._goals_ph, self._actions_ph)
             distances = self._metric_learner.distance_estimator(inputs)
             rewards = -1.0 * distances
             values = (1 - self._terminals_ph) * next_value
@@ -81,10 +78,10 @@ class MetricLearningAlgorithm(SAC):
         elif self._use_distance_for == 'value':
             if self._metric_learner._condition_with_action:
                 inputs = self._metric_learner._distance_estimator_inputs(
-                    self._observations_ph, goals, self._actions_ph)
+                    self._observations_ph, self._goals_ph, self._actions_ph)
             else:
                 inputs = self._metric_learner._distance_estimator_inputs(
-                    self._next_observations_ph, goals, None)
+                    self._next_observations_ph, self._goals_ph, None)
 
             distances = self._metric_learner.distance_estimator(inputs)
             rewards = 0.0
@@ -320,14 +317,9 @@ class MetricLearningAlgorithm(SAC):
     def _get_feed_dict(self, iteration, batch):
         feed_dict = super(MetricLearningAlgorithm, self)._get_feed_dict(
             iteration, batch)
+        feed_dict[self._goals_ph] = batch['goals']
 
         del feed_dict[self._rewards_ph]
-
-        if self._temporary_goal is None:
-            self._temporary_goal = batch['observations'][0]
-            self._first_observation = batch['observations'][0]
-
-        feed_dict.update({self._temporary_goal_ph: self._temporary_goal})
 
         return feed_dict
 
