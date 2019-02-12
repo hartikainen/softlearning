@@ -59,10 +59,12 @@ class FlexibleReplayPool(ReplayPool):
             self._pointer, self._pointer + num_samples) % self._max_size
 
         for field_name in self.field_names:
-            default_value = (
-                self.fields_attrs[field_name].get('default_value', 0.0))
-            values = samples.get(field_name, default_value)
-            assert values.shape[0] == num_samples
+            if field_name in samples:
+                values = samples[field_name]
+                assert values.shape[0] == num_samples
+            else:
+                values = self.fields_attrs[field_name].get('default_value', 0.0)
+
             self.fields[field_name][index] = values
 
         self._advance(num_samples)
