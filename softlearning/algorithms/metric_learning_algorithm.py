@@ -287,12 +287,24 @@ class MetricLearningAlgorithm(SAC):
         if trained_enough:
             raise ValueError("Should not be here")
 
-        for i in range(self._n_train_repeat):
+        n_mutual_train_repeat = min(
+            self._n_train_repeat, self._metric_learner._n_train_repeat)
+        for i in range(n_mutual_train_repeat):
+            batch = self._training_batch()
+            self._do_training(
+                iteration=timestep,
+                batch=batch)
+            self._metric_learner._do_training(
+                iteration=timestep,
+                batch=batch)
+
+        for i in range(self._n_train_repeat - n_mutual_train_repeat):
             self._do_training(
                 iteration=timestep,
                 batch=self._training_batch())
 
-        for i in range(self._metric_learner._n_train_repeat):
+        for i in range(self._metric_learner._n_train_repeat
+                       - n_mutual_train_repeat):
             self._metric_learner._do_training(
                 iteration=timestep,
                 batch=self._training_batch())
