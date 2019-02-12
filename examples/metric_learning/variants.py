@@ -199,7 +199,7 @@ def get_variant_spec(args):
                     domain, DEFAULT_NUM_EPOCHS),
                 'train_every_n_steps': 1,
                 'n_train_repeat': 1,
-                'n_initial_exploration_steps': int(1000),
+                'n_initial_exploration_steps': int(1e3),
                 'reparameterize': True,
                 'eval_render_mode': None,
                 'eval_n_episodes': 1,
@@ -225,6 +225,7 @@ def get_variant_spec(args):
                     'reward',
                     # 'value',
                 ]),
+                'final_exploration_proportion': 0.25,
             }
         },
         'replay_pool_params': {

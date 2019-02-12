@@ -37,6 +37,7 @@ class MetricLearningAlgorithm(SAC):
                  use_distance_for='reward',
                  temporary_goal_update_rule='closest_l2_from_goal',
                  plot_distances=False,
+                 final_exploration_proportion=0.25,
                  **kwargs):
         self._use_distance_for = use_distance_for
         self._plot_distances = plot_distances
@@ -45,6 +46,7 @@ class MetricLearningAlgorithm(SAC):
         self._temporary_goal = None
         self._first_observation = None
         self._temporary_goal_update_rule = temporary_goal_update_rule
+        self._final_exploration_proportion = final_exploration_proportion
         super(MetricLearningAlgorithm, self).__init__(*args, env=env, **kwargs)
 
     def _init_placeholders(self):
@@ -263,7 +265,10 @@ class MetricLearningAlgorithm(SAC):
 
             self._update_temporary_goal(self.sampler.get_last_n_paths(1))
 
-        if (self.sampler._path_length >= self.sampler._max_path_length * 0.75):
+        random_explore_after = (
+            self.sampler._max_path_length
+            * (1.0 - self._final_exploration_proportion))
+        if (self.sampler._path_length >= random_explore_after):
             self.sampler.initialize(
                 self._env, self._initial_exploration_policy, self._pool)
             # self.sampler.initialize(
