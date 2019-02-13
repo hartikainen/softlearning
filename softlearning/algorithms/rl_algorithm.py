@@ -238,10 +238,11 @@ class RLAlgorithm(tf.contrib.checkpoint.Checkpointable):
 
         with policy.set_deterministic(self._eval_deterministic):
             paths = rollouts(
+                self._eval_n_episodes,
                 evaluation_env,
                 policy,
                 self.sampler._max_path_length,
-                self._eval_n_episodes,
+                sampler_class=type(self.sampler),
                 render_mode=self._eval_render_mode)
 
         return paths
