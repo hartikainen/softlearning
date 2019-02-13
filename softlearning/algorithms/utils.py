@@ -1,6 +1,14 @@
 from copy import deepcopy
 
 
+def create_goal_conditioned_sac_algorithm(variant, *args, **kwargs):
+    from .goal_conditioned_sac import GoalConditionedSAC
+
+    algorithm = GoalConditionedSAC(*args, **kwargs)
+
+    return algorithm
+
+
 def create_SAC_algorithm(variant, *args, **kwargs):
     from .sac import SAC
 
@@ -35,6 +43,7 @@ def create_SQL_algorithm(variant, *args, **kwargs):
 
 ALGORITHM_CLASSES = {
     'SAC': create_SAC_algorithm,
+    'GoalConditionedSAC': create_goal_conditioned_sac_algorithm,
     'MetricActorCritic': create_metric_actor_critic,
     'MetricLearningAlgorithm': create_metric_learning_algorithm,
     'SQL': create_SQL_algorithm,

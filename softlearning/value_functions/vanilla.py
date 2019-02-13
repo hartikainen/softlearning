@@ -18,6 +18,23 @@ def create_feedforward_Q_function(observation_shape,
         **kwargs)
 
 
+def create_goal_conditioned_feedforward_Q_function(observation_shape,
+                                                   action_shape,
+                                                   *args,
+                                                   observation_preprocessor=None,
+                                                   name='feedforward_Q',
+                                                   **kwargs):
+    input_shapes = (observation_shape, action_shape, observation_shape)
+    preprocessors = (observation_preprocessor, None, observation_preprocessor)
+    return feedforward_model(
+        input_shapes,
+        *args,
+        output_size=1,
+        preprocessors=preprocessors,
+        name=name,
+        **kwargs)
+
+
 def create_feedforward_V_function(observation_shape,
                                   *args,
                                   observation_preprocessor=None,
