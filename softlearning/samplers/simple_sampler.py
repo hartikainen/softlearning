@@ -18,6 +18,13 @@ class SimpleSampler(BaseSampler):
         self._current_observation = None
         self._total_samples = 0
 
+    @property
+    def _action_input(self):
+        observation = self.env.convert_to_active_observation(
+            self._current_observation)[None]
+
+        return [observation]
+
     def _process_observations(self,
                               observation,
                               action,
@@ -40,10 +47,7 @@ class SimpleSampler(BaseSampler):
         if self._current_observation is None:
             self._current_observation = self.env.reset()
 
-        action = self.policy.actions_np([
-            self.env.convert_to_active_observation(
-                self._current_observation)[None]
-        ])[0]
+        action = self.policy.actions_np(self._action_input)[0]
 
         next_observation, reward, terminal, info = self.env.step(action)
         self._path_length += 1
