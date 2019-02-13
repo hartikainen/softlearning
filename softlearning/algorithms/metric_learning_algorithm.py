@@ -105,7 +105,7 @@ class MetricLearningAlgorithm(SAC):
 
             current_distance = np.linalg.norm(self._temporary_goal - self._goal)
             if min_distance < current_distance:
-                self._temporary_goal = new_observations[min_distance_idx]
+                temporary_goal = new_observations[min_distance_idx]
         elif (self._temporary_goal_update_rule ==
               'farthest_l2_from_first_observation'):
             new_observations = np.concatenate(
@@ -119,7 +119,8 @@ class MetricLearningAlgorithm(SAC):
             current_distance = np.linalg.norm(self._temporary_goal -
                                               self._first_observation)
             if max_distance >= current_distance:
-                self._temporary_goal = new_observations[max_distance_idx]
+                temporary_goal = new_observations[max_distance_idx]
+
         elif (self._temporary_goal_update_rule in
               ('farthest_estimate_from_first_observation',
                'random_weighted_estimate_from_first_observation')):
@@ -141,18 +142,11 @@ class MetricLearningAlgorithm(SAC):
                 max_distance_idx = np.argmax(new_distances)
                 max_distance = new_distances[max_distance_idx]
 
-                current_distance = self._metric_learner.distance_estimator.predict(
-                    self._metric_learner._distance_estimator_inputs(
-                        self._first_observation[None, :],
-                        self._temporary_goal[None, :],
-                        np.zeros((1, *self._action_shape)),
-                    ))[0, 0]
-
-                if max_distance >= current_distance:
-                    self._temporary_goal = new_observations[max_distance_idx]
+                temporary_goal = new_observations[max_distance_idx]
             elif (self._temporary_goal_update_rule
                   == 'random_weighted_estimate_from_first_observation'):
-                self._temporary_goal = new_observations[np.random.choice(
+                raise NotImplementedError("TODO: check this")
+                temporary_goal = new_observations[np.random.choice(
                     new_distances.size, p=softmax(new_distances))]
 
         elif (self._temporary_goal_update_rule == 'operator_query_last_step'):
@@ -168,13 +162,8 @@ class MetricLearningAlgorithm(SAC):
                         path_last_observations, goals))
 
                 min_distance_idx = np.argmin(last_observations_distances)
-                min_distance = last_observations_distances[min_distance_idx]
+                temporary_goal = path_last_observations[min_distance_idx]
 
-                current_distance = self._env.unwrapped.get_optimal_paths(
-                    self._temporary_goal[None, :], self._goal[None, :])
-                if min_distance < current_distance:
-                    self._temporary_goal = path_last_observations[
-                        min_distance_idx]
             elif isinstance(self._env.unwrapped,
                             (GymAntEnv, GymHalfCheetahEnv, GymHumanoidEnv)):
                 velocity_indices = {
@@ -192,12 +181,8 @@ class MetricLearningAlgorithm(SAC):
                 new_velocities = np.linalg.norm(new_velocities, ord=2, axis=1)
 
                 max_velocity_idx = np.argmax(new_velocities)
-                max_velocity = new_velocities[max_velocity_idx]
+                temporary_goal = new_observations[max_velocity_idx]
 
-                current_velocity = np.linalg.norm(
-                    self._temporary_goal[velocity_indices], ord=2)
-                if max_velocity > current_velocity:
-                    self._temporary_goal = new_observations[max_velocity_idx]
             elif isinstance(
                     self._env.unwrapped,
                     (CustomSwimmerEnv,
@@ -215,13 +200,8 @@ class MetricLearningAlgorithm(SAC):
                     last_observations_positions, ord=2, axis=1)
 
                 max_distance_idx = np.argmax(last_observations_distances)
-                max_distance = last_observations_distances[max_distance_idx]
+                temporary_goal = path_last_observations[max_distance_idx]
 
-                current_distance = np.linalg.norm(
-                    self._temporary_goal[position_idx], ord=2)
-                if max_distance > current_distance:
-                    self._temporary_goal = path_last_observations[
-                        max_distance_idx]
             elif isinstance(
                     self._env.unwrapped,
                     (GymInvertedPendulumEnv, GymInvertedDoublePendulumEnv)):
@@ -231,24 +211,19 @@ class MetricLearningAlgorithm(SAC):
                     path_last_observations[:, -3:], ord=2, axis=1)
 
                 min_distance_idx = np.argmin(last_distances_from_target)
-                min_distance = last_distances_from_target[min_distance_idx]
+                temporary_goal = path_last_observations[min_distance_idx]
 
-                current_distance_from_target = np.linalg.norm(
-                    self._temporary_goal[-3:])
-                if min_distance < current_distance_from_target:
-                    self._temporary_goal = path_last_observations[
-                        min_distance_idx]
             elif isinstance(self._env.unwrapped, SawyerPushAndReachXYZEnv):
-                self._temporary_goal = self._env.unwrapped._state_goal.copy()
+                temporary_goal = self._env.unwrapped._state_goal.copy()
         elif (self._temporary_goal_update_rule == 'random'):
-            self._temporary_goal = self._env.unwrapped.sample_goal(
-            )['desired_goal']
+            temporary_goal = self._env.unwrapped.sample_metric_goal()
         else:
             raise NotImplementedError
 
+        self._env.unwrapped.set_goal(temporary_goal)
+
         if isinstance(self._env.unwrapped, (Point2DEnv, Point2DWallEnv)):
-            self._env.unwrapped.optimal_policy.set_goal(self._temporary_goal)
-            self._env.unwrapped.fixed_goal = self._temporary_goal
+            self._env.unwrapped.optimal_policy.set_goal(temporary_goal)
 
     def _epoch_after_hook(self, training_paths):
         self._previous_training_paths = training_paths
