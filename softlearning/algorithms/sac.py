@@ -188,14 +188,21 @@ class SAC(RLAlgorithm):
                 name='raw_actions',
             )
 
-    def _get_Q_target(self):
-        next_actions = self._policy.actions([self._next_observations_ph])
-        next_log_pis = self._policy.log_pis(
-            [self._next_observations_ph], next_actions)
+    def _action_inputs(self, observations):
+        return [observations]
 
-        next_Qs_values = tuple(
-            Q([self._next_observations_ph, next_actions])
-            for Q in self._Q_targets)
+    def _Q_inputs(self, observations, actions):
+        return [observations, actions]
+
+    def _get_Q_target(self):
+        action_inputs = self._action_inputs(
+            observations=self._next_observations_ph)
+        next_actions = self._policy.actions(action_inputs)
+        next_log_pis = self._policy.log_pis(action_inputs, next_actions)
+
+        Q_inputs = self._Q_inputs(
+            observations=self._next_observations_ph, actions=next_actions)
+        next_Qs_values = tuple(Q(Q_inputs) for Q in self._Q_targets)
 
         min_next_Q = tf.reduce_min(next_Qs_values, axis=0)
         next_value = min_next_Q - self._alpha * next_log_pis
@@ -207,6 +214,21 @@ class SAC(RLAlgorithm):
 
         return Q_target
 
+    def _get_critic_loss(self):
+        Q_target = tf.stop_gradient(self._get_Q_target())
+        assert Q_target.shape.as_list() == [None, 1]
+
+        Q_inputs = self._Q_inputs(
+            observations=self._observations_ph, actions=self._actions_ph)
+        Q_values = self._Q_values = tuple(Q(Q_inputs) for Q in self._Qs)
+
+        Q_losses = self._Q_losses = tuple(
+            tf.losses.mean_squared_error(
+                labels=Q_target, predictions=Q_value, weights=0.5)
+            for Q_value in Q_values)
+
+        return Q_losses
+
     def _init_critic_update(self):
         """Create minimization operation for critic Q-function.
 
@@ -217,18 +239,8 @@ class SAC(RLAlgorithm):
         See Equations (5, 6) in [1], for further information of the
         Q-function update rule.
         """
-        Q_target = tf.stop_gradient(self._get_Q_target())
 
-        assert Q_target.shape.as_list() == [None, 1]
-
-        Q_values = self._Q_values = tuple(
-            Q([self._observations_ph, self._actions_ph])
-            for Q in self._Qs)
-
-        Q_losses = self._Q_losses = tuple(
-            tf.losses.mean_squared_error(
-                labels=Q_target, predictions=Q_value, weights=0.5)
-            for Q_value in Q_values)
+        Q_losses = self._get_critic_loss()
 
         self._Q_optimizers = tuple(
             tf.train.AdamOptimizer(
@@ -261,9 +273,9 @@ class SAC(RLAlgorithm):
         See Section 4.2 in [1], for further information of the policy update,
         and Section 5 in [1] for further information of the entropy update.
         """
-
-        actions = self._policy.actions([self._observations_ph])
-        log_pis = self._policy.log_pis([self._observations_ph], actions)
+        action_inputs = self._action_inputs(observations=self._observations_ph)
+        actions = self._policy.actions(action_inputs)
+        log_pis = self._policy.log_pis(action_inputs, actions)
 
         assert log_pis.shape.as_list() == [None, 1]
 
@@ -296,9 +308,9 @@ class SAC(RLAlgorithm):
         elif self._action_prior == 'uniform':
             policy_prior_log_probs = 0.0
 
-        Q_log_targets = tuple(
-            Q([self._observations_ph, actions])
-            for Q in self._Qs)
+        Q_inputs = self._Q_inputs(
+            observations=self._observations_ph, actions=actions)
+        Q_log_targets = tuple(Q(Q_inputs) for Q in self._Qs)
         min_Q_log_target = tf.reduce_min(Q_log_targets, axis=0)
 
         if self._reparameterize:
@@ -374,6 +386,11 @@ class SAC(RLAlgorithm):
 
         return feed_dict
 
+    def _policy_diagnostics(self, iteration, batch):
+        policy_diagnostics = self._policy.get_diagnostics(
+            batch['observations'])
+        return policy_diagnostics
+
     def get_diagnostics(self,
                         iteration,
                         batch,
@@ -404,8 +421,7 @@ class SAC(RLAlgorithm):
             'alpha': alpha,
         })
 
-        policy_diagnostics = self._policy.get_diagnostics(
-            batch['observations'])
+        policy_diagnostics = self._policy_diagnostics(iteration, batch)
         diagnostics.update({
             f'policy/{key}': value
             for key, value in policy_diagnostics.items()
