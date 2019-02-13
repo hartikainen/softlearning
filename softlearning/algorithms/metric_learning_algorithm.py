@@ -421,6 +421,38 @@ class MetricLearningAlgorithm(SAC):
 
         return result
 
+    def diagnostics_distances_fn(self, observations, goals):
+        with self._policy.set_deterministic(True):
+            actions = self._policy.actions_np([observations])
+        inputs = self._metric_learner._distance_estimator_inputs(
+            observations, goals, actions)
+        distances = (
+            self._metric_learner.distance_estimator.predict(
+                inputs))
+        return distances
+
+    def diagnostics_Q_values_fn(self, observations, goals, actions):
+        # TODO(hartikainen): in point 2d plotter, make sure that
+        # the observations and goals work correctly.
+        inputs = [observations, actions]
+        Qs = tuple(Q.predict(inputs) for Q in self._Qs)
+        Qs = np.min(Qs, axis=0)
+        return Qs
+
+    def diagnostics_V_values_fn(self, observations, goals):
+        with self._policy.set_deterministic(True):
+            actions = self._policy.actions_np([observations])
+        V_values = self.get_Q_values_fn(observations, goals, actions)
+        return V_values
+
+    def diagnostics_quiver_gradients_fn(self, observations, goals):
+        with self._policy.set_deterministic(True):
+            actions = self._policy.actions_np([observations])
+        inputs = (
+            self._metric_learner._distance_estimator_inputs(
+                observations, goals, actions))
+        return self._metric_learner.quiver_gradients([inputs])
+
     def get_diagnostics(self,
                         iteration,
                         batch,
@@ -439,48 +471,16 @@ class MetricLearningAlgorithm(SAC):
 
         if self._plot_distances:
             if isinstance(self._env.unwrapped, (Point2DEnv, Point2DWallEnv)):
-                def get_distances_fn(observations, goals):
-                    with self._policy.set_deterministic(True):
-                        actions = self._policy.actions_np([observations])
-                    inputs = self._metric_learner._distance_estimator_inputs(
-                        observations, goals, actions)
-                    distances = (
-                        self._metric_learner.distance_estimator.predict(
-                            inputs))
-                    return distances
-
-                def get_Q_values_fn(observations, goals, actions):
-                    # TODO(hartikainen): in point 2d plotter, make sure that
-                    # the observations and goals work correctly.
-                    inputs = [observations, actions]
-                    Qs = tuple(Q.predict(inputs) for Q in self._Qs)
-                    Qs = np.min(Qs, axis=0)
-                    return Qs
-
-                def get_V_values_fn(observations, goals):
-                    with self._policy.set_deterministic(True):
-                        actions = self._policy.actions_np([observations])
-                    V_values = get_Q_values_fn(observations, goals, actions)
-                    return V_values
-
-                def get_quiver_gradients_fn(observations, goals):
-                    with self._policy.set_deterministic(True):
-                        actions = self._policy.actions_np([observations])
-                        inputs = (
-                            self._metric_learner._distance_estimator_inputs(
-                                observations, goals, actions))
-                        return self._metric_learner.quiver_gradients([inputs])
-
                 from softlearning.visualization import point_2d_plotter
                 point_2d_plotter.point_2d_plotter(
                     self,
                     iteration,
                     training_paths=training_paths,
                     evaluation_paths=evaluation_paths,
-                    get_distances_fn=get_distances_fn,
-                    get_quiver_gradients_fn=get_quiver_gradients_fn,
-                    get_Q_values_fn=get_Q_values_fn,
-                    get_V_values_fn=get_V_values_fn)
+                    get_distances_fn=self.diagnostics_distances_fn,
+                    get_quiver_gradients_fn=self.diagnostics_quiver_gradients_fn,
+                    get_Q_values_fn=self.diagnostics_Q_values_fn,
+                    get_V_values_fn=self.diagnostics_V_values_fn)
 
             elif isinstance(self._env.unwrapped, FixedTargetReacherEnv):
                 from softlearning.visualization import fixed_target_reacher_plotter
