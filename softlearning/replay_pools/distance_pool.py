@@ -206,7 +206,7 @@ class DistancePool(SimpleReplayPool):
                 path_next_observations[random_start_index])
             batch_actions.append(path['actions'][random_start_index])
             terminal = np.linalg.norm(
-                path_observations[random_start_index] - goal,
+                path_next_observations[random_start_index] - goal,
                 ord=2,
                 keepdims=True,
             ) < 0.1
