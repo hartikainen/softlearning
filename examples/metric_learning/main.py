@@ -29,7 +29,7 @@ class MetricExperimentRunner(ExperimentRunner):
         Qs = self.Qs = get_Q_function_from_variant(variant, env)
         policy = self.policy = get_policy_from_variant(variant, env, Qs)
         initial_exploration_policy = self.initial_exploration_policy = (
-            get_policy('UniformPolicy', env))
+            get_policy(variant['exploration_policy_params']['type'], env))
 
         metric_learner = get_metric_learner_from_variant(variant, env)
 

@@ -195,6 +195,10 @@ def get_variant_spec(args):
                 'squash': True,
             },
         },
+        'exploration_policy_params': {
+            'type': 'UniformPolicy',
+            'kwargs': {},
+        },
         'Q_params': {
             'type': 'double_feedforward_Q_function',
             'kwargs': {
