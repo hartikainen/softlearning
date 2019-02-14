@@ -22,6 +22,7 @@ class DistancePool(SimpleReplayPool):
                  max_size=None,
                  her_strategy=None,
                  fixed_path_length=False,
+                 use_distances=True,
                  **kwargs):
         self._on_policy_window = on_policy_window or max_size
         self._max_pair_distance = max_pair_distance or float('inf')
@@ -32,6 +33,7 @@ class DistancePool(SimpleReplayPool):
         self.path_lengths = deque(maxlen=10 * math.ceil(max_size//path_length))
 
         self._her_strategy = her_strategy
+        self._use_distances = use_distances
 
         super(DistancePool, self).__init__(*args, max_size=max_size, **kwargs)
 
@@ -41,7 +43,7 @@ class DistancePool(SimpleReplayPool):
         self.path_lengths.append(path_length)
         return super(DistancePool, self).add_path(path)
 
-    def variable_length_random_batch(self, batch_size, *args, **kwargs):
+    def distance_batch(self, batch_size, *args, **kwargs):
         cumulative_samples = 0
         for path_index in range(len(self.paths)-1, -1, -1):
             path = self.paths[path_index]
@@ -123,6 +125,20 @@ class DistancePool(SimpleReplayPool):
         objectives_observations = objectives_batch['observations']
         objectives_actions = objectives_batch['actions']
 
+        return {
+            'distance_pairs_observations': pairs_observations,
+            'distance_pairs_goals': pairs_goals,
+            'distance_pairs_actions': pairs_actions,
+            'distance_pairs_distances': pairs_distances,
+
+            'distance_triples_observations': triples_observations,
+            'distance_triples_actions': triples_actions,
+
+            'distance_objectives_observations': objectives_observations,
+            'distance_objectives_actions': objectives_actions,
+        }
+
+    def variable_length_random_batch(self, batch_size, *args, **kwargs):
         path_lengths = np.array(self.path_lengths)
         path_weights = path_lengths / np.sum(path_lengths)
         path_probabilities = softmax(path_weights)
@@ -189,22 +205,24 @@ class DistancePool(SimpleReplayPool):
             batch_next_observations.append(
                 path_next_observations[random_start_index])
             batch_actions.append(path['actions'][random_start_index])
-            batch_terminals.append(path['terminals'][random_start_index])
+            terminal = np.linalg.norm(
+                path_observations[random_start_index] - goal,
+                ord=2,
+                keepdims=True,
+            ) < 0.1
+            # terminal = path['terminals'][random_start_index]
+            batch_terminals.append(terminal)
             batch_rewards.append(path['rewards'][random_start_index])
             batch_goals.append(goal)
 
+        distance_batch = (
+            self.distance_batch(batch_size, *args, **kwargs)
+            if self._use_distances
+            else {}
+        )
+
         batch = {
-            'distance_pairs_observations': pairs_observations,
-            'distance_pairs_goals': pairs_goals,
-            'distance_pairs_actions': pairs_actions,
-            'distance_pairs_distances': pairs_distances,
-
-            'distance_triples_observations': triples_observations,
-            'distance_triples_actions': triples_actions,
-
-            'distance_objectives_observations': objectives_observations,
-            'distance_objectives_actions': objectives_actions,
-
+            **distance_batch,
             'observations': np.array(batch_observations),
             'next_observations': np.array(batch_next_observations),
             'actions': np.array(batch_actions),
