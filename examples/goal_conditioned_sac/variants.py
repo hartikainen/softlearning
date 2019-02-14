@@ -12,8 +12,10 @@ def get_variant_spec(args):
     variant_spec = get_development_variant_spec(args)
     variant_spec['Q_params']['type'] = (
         'double_goal_conditioned_feedforward_Q_function')
-    variant_spec['algorithm_params']['type'] = (
-        'HERSAC')
+    variant_spec['algorithm_params']['type'] = 'HERSAC'
+    variant_spec['algorithm_params']['kwargs'].update({
+        'eval_n_episodes': 20,
+    })
     variant_spec['exploration_policy_params']['type'] = (
         'GoalConditionedUniformPolicy')
     variant_spec['policy_params']['type'] = 'GoalConditionedGaussianPolicy'

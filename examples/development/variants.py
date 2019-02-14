@@ -106,7 +106,7 @@ NUM_EPOCHS_PER_DOMAIN = {
     'HandManipulateEgg': int(1e4),
     'HandManipulateBlock': int(1e4),
     'HandReach': int(1e4),
-    'Point2DEnv': int(200),
+    'Point2DEnv': int(100),
     'Reacher': int(200),
     'Pendulum': 10,
 }
@@ -208,6 +208,10 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             POLICY_PARAMS_BASE[policy],
             POLICY_PARAMS_FOR_DOMAIN[policy].get(domain, {})
         ),
+        'exploration_policy_params': {
+            'type': 'UniformPolicy',
+            'kwargs': {},
+        },
         'Q_params': {
             'type': 'double_feedforward_Q_function',
             'kwargs': {

@@ -66,22 +66,25 @@ ENV_PARAMS = {
     'Point2DEnv': {
         'Default-v0': {
             'observation_keys': ('observation', ),
+            'terminate_on_success': True,
             'fixed_goal': (5.0, 5.0),
             'reset_positions': ((-5.0, -5.0), ),
         },
         'Wall-v0': {
             'observation_keys': ('observation', ),
-            'fixed_goal': (5.0, 5.0),
+            'terminate_on_success': True,
+            # 'fixed_goal': (5.0, 5.0),
             # 'fixed_goal': (0.0, 0.0),
             # 'fixed_goal': (4.0, 0.0),
-            'reset_positions': (
-                # (-5.0, -5.0),
-                (-5.0, -4.0),
-                # (-5.0, -3.0),
-            ),
-            # 'reset_positions': None,
+            # 'reset_positions': (
+            #     # (-5.0, -5.0),
+            #     (-5.0, -4.0),
+            #     # (-5.0, -3.0),
+            # ),
+            'reset_positions': None,
             'wall_shape': tune.grid_search(['zigzag']),
             'discretize': False,
+            'target_radius': 0.1,
         }
     }
 }
@@ -101,7 +104,7 @@ NUM_EPOCHS_PER_DOMAIN = {
     'HandReach': int(1e4 + 1),
     'DClaw3': int(5e2 + 1),
     'ImageDClaw3': int(5e3 + 1),
-    'Point2DEnv': int(30 + 1)
+    'Point2DEnv': int(100 + 1)
 }
 
 
@@ -218,7 +221,7 @@ def get_variant_spec(args):
                 'n_initial_exploration_steps': int(1e3),
                 'reparameterize': True,
                 'eval_render_mode': None,
-                'eval_n_episodes': 1,
+                'eval_n_episodes': 20,
                 'eval_deterministic': True,
 
                 'lr': 3e-4,
@@ -233,9 +236,9 @@ def get_variant_spec(args):
                 'plot_distances': True,
                 'temporary_goal_update_rule': tune.grid_search([
                     # 'closest_l2_from_goal',
-                    'farthest_estimate_from_first_observation',
+                    # 'farthest_estimate_from_first_observation',
                     # 'operator_query_last_step',
-                    # 'random',
+                    'random',
                 ]),
                 'use_distance_for': tune.grid_search([
                     'reward',
@@ -248,14 +251,15 @@ def get_variant_spec(args):
             'type': 'DistancePool',
             'kwargs': {
                 'max_size': int(1e6),
-                'on_policy_window': tune.sample_from(lambda spec: (
-                    {
-                        'OnPolicyMetricLearner': 2 * max_path_length
-                    }.get(spec.get('config', spec)
-                          ['metric_learner_params']
-                          ['type'],
-                          None)
-                )),
+                'on_policy_window': tune.grid_search([1000, 2000, 4000, 8000]),
+                # tune.sample_from(lambda spec: (
+                #     {
+                #         'OnPolicyMetricLearner': 2 * max_path_length
+                #     }.get(spec.get('config', spec)
+                #           ['metric_learner_params']
+                #           ['type'],
+                #           None)
+                # )),
                 'max_pair_distance': None,
                 'path_length': max_path_length,
                 'fixed_path_length': tune.sample_from(fixed_path_length),
