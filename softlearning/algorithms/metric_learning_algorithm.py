@@ -409,20 +409,20 @@ class MetricLearningAlgorithm(SAC):
     def diagnostics_Q_values_fn(self, observations, goals, actions):
         # TODO(hartikainen): in point 2d plotter, make sure that
         # the observations and goals work correctly.
-        inputs = [observations, actions]
+        inputs = [observations, actions, goals]
         Qs = tuple(Q.predict(inputs) for Q in self._Qs)
         Qs = np.min(Qs, axis=0)
         return Qs
 
     def diagnostics_V_values_fn(self, observations, goals):
         with self._policy.set_deterministic(True):
-            actions = self._policy.actions_np([observations])
-        V_values = self.get_Q_values_fn(observations, goals, actions)
+            actions = self._policy.actions_np([observations, goals])
+        V_values = self.diagnostics_Q_values_fn(observations, goals, actions)
         return V_values
 
     def diagnostics_quiver_gradients_fn(self, observations, goals):
         with self._policy.set_deterministic(True):
-            actions = self._policy.actions_np([observations])
+            actions = self._policy.actions_np([observations, goals])
         inputs = (
             self._metric_learner._distance_estimator_inputs(
                 observations, goals, actions))
