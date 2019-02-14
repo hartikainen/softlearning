@@ -163,12 +163,6 @@ def plot_distances(figure,
     gridspec_0 = mpl.gridspec.GridSpecFromSubplotSpec(
         subplots_per_side, subplots_per_side, subplot_spec=grid_spec)
 
-    goal_estimate = algorithm._temporary_goal
-
-    algorithm._previous_goals = getattr(algorithm, '_previous_goals', np.zeros((0, 2)))
-    algorithm._previous_goals = np.append(
-        algorithm._previous_goals, goal_estimate[None], axis=0)
-
     V_star_axes = []
     V_star_axes_dict = {}
     for row in range(subplots_per_side-1, -1, -1):
@@ -387,12 +381,6 @@ def plot_V(figure,
                color=(0.0, 0.0, 1.0, 1.0),
                label='reset position',
                marker='o')
-    ax.scatter(algorithm._previous_goals[:-1, 0],
-               algorithm._previous_goals[:-1, 1],
-               s=(10 * RESOLUTION_MULTIPLIER) ** 2,
-               color=(1.0, 0.0, 0.0, 0.2),
-               marker='*',
-               label="past temporary goals")
 
     training_cmap = plt.cm.get_cmap('Set1', len(training_paths))
     for i, training_path in enumerate(training_paths):
@@ -622,8 +610,6 @@ def point_2d_plotter(algorithm,
     goals_X, goals_Y = np.meshgrid(goals_x, goals_y)
     goals_xy = np.stack([goals_X, goals_Y], axis=-1).reshape(-1, 2)
 
-    goal_estimate = algorithm._temporary_goal
-    # goals_xy[-2, :] = goal_estimate
     goals_xy[-1, :] = reset_position
 
     RESOLUTION = RESOLUTION_MULTIPLIER * 8.4
