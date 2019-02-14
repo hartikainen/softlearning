@@ -9,6 +9,14 @@ def create_goal_conditioned_sac_algorithm(variant, *args, **kwargs):
     return algorithm
 
 
+def create_her_sac_algorithm(variant, *args, **kwargs):
+    from .goal_conditioned_sac import HERSAC
+
+    algorithm = HERSAC(*args, **kwargs)
+
+    return algorithm
+
+
 def create_SAC_algorithm(variant, *args, **kwargs):
     from .sac import SAC
 
@@ -56,6 +64,7 @@ def create_SQL_algorithm(variant, *args, **kwargs):
 ALGORITHM_CLASSES = {
     'SAC': create_SAC_algorithm,
     'GoalConditionedSAC': create_goal_conditioned_sac_algorithm,
+    'HERSAC': create_her_sac_algorithm,
     'GoalConditionedMetricLearningAlgorithm': (
         create_goal_conditioned_metric_learning_algorithm),
     'MetricActorCritic': create_metric_actor_critic,
