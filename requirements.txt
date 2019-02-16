@@ -46,7 +46,7 @@ Markdown==3.0.1
 matplotlib==3.0.2
 more-itertools==4.3.0
 mujoco-py==1.50.1.68
-git+https://github.com/hartikainen/multiworld.git@dc0dd73a6600756e4e66ebdbc5cd2a154e5449a5
+git+https://github.com/hartikainen/multiworld.git@601a231fe9bca1c1571d070c7db698a8c068c6b0
 networkx==2.2
 numpy==1.15.4
 pandas==0.23.4
@@ -70,7 +70,7 @@ pytz==2018.7
 PyWavelets==1.0.1
 PyYAML==4.2b4
 psutil==5.4.8
-ray[rllib,debug]==0.6.1
+https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.7.0.dev0-cp36-cp36m-manylinux1_x86_64.whl
 redis==3.0.1
 requests==2.20.1
 rsa==3.4.2
