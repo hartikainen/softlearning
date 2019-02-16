@@ -244,14 +244,15 @@ def get_variant_spec(args):
                     'reward',
                     # 'value',
                 ]),
-                'final_exploration_proportion': 0.25,
+                'final_exploration_proportion': 0,
             }
         },
         'replay_pool_params': {
             'type': 'DistancePool',
             'kwargs': {
                 'max_size': int(1e6),
-                'on_policy_window': tune.grid_search([1000, 2000, 4000, 8000]),
+                'on_policy_window': tune.grid_search([
+                    2000, 4000, 8000, 16000]),
                 # tune.sample_from(lambda spec: (
                 #     {
                 #         'OnPolicyMetricLearner': 2 * max_path_length

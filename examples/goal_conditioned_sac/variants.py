@@ -15,6 +15,7 @@ def get_variant_spec(args):
     variant_spec['algorithm_params']['type'] = 'HERSAC'
     variant_spec['algorithm_params']['kwargs'].update({
         'eval_n_episodes': 20,
+        'plot_distances': False,
     })
     variant_spec['exploration_policy_params']['type'] = (
         'GoalConditionedUniformPolicy')
@@ -22,6 +23,7 @@ def get_variant_spec(args):
     variant_spec['sampler_params']['type'] = 'GoalSampler'
 
     variant_spec['env_params'] = metric_learning_variant_spec['env_params']
+
     variant_spec['replay_pool_params'] = metric_learning_variant_spec[
         'replay_pool_params']
     variant_spec['replay_pool_params']['kwargs'].update({
