@@ -6,6 +6,10 @@ from multiworld.envs.pygame.point2d import Point2DEnv, Point2DWallEnv
 
 
 class GoalConditionedSAC(SAC):
+    def __init__(self, *args, plot_distances=False, **kwargs):
+        self._plot_distances = plot_distances
+        super(GoalConditionedSAC, self).__init__(*args, **kwargs)
+
     def _init_placeholders(self):
         super(GoalConditionedSAC, self)._init_placeholders()
         self._goals_ph = tf.placeholder(
@@ -34,31 +38,6 @@ class GoalConditionedSAC(SAC):
             batch['observations'], batch['goals']])
         return policy_diagnostics
 
-
-class HERSAC(GoalConditionedSAC):
-    def _get_Q_target(self):
-        action_inputs = self._action_inputs(
-            observations=self._next_observations_ph)
-        next_actions = self._policy.actions(action_inputs)
-        next_log_pis = self._policy.log_pis(action_inputs, next_actions)
-
-        Q_inputs = self._Q_inputs(
-            observations=self._next_observations_ph, actions=next_actions)
-        next_Qs_values = tuple(Q(Q_inputs) for Q in self._Q_targets)
-
-        min_next_Q = tf.reduce_min(next_Qs_values, axis=0)
-        next_value = min_next_Q - self._alpha * next_log_pis
-
-        rewards = -1.0
-        values = (1 - self._terminals_ph) * next_value
-
-        Q_target = td_target(
-            reward=rewards,
-            discount=self._discount,
-            next_value=values)
-
-        return Q_target
-
     def diagnostics_distances_fn(self, observations, goals):
         distances = -self.diagnostics_V_values_fn(observations, goals)
         return distances
@@ -85,7 +64,7 @@ class HERSAC(GoalConditionedSAC):
         diagnostics = super(GoalConditionedSAC, self).get_diagnostics(
             iteration, batch, training_paths, evaluation_paths)
 
-        if True or self._plot_distances:
+        if self._plot_distances:
             if isinstance(self._env.unwrapped, (Point2DEnv, Point2DWallEnv)):
                 from softlearning.visualization import point_2d_plotter
                 point_2d_plotter.point_2d_plotter(
@@ -99,3 +78,28 @@ class HERSAC(GoalConditionedSAC):
                     get_V_values_fn=self.diagnostics_V_values_fn)
 
         return diagnostics
+
+
+class HERSAC(GoalConditionedSAC):
+    def _get_Q_target(self):
+        action_inputs = self._action_inputs(
+            observations=self._next_observations_ph)
+        next_actions = self._policy.actions(action_inputs)
+        next_log_pis = self._policy.log_pis(action_inputs, next_actions)
+
+        Q_inputs = self._Q_inputs(
+            observations=self._next_observations_ph, actions=next_actions)
+        next_Qs_values = tuple(Q(Q_inputs) for Q in self._Q_targets)
+
+        min_next_Q = tf.reduce_min(next_Qs_values, axis=0)
+        next_value = min_next_Q - self._alpha * next_log_pis
+
+        rewards = -1.0
+        values = (1 - self._terminals_ph) * next_value
+
+        Q_target = td_target(
+            reward=rewards,
+            discount=self._discount,
+            next_value=values)
+
+        return Q_target
