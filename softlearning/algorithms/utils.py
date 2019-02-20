@@ -25,14 +25,6 @@ def create_SAC_algorithm(variant, *args, **kwargs):
     return algorithm
 
 
-def create_metric_actor_critic(variant, *args, **kwargs):
-    from .metric_actor_critic import MetricActorCritic
-
-    algorithm = MetricActorCritic(*args, **kwargs)
-
-    return algorithm
-
-
 def create_goal_conditioned_metric_learning_algorithm(
         variant,
         *args,
@@ -67,7 +59,6 @@ ALGORITHM_CLASSES = {
     'HERSAC': create_her_sac_algorithm,
     'GoalConditionedMetricLearningAlgorithm': (
         create_goal_conditioned_metric_learning_algorithm),
-    'MetricActorCritic': create_metric_actor_critic,
     'MetricLearningAlgorithm': create_metric_learning_algorithm,
     'SQL': create_SQL_algorithm,
 }
