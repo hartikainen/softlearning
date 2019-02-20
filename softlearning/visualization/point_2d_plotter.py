@@ -236,9 +236,6 @@ def plot_distances(figure,
                        marker=('o' if i - goals_xy.shape[0] == -1 else '*'),
                        label='s1')
 
-            # if i == num_heatmaps - 1:
-            #     ax.plot(*reset_position, 'go')
-
     colorbar_ax, kw = mpl.colorbar.make_axes(
         V_star_axes,
         location='bottom',)
@@ -275,15 +272,11 @@ def plot_Q(figure,
     actions_xy = np.stack([actions_X, actions_Y], axis=-1).reshape(-1, 2)
 
     Q_axes = []
-    # for row in range(subplots_per_side-1, -1, -1):
     for row in range(subplots_per_side):
         for column in range(subplots_per_side):
             i = row * subplots_per_side + column
             ax = figure.add_subplot(gridspec_01[row, column])
-            # ax = subplots[row][column]
             Q_axes.append(ax)
-
-            # raise ValueError('nope')
 
             position = observations_xy[i, :]
             goal = goals_xy[i, :]
@@ -314,7 +307,6 @@ def plot_Q(figure,
                 linestyles='dashed',
                 extend='both',
                 cmap='PuBuGn')
-            # ax.plot(*state, 'go')
 
     colorbar_ax, kw = mpl.colorbar.make_axes(
         Q_axes,
@@ -335,10 +327,7 @@ def plot_V(figure,
     min_y, max_y = algorithm._env.unwrapped.observation_y_bounds
 
     nx = ny = int(np.sqrt(observations_xy.shape[0]))
-    # V_pi
     ax = figure.add_subplot(grid_spec)
-    # figure = plt.figure(figsize=(8.4, 8.4))
-    # ax = figure.gca()
 
     ax.set_xlim([min_x, max_x])
     ax.set_ylim([min_y, max_y])
@@ -525,13 +514,7 @@ def plot_distance_quiver(figure,
 
             M = np.hypot(U, V)
 
-            quiver = ax.quiver(
-                X, Y, U, V, M,
-                # units='xy',
-                # angles='xy',
-                # scale_units='xy',
-                # scale=1,
-            )
+            quiver = ax.quiver(X, Y, U, V, M)
 
             wall_collection, wall_rectangles = plot_walls(
                 ax, algorithm._env.unwrapped.walls)
@@ -554,17 +537,6 @@ def plot_distance_quiver(figure,
         bbox_transform=ax.transData)
 
 
-def plot_lagrange_multipliers(figure,
-                              grid_spec,
-                              algorithm,
-                              observations_xy,
-                              goals_xy,
-                              evaluation_paths,
-                              num_heatmaps=16):
-    from pdb import set_trace; from pprint import pprint; set_trace()
-    pass
-
-
 def point_2d_plotter(algorithm,
                      iteration,
                      training_paths,
@@ -578,14 +550,6 @@ def point_2d_plotter(algorithm,
     heatmap_dir = os.path.join(log_base_dir, 'vf_heatmap')
     if not os.path.exists(heatmap_dir):
         os.makedirs(heatmap_dir)
-
-    PLOT = (
-        'distances',
-        # 'Q',
-        'distance-quiver',
-        'V',
-        # 'lagrange-multipliers'
-    )
 
     num_heatmaps = 16
     subplots_per_side = int(np.sqrt(num_heatmaps))
@@ -613,11 +577,20 @@ def point_2d_plotter(algorithm,
     goals_xy[-1, :] = reset_position
 
     RESOLUTION = RESOLUTION_MULTIPLIER * 8.4
-    fig = plt.figure(figsize=(RESOLUTION * len(PLOT), RESOLUTION), frameon=False)
-    grid_spec = mpl.gridspec.GridSpec(1, len(PLOT))
+    num_plots = sum(
+        (fn is not None)
+        for fn in
+        (get_distances_fn,
+         get_quiver_gradients_fn,
+         get_Q_values_fn,
+         get_V_values_fn)
+    )
+    figure_size = (RESOLUTION * num_plots, RESOLUTION)
+    fig = plt.figure(figsize=figure_size, frameon=False)
+    grid_spec = mpl.gridspec.GridSpec(1, num_plots)
 
     i = 0
-    if 'distances' in PLOT:
+    if get_distances_fn is not None:
         plot_distances(fig,
                        grid_spec[i],
                        algorithm,
@@ -634,7 +607,7 @@ def point_2d_plotter(algorithm,
                  size=15 * RESOLUTION_MULTIPLIER)
         i += 1
 
-    if 'distance-quiver' in PLOT and get_quiver_gradients_fn is not None:
+    if get_quiver_gradients_fn is not None:
         x_delta = (max_x - min_x) / 10.0
         y_delta = (max_y - min_y) / 10.0
         quiver_goals = np.array((
@@ -664,7 +637,7 @@ def point_2d_plotter(algorithm,
                  size=15 * RESOLUTION_MULTIPLIER)
         i += 1
 
-    if 'Q' in PLOT and get_Q_values_fn is not None:
+    if get_Q_values_fn is not None:
         plot_Q(fig,
                grid_spec[i],
                algorithm,
@@ -674,7 +647,7 @@ def point_2d_plotter(algorithm,
                num_heatmaps=num_heatmaps)
         i += 1
 
-    if 'V' in PLOT and get_V_values_fn is not None:
+    if get_V_values_fn is not None:
         V_title = f"Value function with training/evaluation rollouts."
         x_min, x_max = grid_spec[i].get_position(fig).extents[[0, 2]]
         V_title_x_position = (x_max + x_min) / 2
@@ -693,16 +666,6 @@ def point_2d_plotter(algorithm,
                  horizontalalignment='center',
                  size=15 * RESOLUTION_MULTIPLIER)
 
-        i += 1
-
-    if 'lagrange-multipliers' in PLOT:
-        plot_lagrange_multipliers(fig,
-                                  grid_spec[i],
-                                  algorithm,
-                                  observations_xy,
-                                  goals_xy,
-                                  evaluation_paths,
-                                  num_heatmaps=num_heatmaps)
         i += 1
 
     fig.suptitle(f'iteration={iteration}',
