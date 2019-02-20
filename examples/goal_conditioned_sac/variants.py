@@ -24,6 +24,9 @@ def get_variant_spec(args):
     variant_spec['policy_params']['type'] = 'GoalConditionedGaussianPolicy'
     variant_spec['sampler_params']['type'] = 'GoalSampler'
 
+    variant_spec['target_proposer_params'] = metric_learning_variant_spec[
+        'target_proposer_params'].copy()
+
     variant_spec['env_params'] = (
         metric_learning_variant_spec['env_params'].copy())
 

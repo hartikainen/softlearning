@@ -1,14 +1,24 @@
 import numpy as np
 import tensorflow as tf
 
+from softlearning.utils.numpy import softmax
 from .sac import SAC, td_target
 from multiworld.envs.pygame.point2d import Point2DEnv, Point2DWallEnv
 
 
 class GoalConditionedSAC(SAC):
-    def __init__(self, *args, plot_distances=False, **kwargs):
+    def __init__(self,
+                 env,
+                 target_proposer,
+                 *args,
+                 plot_distances=False,
+                 final_exploration_proportion=0.25,
+                 **kwargs):
+        self._target_proposer = target_proposer
         self._plot_distances = plot_distances
-        super(GoalConditionedSAC, self).__init__(*args, **kwargs)
+        self._final_exploration_proportion = final_exploration_proportion
+
+        super(GoalConditionedSAC, self).__init__(env=env, *args, **kwargs)
 
     def _init_placeholders(self):
         super(GoalConditionedSAC, self)._init_placeholders()
@@ -23,6 +33,37 @@ class GoalConditionedSAC(SAC):
 
     def _Q_inputs(self, observations, actions):
         return [observations, actions, self._goals_ph]
+
+    def _update_goal(self, training_paths):
+        new_goal = self._target_proposer.propose_target(training_paths)
+
+        self._env.unwrapped.set_goal(new_goal)
+        if isinstance(self._env.unwrapped, (Point2DEnv, Point2DWallEnv)):
+            self._env.unwrapped.optimal_policy.set_goal(new_goal)
+
+    def _epoch_after_hook(self, training_paths):
+        self._previous_training_paths = training_paths
+
+    def _timestep_before_hook(self, *args, **kwargs):
+        if self.sampler._path_length == 0:
+            self._update_goal(self.sampler.get_last_n_paths(1))
+
+        random_explore_after = (
+            self.sampler._max_path_length
+            * (1.0 - self._final_exploration_proportion))
+        if (self.sampler._path_length >= random_explore_after):
+            self.sampler.initialize(
+                self._env, self._initial_exploration_policy, self._pool)
+            # self.sampler.initialize(
+            #     self._env, self._env.unwrapped.optimal_policy, self._pool)
+        else:
+            # self.sampler.initialize(
+            #     self._env, self._initial_exploration_policy, self._pool)
+            self.sampler.initialize(self._env, self._policy, self._pool)
+            # self.sampler.initialize(
+            #     self._env, self._env.unwrapped.optimal_policy, self._pool)
+            if self.sampler.policy is not self._policy:
+                assert isinstance(self._env.unwrapped, Point2DEnv)
 
     def _get_feed_dict(self, iteration, batch):
         """Construct TensorFlow feed_dict from sample batch."""

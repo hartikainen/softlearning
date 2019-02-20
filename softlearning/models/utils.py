@@ -31,3 +31,18 @@ def get_metric_learner_from_variant(variant, env):
         metric_learner = HingeMetricLearner(**metric_learner_kwargs)
 
     return metric_learner
+
+
+def get_target_proposer_from_variant(variant, *args, **kwargs):
+    from . import target_proposer as target_proposer_lib
+
+    target_proposer_params = variant['target_proposer_params']
+    target_proposer_type = target_proposer_params['type']
+    target_proposer_kwargs = deepcopy(target_proposer_params['kwargs'])
+
+    target_proposer_class = getattr(target_proposer_lib, target_proposer_type)
+
+    target_proposer = target_proposer_class(
+        *args, **target_proposer_kwargs, **kwargs)
+
+    return target_proposer

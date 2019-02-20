@@ -234,12 +234,6 @@ def get_variant_spec(args):
                 'save_full_state': False,
 
                 'plot_distances': True,
-                'temporary_goal_update_rule': tune.grid_search([
-                    # 'closest_l2_from_goal',
-                    # 'farthest_estimate_from_first_observation',
-                    # 'operator_query_last_step',
-                    'random',
-                ]),
                 'use_distance_for': tune.grid_search([
                     'reward',
                     # 'value',
@@ -247,6 +241,25 @@ def get_variant_spec(args):
                 'final_exploration_proportion': 0,
             }
         },
+        # 'target_proposer_params': {
+        #     'type': 'UnsupervisedTargetProposer',
+        #     'kwargs': {
+        #         'target_proposal_rule': tune.grid_search([
+        #             # 'closest_l2_from_goal',
+        #             # 'farthest_l2_from_first_observation',
+        #             'farthest_estimate_from_first_observation',
+        #             # 'random_weighted_estimate_from_first_observation',
+        #         ]),
+        #     },
+        # },
+        'target_proposer_params': {
+            'type': 'RandomTargetProposer',
+            'kwargs': {}
+        },
+        # 'target_proposer_params': {
+        #     'type': 'SemiSupervisedTargetProposer',
+        #     'kwargs': {},
+        # },
         'replay_pool_params': {
             'type': 'DistancePool',
             'kwargs': {

@@ -1,5 +1,7 @@
 from copy import deepcopy
 
+from softlearning.models.utils import get_target_proposer_from_variant
+
 
 def create_goal_conditioned_sac_algorithm(variant, *args, **kwargs):
     from .goal_conditioned_sac import GoalConditionedSAC
@@ -64,13 +66,32 @@ ALGORITHM_CLASSES = {
 }
 
 
+NEEDS_TARGET_PROPOSER = (
+    'MetricLearningAlgorithm',
+    'GoalConditionedMetricLearningAlgorithm',
+    'GoalConditionedSAC',
+    'HERSAC',
+)
+
+
 def get_algorithm_from_variant(variant,
                                *args,
                                **kwargs):
     algorithm_params = variant['algorithm_params']
     algorithm_type = algorithm_params['type']
     algorithm_kwargs = deepcopy(algorithm_params['kwargs'])
+
+    if algorithm_type in NEEDS_TARGET_PROPOSER:
+        env = kwargs['env']
+        pool = kwargs['pool']
+        target_proposer = get_target_proposer_from_variant(
+            variant, env=env, pool=pool)
+        algorithm_kwargs['target_proposer'] = target_proposer
+
     algorithm = ALGORITHM_CLASSES[algorithm_type](
         variant, *args, **algorithm_kwargs, **kwargs)
+
+    if algorithm_type in NEEDS_TARGET_PROPOSER:
+        target_proposer.set_distance_fn(algorithm.diagnostics_distances_fn)
 
     return algorithm
