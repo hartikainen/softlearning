@@ -43,7 +43,6 @@ class MetricLearningAlgorithm(SAC):
         self._plot_distances = plot_distances
         self._metric_learner = metric_learner
         self._goal = getattr(env.unwrapped, 'fixed_goal', None)
-        self._temporary_goal = None
         self._first_observation = None
         self._temporary_goal_update_rule = temporary_goal_update_rule
         self._final_exploration_proportion = final_exploration_proportion

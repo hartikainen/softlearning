@@ -53,9 +53,8 @@ class DistancePool(SimpleReplayPool):
             if cumulative_samples >= self._on_policy_window:
                 break
 
-        possible_path_lengths = tuple(islice(
-            self.path_lengths, path_index, len(self.path_lengths)))
-        possible_path_lengths = np.array(possible_path_lengths)
+        possible_path_lengths = np.array(tuple(islice(
+            self.path_lengths, path_index, len(self.path_lengths))))
         path_weights = possible_path_lengths / np.sum(possible_path_lengths)
         path_probabilities = softmax(path_weights)
 
