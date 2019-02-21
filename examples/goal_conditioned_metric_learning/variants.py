@@ -20,9 +20,9 @@ def get_variant_spec(args):
     variant_spec['sampler_params']['type'] = 'GoalSampler'
     variant_spec['replay_pool_params']['kwargs'].update({
         'her_strategy': {
-            'type': tune.grid_search(['episode', 'final', 'future', 'random']),
+            'type': tune.grid_search(['episode', 'final', 'future', 'random', 'goal']),
             'resampling_probability': tune.grid_search([
-                0.0, 0.5, 0.8, 1.0])
+                0.0, 0.5, 0.8, 0.9, 1.0])
         }
     })
 
