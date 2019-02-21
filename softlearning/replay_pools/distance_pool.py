@@ -166,7 +166,9 @@ class DistancePool(SimpleReplayPool):
             path_length = path_observations.shape[0]
             random_start_index = np.random.randint(0, path_length)
 
-            assert np.all(path['observations.desired_goal'] == path['observations.desired_goal'][0])
+            assert np.all(
+                path['observations.desired_goal']
+                == path['observations.desired_goal'][0])
 
             if self._her_strategy:
                 her_strategy_type = self._her_strategy['type']
@@ -236,9 +238,6 @@ class DistancePool(SimpleReplayPool):
         if not self._fixed_path_length:
             return self.variable_length_random_batch(
                 batch_size, *args, **kwargs)
-
-        import time
-        start = time.now()
 
         assert self._path_length is not None
         num_full_rollouts = self.size // self._path_length
@@ -345,6 +344,8 @@ class DistancePool(SimpleReplayPool):
                 goals = samples.get(
                     'observations.observation', samples.get('observations'))
                 goals[where_resampled] = goals
+            elif her_strategy_type == 'goal':
+                pass
             else:
                 if her_strategy_type == 'final':
                     goal_indices = (
@@ -374,9 +375,6 @@ class DistancePool(SimpleReplayPool):
 
                 goals[where_resampled] = goals_batch.get(
                     'observations.observation', goals_batch.get('observations'))
-
-        end = time.now()
-        print(f"time elapsed: {end - start}")
 
         batch.update({
             'distance_pairs_observations': pairs_observations,
