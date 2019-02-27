@@ -146,7 +146,7 @@ class RLAlgorithm(tf.contrib.checkpoint.Checkpointable):
                 env, initial_exploration_policy, pool)
 
         self.sampler.initialize(env, policy, pool)
-        evaluation_env = env if self._eval_n_episodes else None
+        evaluation_env = env.copy() if self._eval_n_episodes else None
 
         gt.reset_root()
         gt.rename_root('RLAlgorithm')
