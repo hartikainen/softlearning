@@ -6,7 +6,6 @@ implementing a mujoco env, you would implement it under gym.mujoco submodule.
 """
 
 import gym
-from sac_envs.envs import dclaw
 
 
 CUSTOM_GYM_ENVIRONMENTS_PATH = __package__
@@ -147,9 +146,13 @@ def register_multiworld_environments():
 
 
 def register_environments():
+    from sac_envs.envs.dclaw import (
+        register_environments as register_dclaw_environments)
+
     registered_mujoco_environments = register_mujoco_environments()
     registered_general_environments = register_general_environments()
     registered_multiworld_environments = register_multiworld_environments()
+    register_dclaw_environments()
 
     return (
         *registered_mujoco_environments,
