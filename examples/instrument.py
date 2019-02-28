@@ -276,11 +276,22 @@ def run_example_cluster(example_module_name, example_argv):
         include_webui=example_args.include_webui,
         temp_dir=example_args.temp_dir)
 
+    median_stopping_rule = tune.schedulers.MedianStoppingRule(
+        time_attr='epoch',
+        reward_attr=(
+            'training'
+            '/env_infos'
+            '/object_target_distance_reward-last-mean'),
+        grace_period=50.0,
+        min_samples_required=10,
+        hard_stop=True,
+        verbose=True)
+
     tune.run_experiments(
         experiments,
         with_server=example_args.with_server,
         server_port=4321,
-        scheduler=None)
+        scheduler=median_stopping_rule)
 
 
 def launch_example_cluster(example_module_name,
