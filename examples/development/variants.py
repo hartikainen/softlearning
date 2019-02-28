@@ -37,7 +37,7 @@ POLICY_PARAMS_FOR_DOMAIN.update({
 DEFAULT_MAX_PATH_LENGTH = 1000
 MAX_PATH_LENGTH_PER_DOMAIN = {
     'Point2DEnv': 50,
-    'DClaw3': 200,
+    'DClaw3': tune.grid_search([100, 200]),
     'HardwareDClaw3': 200,
     'Pendulum': 200,
     'Pusher2d': 100,
@@ -123,10 +123,12 @@ ALGORITHM_PARAMS_PER_DOMAIN = {
             'kwargs': {
                 'n_epochs': NUM_EPOCHS_PER_DOMAIN.get(
                     domain, DEFAULT_NUM_EPOCHS),
-                'n_initial_exploration_steps': (
-                    MAX_PATH_LENGTH_PER_DOMAIN.get(
-                        domain, DEFAULT_MAX_PATH_LENGTH
-                    ) * 10),
+                'n_initial_exploration_steps': tune.sample_from(lambda spec: (
+                    10 * spec.get('config', spec)
+                    ['sampler_params']
+                    ['kwargs']
+                    ['max_path_length']
+                ))
             }
         } for domain in NUM_EPOCHS_PER_DOMAIN
     }
@@ -202,26 +204,25 @@ ENV_PARAMS = {
         }
     },
     'DClaw3': {
-        'ScrewV2-v0': tune.grid_search([
-            {
-                'object_target_distance_reward_fn': NegativeLogLossFn(1e-6),
-                'pose_difference_cost_coeff': 0,
-                'joint_velocity_cost_coeff': 0,
-                'joint_acceleration_cost_coeff': 0,
-                'target_initial_velocity_range': (0, 0),
-                'target_initial_position_range': target_initial_position_range,
-                'object_initial_velocity_range': (0, 0),
-                'object_initial_position_range': object_initial_position_range,
-            }
-            for target_initial_position_range, object_initial_position_range
-            in (
-                    ((np.pi, np.pi), (0, 0)),
-                    ((np.pi, np.pi), (-np.pi, np.pi)),
-                    ((-np.pi, np.pi), (-np.pi, np.pi)),
-                    ((np.pi, np.pi), None),
-                    ((-np.pi, np.pi), None),
-            )
-        ]),
+        'ScrewV2-v0': {
+            'object_target_distance_reward_fn': tune.grid_search([
+                *[
+                    NegativeLogLossFn(eps)
+                    for eps in [1e-7, 1e-6, 1e-5]
+                ],
+            ]),
+            'pose_difference_cost_coeff': tune.grid_search([
+                1e-4, 1e-2, 0
+            ]),
+            'joint_velocity_cost_coeff': tune.grid_search([
+                1e-4, 1e-2, 0
+            ]),
+            'joint_acceleration_cost_coeff': 0,
+            'target_initial_velocity_range': (0, 0),
+            'target_initial_position_range': (np.pi, np.pi),
+            'object_initial_velocity_range': (0, 0),
+            'object_initial_position_range': (0, 0),
+        },
         'ImageScrewV2-v0': tune.grid_search([
             {
                 'image_shape': (32, 32, 3),
