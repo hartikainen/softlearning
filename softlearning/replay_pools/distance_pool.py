@@ -76,8 +76,8 @@ class DistancePool(SimpleReplayPool):
             path_length = path_observations.shape[0]
             random_start_index = np.random.randint(0, path_length)
             random_offset = np.random.randint(
-                0, np.minimum(
-                    path_length - random_start_index,
+                0, 1 + np.minimum(
+                    path_length - 1 - random_start_index,
                     self._max_pair_distance))
             random_end_index = random_start_index + random_offset
 
@@ -238,6 +238,8 @@ class DistancePool(SimpleReplayPool):
         if not self._fixed_path_length:
             return self.variable_length_random_batch(
                 batch_size, *args, **kwargs)
+
+        raise NotImplementedError
 
         assert self._path_length is not None
         num_full_rollouts = self.size // self._path_length
