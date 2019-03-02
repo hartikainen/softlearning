@@ -1,12 +1,8 @@
 import os
 import copy
 import glob
-import json
 import pickle
 import sys
-
-import tracemalloc
-import linecache
 
 import tensorflow as tf
 from ray import tune
@@ -20,85 +16,6 @@ from softlearning.value_functions.utils import get_Q_function_from_variant
 
 from softlearning.misc.utils import set_seed, initialize_tf_variables
 from examples.instrument import run_example_local
-
-
-class MemoryDebugger(object):
-    def __init__(self, filename_patterns=()):
-        self.filename_patterns = filename_patterns
-
-    def _take_snapshot(self):
-        snapshot = tracemalloc.take_snapshot().filter_traces([
-            tracemalloc.Filter(True, filename_pattern)
-            for filename_pattern in self.filename_patterns
-        ])
-        return snapshot
-
-    def __enter__(self):
-        snapshot = self._take_snapshot()
-        self.snapshot_before = snapshot
-
-    def __exit__(self, *_):
-        snapshot_before = self.snapshot_before
-        snapshot_after = self.snapshot_after = self._take_snapshot()
-        snapshot_diff = snapshot_after.compare_to(snapshot_before, 'lineno')
-        self.snapshot_diff = snapshot_diff
-
-    def _statistic_filename(self, statistic):
-        frame = statistic.traceback[0]
-        return os.sep.join(frame.filename.split(os.sep)[-3:])
-
-    def save_and_display_top(self, save_dir, key_type='lineno', limit=25):
-        snapshot = self.snapshot_after
-        top_stats = snapshot.statistics(key_type)
-
-        json_file_path = os.path.join(save_dir, 'memory_diagnostics.json')
-
-        def statistic_key(statistic):
-            pretty_filename = self._statistic_filename(statistic)
-            line_number = statistic.traceback[0].lineno
-
-            return f"{pretty_filename}:{line_number}"
-
-        with open(json_file_path, 'a') as f:
-            json_row = json.dumps({
-                statistic_key(statistic): statistic.size / 1024
-                for statistic in top_stats
-            })
-            f.write(json_row + "\n")
-
-        print("Top %s lines" % limit)
-        for index, stat in enumerate(top_stats[:limit], 1):
-            frame = stat.traceback[0]
-            # replace "/path/to/module/file.py" with "module/file.py"
-            filename = os.sep.join(frame.filename.split(os.sep)[-3:])
-            print("#%s: %s:%s: %.1f KiB"
-                  % (index, filename, frame.lineno, stat.size / 1024))
-            line = linecache.getline(frame.filename, frame.lineno).strip()
-            if line:
-                print('    %s' % line)
-        print("")
-
-        other = top_stats[limit:]
-        if other:
-            size = sum(stat.size for stat in other)
-            print("%s other: %.1f KiB\n" % (len(other), size / 1024))
-        total = sum(stat.size for stat in top_stats)
-        print("Total allocated size: %.1f KiB\n\n" % (total / 1024))
-
-    def get_diagnostics(self):
-        top_stats = self.snapshot_after.statistics('filename')
-
-        total_memory_usage = sum(stat.size for stat in top_stats) / 1024
-        diagnostics = {
-            'total-memory-usage': total_memory_usage,
-            **{
-                f"{self._statistic_filename(statistic)}-memory-usage": (
-                    statistic.size / 1024)
-                for statistic in top_stats
-            }
-        }
-
-        return diagnostics
 
 
 class ExperimentRunner(tune.Trainable):
@@ -142,12 +59,6 @@ class ExperimentRunner(tune.Trainable):
 
         initialize_tf_variables(self._session, only_uninitialized=True)
 
-        self.memory_debugger = MemoryDebugger((
-            "*softlearning/softlearning*",
-            "*sac_envs*",
-        ))
-        tracemalloc.start()
-
         self._built = True
 
     def _train(self):
@@ -158,14 +69,6 @@ class ExperimentRunner(tune.Trainable):
             self.train_generator = self.algorithm.train()
 
         diagnostics = next(self.train_generator)
-
-        diagnostics.update({
-            f'memory/{key} [KiB]': value
-            for key, value in
-            self.memory_debugger.get_diagnostics().items()
-        })
-
-        self.memory_debugger.save_and_display_top(os.getcwd())
 
         return diagnostics
 
