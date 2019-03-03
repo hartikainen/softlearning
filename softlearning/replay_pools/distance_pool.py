@@ -239,7 +239,11 @@ class DistancePool(SimpleReplayPool):
             return self.variable_length_random_batch(
                 batch_size, *args, **kwargs)
 
-        raise NotImplementedError
+        raise NotImplementedError(
+            "TODO(hartikainen): This does not have HER-strategy implemented."
+            " Change the `metric_learning.variants.fixed_path_length` so that it"
+            " returns `False` or manually set the above condition to always"
+            " evaluate to `True`.")
 
         assert self._path_length is not None
         num_full_rollouts = self.size // self._path_length
