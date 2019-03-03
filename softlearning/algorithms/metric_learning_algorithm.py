@@ -313,11 +313,8 @@ class MetricLearningAlgorithm(SAC):
                     get_quiver_gradients_fn=self.diagnostics_quiver_gradients_fn,
                     get_Q_values_fn=self.diagnostics_Q_values_fn,
                     get_V_values_fn=self.diagnostics_V_values_fn)
-
-            elif isinstance(self._env.unwrapped, FixedTargetReacherEnv):
-                from softlearning.visualization import fixed_target_reacher_plotter
-                fixed_target_reacher_plotter.fixed_target_reacher_plotter(
-                    self, iteration, training_paths, evaluation_paths)
+            else:
+                raise NotImplementedError(self._env.unwrapped)
 
         return diagnostics
 

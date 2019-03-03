@@ -103,7 +103,7 @@ class MetricLearner(object):
                     raise NotImplementedError
                 to_concat.append(observations2[:, :2])
             else:
-                raise NotImplementedError(self._env)
+                raise NotImplementedError(self._env.unwrapped)
 
         elif self._distance_input_type == 'xy_velocities':
             if isinstance(self._env.unwrapped,
@@ -127,7 +127,7 @@ class MetricLearner(object):
                 xy_velocities = observations2[:, qvel_start_idx:qvel_end_idx]
                 to_concat.append(xy_velocities)
             else:
-                raise NotImplementedError(self._env)
+                raise NotImplementedError(self._env.unwrapped)
 
         elif self._distance_input_type == 'reward_sum':
             raise NotImplementedError(self._distance_input_type)
