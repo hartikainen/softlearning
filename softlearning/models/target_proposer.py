@@ -6,18 +6,12 @@ from gym.envs.mujoco.ant import AntEnv as GymAntEnv
 from gym.envs.mujoco.humanoid import HumanoidEnv as GymHumanoidEnv
 from multiworld.envs.pygame.point2d import Point2DEnv, Point2DWallEnv
 
-from softlearning.environments.gym.mujoco.swimmer import (
-    SwimmerEnv as CustomSwimmerEnv)
-from softlearning.environments.gym.mujoco.ant import (
-    AntEnv as CustomAntEnv)
-from softlearning.environments.gym.mujoco.humanoid import (
-    HumanoidEnv as CustomHumanoidEnv)
-from softlearning.environments.gym.mujoco.half_cheetah import (
-    HalfCheetahEnv as CustomHalfCheetahEnv)
-from softlearning.environments.gym.mujoco.hopper import (
-    HopperEnv as CustomHopperEnv)
-from softlearning.environments.gym.mujoco.walker2d import (
-    Walker2dEnv as CustomWalker2dEnv)
+from gym.envs.mujoco.swimmer_v3 import SwimmerEnv
+from gym.envs.mujoco.ant_v3 import AntEnv
+from gym.envs.mujoco.humanoid_v3 import HumanoidEnv
+from gym.envs.mujoco.half_cheetah_v3 import HalfCheetahEnv
+from gym.envs.mujoco.hopper_v3 import HopperEnv
+from gym.envs.mujoco.walker2d_v3 import Walker2dEnv
 
 from softlearning.utils.numpy import softmax
 
@@ -143,12 +137,12 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
 
         elif isinstance(
                 env,
-                (CustomSwimmerEnv,
-                 CustomAntEnv,
-                 CustomHumanoidEnv,
-                 CustomHalfCheetahEnv,
-                 CustomHopperEnv,
-                 CustomWalker2dEnv)):
+                (SwimmerEnv,
+                 AntEnv,
+                 HumanoidEnv,
+                 HalfCheetahEnv,
+                 HopperEnv,
+                 Walker2dEnv)):
             if env._exclude_current_positions_from_observation:
                 raise NotImplementedError
             position_idx = slice(0, 2)

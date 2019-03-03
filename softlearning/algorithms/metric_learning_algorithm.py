@@ -5,18 +5,12 @@ from multiworld.envs.pygame.point2d import Point2DEnv, Point2DWallEnv
 
 from softlearning.algorithms.sac import SAC, td_target
 
-from softlearning.environments.gym.mujoco.swimmer import (
-    SwimmerEnv as CustomSwimmerEnv)
-from softlearning.environments.gym.mujoco.ant import (
-    AntEnv as CustomAntEnv)
-from softlearning.environments.gym.mujoco.humanoid import (
-    HumanoidEnv as CustomHumanoidEnv)
-from softlearning.environments.gym.mujoco.half_cheetah import (
-    HalfCheetahEnv as CustomHalfCheetahEnv)
-from softlearning.environments.gym.mujoco.hopper import (
-    HopperEnv as CustomHopperEnv)
-from softlearning.environments.gym.mujoco.walker2d import (
-    Walker2dEnv as CustomWalker2dEnv)
+from gym.envs.mujoco.swimmer_v3 import SwimmerEnv
+from gym.envs.mujoco.ant_v3 import AntEnv
+from gym.envs.mujoco.humanoid_v3 import HumanoidEnv
+from gym.envs.mujoco.half_cheetah_v3 import HalfCheetahEnv
+from gym.envs.mujoco.hopper_v3 import HopperEnv
+from gym.envs.mujoco.walker2d_v3 import Walker2dEnv
 
 
 class MetricLearningAlgorithm(SAC):
@@ -205,12 +199,12 @@ class MetricLearningAlgorithm(SAC):
             result['max_xy_distance'] = max_xy_distance
 
         elif isinstance(self._env.unwrapped,
-                        (CustomSwimmerEnv,
-                         CustomAntEnv,
-                         CustomHumanoidEnv,
-                         CustomHalfCheetahEnv,
-                         CustomHopperEnv,
-                         CustomWalker2dEnv)):
+                        (SwimmerEnv,
+                         AntEnv,
+                         HumanoidEnv,
+                         HalfCheetahEnv,
+                         HopperEnv,
+                         Walker2dEnv)):
             if self._env.unwrapped._exclude_current_positions_from_observation:
                 raise NotImplementedError
             all_observations = np.concatenate(
