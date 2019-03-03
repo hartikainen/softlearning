@@ -41,13 +41,12 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
         self._target_proposal_rule = target_proposal_rule
 
     def propose_target(self, paths):
-        ultimate_goal = getattr(self._env.unwrapped, 'fixed_goal', None)
-
         if self._first_observation is None:
             self._first_observation = paths[0].get(
                 'observations.observation', paths[0].get('observations'))[0]
 
         if self._target_proposal_rule == 'closest_l2_from_goal':
+            ultimate_goal = getattr(self._env.unwrapped, 'ultimate_goal', None)
             new_observations = np.concatenate([
                 path.get('observations.observation', path.get('observations'))
                 for path in paths
@@ -106,7 +105,7 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
     def propose_target(self, paths):
         env = self._env.unwrapped
 
-        ultimate_goal = getattr(self._env.unwrapped, 'fixed_goal', None)
+        ultimate_goal = getattr(self._env.unwrapped, 'ultimate_goal', None)
 
         new_observations = np.concatenate([
             path.get('observations.observation', path.get('observations'))
