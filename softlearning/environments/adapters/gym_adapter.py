@@ -34,12 +34,12 @@ def raise_on_use_wrapper(e):
 
 try:
     from sac_envs.envs.dclaw.dclaw3_screw_v2 import DClaw3ScrewV2
-    from sac_envs.envs.dclaw.dclaw3_screw_v2 import ImageDClaw3Screw
+    from sac_envs.envs.dclaw.dclaw3_screw_v2 import DClaw3ImageScrewV2
     from sac_envs.envs.dclaw.dclaw3_flip_v1 import DClaw3FlipV1
 except ModuleNotFoundError as e:
     DClaw3FlipV1 = raise_on_use_wrapper(e)
     DClaw3ScrewV2 = raise_on_use_wrapper(e)
-    ImageDClaw3Screw = raise_on_use_wrapper(e)
+    DClaw3ImageScrewV2 = raise_on_use_wrapper(e)
 
 try:
     from multiworld.envs.pygame.point2d import Point2DEnv, Point2DWallEnv
@@ -119,7 +119,7 @@ GYM_ENVIRONMENTS = {
         'FlipV1': DClaw3FlipV1,
     },
     'ImageDClaw3': {
-        'Screw': ImageDClaw3Screw,
+        'Screw': DClaw3ImageScrewV2,
     },
     'HardwareDClaw3': {
         'ScrewV2': lambda *args, **kwargs: (
@@ -139,7 +139,7 @@ GYM_ENVIRONMENTS = {
                 frame_skip=kwargs.pop('frame_skip', 30),
                 **kwargs)),
         'ImageScrewV2': lambda *args, **kwargs: (
-            ImageDClaw3Screw(
+            DClaw3ImageScrewV2(
                 *args,
                 is_hardware=True,
                 pose_difference_cost_coeff=kwargs.pop(
