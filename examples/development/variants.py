@@ -37,7 +37,7 @@ POLICY_PARAMS_FOR_DOMAIN.update({
 DEFAULT_MAX_PATH_LENGTH = 1000
 MAX_PATH_LENGTH_PER_DOMAIN = {
     'Point2DEnv': 50,
-    'DClaw3': tune.grid_search([100, 200]),
+    'DClaw3': 200,
     'HardwareDClaw3': 200,
     'Pendulum': 200,
     'Pusher2d': 100,
@@ -208,14 +208,14 @@ ENV_PARAMS = {
             'object_target_distance_reward_fn': tune.grid_search([
                 *[
                     NegativeLogLossFn(eps)
-                    for eps in [1e-7, 1e-6, 1e-5]
+                    for eps in [1e-6]
                 ],
             ]),
             'pose_difference_cost_coeff': tune.grid_search([
-                1e-4, 1e-2, 0
+                1e-4, 1e-3, 1e-2, 0
             ]),
             'joint_velocity_cost_coeff': tune.grid_search([
-                1e-4, 1e-2, 0
+                1e-4, 1e-3, 1e-2, 0
             ]),
             'joint_acceleration_cost_coeff': 0,
             'target_initial_velocity_range': (0, 0),
