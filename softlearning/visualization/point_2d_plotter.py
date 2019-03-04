@@ -391,7 +391,7 @@ def plot_V(figure,
         ax.scatter(*positions[0], color=color, marker='o')
         ax.scatter(*positions[-1], color=color, marker='x')
         ax.scatter(*target_position,
-                   s=(10 * RESOLUTION_MULTIPLIER) ** 1.5,
+                   s=(10 * RESOLUTION_MULTIPLIER) ** 1.75,
                    color=color,
                    marker='*')
 
