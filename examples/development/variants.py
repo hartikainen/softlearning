@@ -174,7 +174,7 @@ ENV_PARAMS = {
             'object_target_distance_reward_fn': tune.grid_search([
                 *[
                     NegativeLogLossFn(eps)
-                    for eps in [1e-1, 1e-2, 1e-4, 1e-6]
+                    for eps in [1e-6]
                 ],
             ]),
             'pose_difference_cost_coeff': tune.grid_search([
