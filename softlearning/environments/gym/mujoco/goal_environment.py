@@ -132,6 +132,7 @@ def one_dimensional_goal_info(observation, reward, done, base_info):
     info = {
         'distance_to_goal': distance_to_goal,
         'x_distance_to_goal': x_distance_to_goal,
+        'goal_x': observation['desired_goal'][0],
     }
     return info
 
@@ -144,6 +145,8 @@ def two_dimensional_goal_info(observation, reward, done, base_info):
         'distance_to_goal': distance_to_goal,
         'x_distance_to_goal': xy_distance_to_goal[0],
         'y_distance_to_goal': xy_distance_to_goal[1],
+        'goal_x': observation['desired_goal'][0],
+        'goal_y': observation['desired_goal'][1],
     }
     return info
 
