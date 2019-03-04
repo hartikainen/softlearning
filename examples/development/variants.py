@@ -51,12 +51,7 @@ ALGORITHM_PARAMS_BASE = {
         'train_every_n_steps': 1,
         'n_train_repeat': 1,
         'eval_render_mode': None,
-        'eval_n_episodes': tune.sample_from(lambda spec: int(
-            1000 / spec.get('config', spec)
-            ['sampler_params']
-            ['kwargs']
-            ['max_path_length']
-        )),
+        'eval_n_episodes': 1,
         'eval_deterministic': True,
 
         'discount': 0.99,
@@ -213,13 +208,15 @@ ENV_PARAMS = {
             'object_target_distance_reward_fn': tune.grid_search([
                 *[
                     NegativeLogLossFn(eps)
-                    for eps in [1e-6]
+                    for eps in [1e-7, 1e-6, 1e-5]
                 ],
             ]),
             'pose_difference_cost_coeff': tune.grid_search([
-                1e-4, 1e-3, 1e-2, 1e-1, 0
+                1e-4, 1e-2, 0
             ]),
-            'joint_velocity_cost_coeff': 0,
+            'joint_velocity_cost_coeff': tune.grid_search([
+                1e-4, 1e-2, 0
+            ]),
             'joint_acceleration_cost_coeff': 0,
             'target_initial_velocity_range': (0, 0),
             'target_initial_position_range': (np.pi, np.pi),
