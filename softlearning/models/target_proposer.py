@@ -144,9 +144,18 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
                  Walker2dEnv)):
             if env._exclude_current_positions_from_observation:
                 raise NotImplementedError
-            position_idx = slice(0, 2)
+
+            position_slice = {
+                SwimmerEnv: slice(0, 2),
+                AntEnv: slice(0, 2),
+                HumanoidEnv: slice(0, 2),
+                HalfCheetahEnv: slice(0, 1),
+                HopperEnv: slice(0, 1),
+                Walker2dEnv: slice(0, 1),
+            }[type(env)]
+
             last_observations_positions = path_last_observations[
-                :, position_idx]
+                :, position_slice]
             last_observations_distances = np.linalg.norm(
                 last_observations_positions, ord=2, axis=1)
 
