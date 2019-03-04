@@ -87,7 +87,7 @@ class MetricLearningAlgorithm(SAC):
 
     def _timestep_before_hook(self, *args, **kwargs):
         if self.sampler._path_length == 0:
-           self._update_goal(self.sampler.get_last_n_paths())
+            self._update_goal(self.sampler.get_last_n_paths())
 
         random_explore_after = (
             self.sampler._max_path_length
