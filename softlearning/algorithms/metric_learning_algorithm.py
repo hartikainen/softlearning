@@ -78,7 +78,11 @@ class MetricLearningAlgorithm(SAC):
     def _update_goal(self, training_paths):
         new_goal = self._target_proposer.propose_target(training_paths)
 
-        self._env.unwrapped.set_goal(new_goal)
+        try:
+            self._env._env.env.set_goal(new_goal)
+        except Exception as e:
+            self._env.unwrapped.set_goal(new_goal)
+
         if isinstance(self._env.unwrapped, (Point2DEnv, Point2DWallEnv)):
             self._env.unwrapped.optimal_policy.set_goal(new_goal)
 

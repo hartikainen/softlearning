@@ -63,6 +63,40 @@ MUJOCO_ENVIRONMENT_SPECS = (
     },
 )
 
+MUJOCO_GOAL_ENVIRONMENT_SPECS = (
+    {
+        'id': 'GoalSwimmer-v0',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.goal_environment:GoalSwimmerEnv'),
+    },
+    {
+        'id': 'GoalHopper-v0',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.goal_environment:GoalHopperEnv'),
+    },
+    {
+        'id': 'GoalWalker2d-v0',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.goal_environment:GoalWalker2dEnv'),
+    },
+    {
+        'id': 'GoalHalfCheetah-v0',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.goal_environment:GoalHalfCheetahEnv'),
+    },
+    {
+        'id': 'GoalAnt-v0',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.goal_environment:GoalAntEnv'),
+    },
+    {
+        'id': 'GoalHumanoid-v0',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.goal_environment:GoalHumanoidEnv'),
+    },
+
+)
+
 GENERAL_ENVIRONMENT_SPECS = (
     {
         'id': 'MultiGoal-Default-v0',
@@ -87,6 +121,11 @@ MUJOCO_ENVIRONMENTS = tuple(
     for environment_spec in MUJOCO_ENVIRONMENT_SPECS)
 
 
+MUJOCO_GOAL_ENVIRONMENTS = tuple(
+    environment_spec['id']
+    for environment_spec in MUJOCO_GOAL_ENVIRONMENT_SPECS)
+
+
 GENERAL_ENVIRONMENTS = tuple(
     environment_spec['id']
     for environment_spec in GENERAL_ENVIRONMENT_SPECS)
@@ -95,6 +134,7 @@ GENERAL_ENVIRONMENTS = tuple(
 MULTIWORLD_ENVIRONMENTS = tuple(
     environment_spec['id']
     for environment_spec in MULTIWORLD_ENVIRONMENT_SPECS)
+
 
 GYM_ENVIRONMENTS = (
     *MUJOCO_ENVIRONMENTS,
@@ -105,12 +145,15 @@ GYM_ENVIRONMENTS = (
 
 def register_mujoco_environments():
     """Register softlearning mujoco environments."""
-    for mujoco_environment in MUJOCO_ENVIRONMENT_SPECS:
+    mujoco_environment_specs = (
+        MUJOCO_ENVIRONMENT_SPECS
+        + MUJOCO_GOAL_ENVIRONMENT_SPECS)
+    for mujoco_environment in mujoco_environment_specs:
         gym.register(**mujoco_environment)
 
     gym_ids = tuple(
         environment_spec['id']
-        for environment_spec in  MUJOCO_ENVIRONMENT_SPECS)
+        for environment_spec in  mujoco_environment_specs)
 
     return gym_ids
 

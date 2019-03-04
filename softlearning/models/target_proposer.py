@@ -99,8 +99,6 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
     def propose_target(self, paths):
         env = self._env.unwrapped
 
-        ultimate_goal = getattr(self._env.unwrapped, 'ultimate_goal', None)
-
         new_observations = np.concatenate([
             path.get('observations.observation', path.get('observations'))
             for path in paths
@@ -111,6 +109,7 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
         ], axis=0)
 
         if isinstance(env, (Point2DEnv, Point2DWallEnv)):
+            ultimate_goal = self._env.unwrapped.ultimate_goal
             goals = np.tile(
                 ultimate_goal, (path_last_observations.shape[0], 1))
             last_observations_distances = (

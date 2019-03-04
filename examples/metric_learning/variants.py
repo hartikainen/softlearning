@@ -86,7 +86,44 @@ ENV_PARAMS = {
             'discretize': False,
             'target_radius': 0.1,
         }
-    }
+    },
+
+    'GoalSwimmer': {
+        'v0': {
+            'exclude_current_positions_from_observation': False,
+            'observation_keys': ('observation', ),
+        },
+    },
+    'GoalAnt': {
+        'v0': {
+            'exclude_current_positions_from_observation': False,
+            'observation_keys': ('observation', ),
+        },
+    },
+    'GoalHalfCheetah': {
+        'v0': {
+            'exclude_current_positions_from_observation': False,
+            'observation_keys': ('observation', ),
+        }
+    },
+    'GoalHopper': {
+        'v0': {
+            'exclude_current_positions_from_observation': False,
+            'observation_keys': ('observation', ),
+        }
+    },
+    'GoalWalker': {
+        'v0': {
+            'exclude_current_positions_from_observation': False,
+            'observation_keys': ('observation', ),
+        }
+    },
+    'GoalHumanoid': {
+        'v0': {
+            'exclude_current_positions_from_observation': False,
+            'observation_keys': ('observation', ),
+        },
+    },
 }
 
 DEFAULT_NUM_EPOCHS = 200
@@ -126,7 +163,9 @@ def fixed_path_length(spec):
             'Swimmer', 'HalfCheetah', 'CurriculumPointEnv'):
         return True
     else:
-        if domain in ('Ant', 'Humanoid', 'Hopper', 'Walker'):
+        if domain in (('Ant', 'Humanoid', 'Hopper', 'Walker')
+                      + ('GoalSwimmer', 'GoalHalfCheetah', 'GoalHopper')
+                      + ('GoalWalker', 'GoalAnt', 'GoalHumanoid')):
             return not env_params.get('terminate_when_unhealthy', True)
 
     raise NotImplementedError
