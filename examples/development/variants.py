@@ -111,7 +111,7 @@ NUM_EPOCHS_PER_DOMAIN = {
     'HandReach': int(1e4),
     'Point2DEnv': int(200),
     'Reacher': int(200),
-    'DClaw3': int(300),
+    'DClaw3': int(100),
     'ImageDClaw3': int(300),
     'HardwareDClaw3': int(100),
     'Pendulum': 10,
