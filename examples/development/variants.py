@@ -204,7 +204,7 @@ ENV_PARAMS = {
             [
                 {
                     'object_target_distance_reward_fn': NegativeLogLossFn(1e-6),
-                    'pose_difference_cost_coeff': 0,
+                    'pose_difference_cost_coeff': pose_difference_cost_coeff,
                     'joint_velocity_cost_coeff': 0,
                     'joint_acceleration_cost_coeff': 0,
                     'target_initial_velocity_range': (0, 0),
@@ -213,32 +213,9 @@ ENV_PARAMS = {
                     'object_initial_position_range': object_initial_position_range,
                 }
                 for target_initial_position_range, object_initial_position_range
-                in (
-                    ((np.pi, np.pi), (0, 0)),
-                    ((np.pi, np.pi), (-np.pi, np.pi)),
-                    ((-np.pi, np.pi), (-np.pi, np.pi)),
-                    ((np.pi, np.pi), None),
-                    ((-np.pi, np.pi), None),
-                )
-            ] + [
-                {
-                    'object_target_distance_reward_fn': NegativeLogLossFn(1e-6),
-                    'pose_difference_cost_coeff': 1e-2,
-                    'joint_velocity_cost_coeff': 0,
-                    'joint_acceleration_cost_coeff': 0,
-                    'target_initial_velocity_range': (0, 0),
-                    'target_initial_position_range': target_initial_position_range,
-                    'object_initial_velocity_range': (0, 0),
-                    'object_initial_position_range': object_initial_position_range,
-                }
-                for target_initial_position_range, object_initial_position_range
-                in (
-                    ((np.pi, np.pi), (0, 0)),
-                    ((np.pi, np.pi), (-np.pi, np.pi)),
-                    ((-np.pi, np.pi), (-np.pi, np.pi)),
-                    ((np.pi, np.pi), None),
-                    ((-np.pi, np.pi), None),
-                )
+                in (((0, np.pi), (0, 0)),
+                    ((-np.pi, 0), (0, 0)))
+                for pose_difference_cost_coeff in [0, 1e-3, 1e-2, 1e-1]
             ]
         ),
         'ImageScrewV2-v0': tune.grid_search([
