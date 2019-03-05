@@ -17,6 +17,11 @@ MUJOCO_ENVIRONMENT_SPECS = (
         'entry_point': (f'gym.envs.mujoco.swimmer_v3:SwimmerEnv'),
     },
     {
+        'id': 'Swimmer-RewardTest-v3',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.swimmer_reward_test:SwimmerRewardTestEnv'),
+    },
+    {
         'id': 'Hopper-Parameterizable-v3',
         'entry_point': (f'gym.envs.mujoco.hopper_v3:HopperEnv'),
     },
@@ -60,7 +65,7 @@ MUJOCO_ENVIRONMENT_SPECS = (
         'id': 'Pusher2d-BlindReach-v0',
         'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
                         '.image_pusher_2d:BlindForkReacher2dEnv'),
-    },
+    }
 )
 
 GENERAL_ENVIRONMENT_SPECS = (

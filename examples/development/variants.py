@@ -132,7 +132,12 @@ ENV_PARAMS = {
             'forward_reward_weight': tune.grid_search([
                 1e-3, 1e-2, 1e-1, 1.0, 10.0, 100.0
             ])
-        }
+        },
+        'RewardTest-v3': {
+            'reward_offset': tune.grid_search([
+                -100, -10, -3, -1, 0, 1, 3, 10, 100
+            ]),
+        },
     },
     'Hopper': {  # 3 DoF
     },
