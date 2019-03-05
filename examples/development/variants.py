@@ -138,9 +138,7 @@ class NegativeLogLossFn(object):
         self._eps = eps
 
     def __call__(self, object_target_distance):
-        return (
-            - np.log(object_target_distance + self._eps)
-            + np.log(np.pi + self._eps))
+        return - np.log(object_target_distance + self._eps)
 
     def __str__(self):
         return str(f'eps={self._eps:e}')
