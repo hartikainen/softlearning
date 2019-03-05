@@ -123,7 +123,6 @@ def generate_experiment(trainable_class, variant_spec, command_line_args):
 
 def unique_cluster_name(args):
     cluster_name_parts = (
-        datetimestamp(''),
         str(uuid.uuid4())[:6],
         args.domain,
         args.task
