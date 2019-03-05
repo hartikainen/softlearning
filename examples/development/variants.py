@@ -128,6 +128,11 @@ ALGORITHM_PARAMS_PER_DOMAIN = {
 
 ENV_PARAMS = {
     'Swimmer': {  # 2 DoF
+        'v3': {
+            'forward_reward_weight': tune.grid_search([
+                1e-3, 1e-2, 1e-1, 1.0, 10.0, 100.0
+            ])
+        }
     },
     'Hopper': {  # 3 DoF
     },
