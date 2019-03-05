@@ -200,26 +200,47 @@ ENV_PARAMS = {
         }
     },
     'DClaw3': {
-        'ScrewV2-v0': tune.grid_search([
-            {
-                'object_target_distance_reward_fn': NegativeLogLossFn(1e-6),
-                'pose_difference_cost_coeff': 0,
-                'joint_velocity_cost_coeff': 0,
-                'joint_acceleration_cost_coeff': 0,
-                'target_initial_velocity_range': (0, 0),
-                'target_initial_position_range': target_initial_position_range,
-                'object_initial_velocity_range': (0, 0),
-                'object_initial_position_range': object_initial_position_range,
-            }
-            for target_initial_position_range, object_initial_position_range
-            in (
+        'ScrewV2-v0': tune.grid_search(
+            [
+                {
+                    'object_target_distance_reward_fn': NegativeLogLossFn(1e-6),
+                    'pose_difference_cost_coeff': 0,
+                    'joint_velocity_cost_coeff': 0,
+                    'joint_acceleration_cost_coeff': 0,
+                    'target_initial_velocity_range': (0, 0),
+                    'target_initial_position_range': target_initial_position_range,
+                    'object_initial_velocity_range': (0, 0),
+                    'object_initial_position_range': object_initial_position_range,
+                }
+                for target_initial_position_range, object_initial_position_range
+                in (
                     ((np.pi, np.pi), (0, 0)),
                     ((np.pi, np.pi), (-np.pi, np.pi)),
                     ((-np.pi, np.pi), (-np.pi, np.pi)),
                     ((np.pi, np.pi), None),
                     ((-np.pi, np.pi), None),
-            )
-        ]),
+                )
+            ] + [
+                {
+                    'object_target_distance_reward_fn': NegativeLogLossFn(1e-6),
+                    'pose_difference_cost_coeff': 1e-2,
+                    'joint_velocity_cost_coeff': 0,
+                    'joint_acceleration_cost_coeff': 0,
+                    'target_initial_velocity_range': (0, 0),
+                    'target_initial_position_range': target_initial_position_range,
+                    'object_initial_velocity_range': (0, 0),
+                    'object_initial_position_range': object_initial_position_range,
+                }
+                for target_initial_position_range, object_initial_position_range
+                in (
+                    ((np.pi, np.pi), (0, 0)),
+                    ((np.pi, np.pi), (-np.pi, np.pi)),
+                    ((-np.pi, np.pi), (-np.pi, np.pi)),
+                    ((np.pi, np.pi), None),
+                    ((-np.pi, np.pi), None),
+                )
+            ]
+        ),
         'ImageScrewV2-v0': tune.grid_search([
             {
                 'image_shape': (32, 32, 3),
