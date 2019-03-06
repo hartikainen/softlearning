@@ -136,20 +136,19 @@ ALGORITHM_PARAMS_PER_DOMAIN = {
 
 
 class NegativeLogLossFn(object):
-    def __init__(self, eps):
+    def __init__(self, eps, offset=0.0):
         self._eps = eps
+        self._offset = offset
 
     def __call__(self, object_target_distance):
-        return (
-            - np.log(object_target_distance + self._eps)
-            + np.log(np.pi + self._eps))
+        return - np.log(object_target_distance + self._eps) + self._offset
 
     def __str__(self):
-        return str(f'eps={self._eps:e}')
+        return str(f'(eps, offset)=({self._eps:e},{self._offset:e})')
 
     def __eq__(self, other):
         if isinstance(other, type(self)):
-            return self._eps == other._eps
+            return self._eps == other._eps and self._offset == other._offset
 
         return super(NegativeLogLossFn, self).__eq__(other)
 
@@ -208,14 +207,14 @@ ENV_PARAMS = {
             'object_target_distance_reward_fn': tune.grid_search([
                 *[
                     NegativeLogLossFn(eps)
-                    for eps in [1e-6]
+                    for eps in [1e-5, 1e-6, 1e-7]
                 ],
             ]),
             'pose_difference_cost_coeff': tune.grid_search([
-                1e-4, 1e-3, 1e-2, 0
+                1e-3, 1e-2, 1e-1, 0
             ]),
             'joint_velocity_cost_coeff': tune.grid_search([
-                1e-4, 1e-3, 1e-2, 0
+                1e-3, 1e-2, 1e-1, 0
             ]),
             'joint_acceleration_cost_coeff': 0,
             'target_initial_velocity_range': (0, 0),
