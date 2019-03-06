@@ -283,6 +283,20 @@ class MetricLearningAlgorithm(SAC):
                 observations, goals, actions))
         return self._metric_learner.quiver_gradients([inputs])
 
+    def _evaluation_paths(self, policy, evaluation_env):
+        try:
+            goal = self._env._env.env.current_goal
+            evaluation_env._env.env.set_goal(goal)
+        except Exception as e:
+            goal = self._env.unwrapped.fixed_goal
+            evaluation_env.unwrapped.set_goal(goal)
+
+        if isinstance(evaluation_env.unwrapped, (Point2DEnv, Point2DWallEnv)):
+            evaluation_env.unwrapped.optimal_policy.set_goal(goal)
+
+        return super(MetricLearningAlgorithm, self)._evaluation_paths(
+            policy, evaluation_env)
+
     def get_diagnostics(self,
                         iteration,
                         batch,

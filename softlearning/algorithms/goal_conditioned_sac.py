@@ -101,6 +101,20 @@ class GoalConditionedSAC(SAC):
         V_values = self.diagnostics_Q_values_fn(observations, goals, actions)
         return V_values
 
+    def _evaluation_paths(self, policy, evaluation_env):
+        try:
+            goal = self._env._env.env.current_goal
+            evaluation_env._env.env.set_goal(goal)
+        except Exception as e:
+            goal = self._env.unwrapped.fixed_goal
+            evaluation_env.unwrapped.set_goal(goal)
+
+        if isinstance(evaluation_env.unwrapped, (Point2DEnv, Point2DWallEnv)):
+            evaluation_env.unwrapped.optimal_policy.set_goal(goal)
+
+        return super(GoalConditionedSAC, self)._evaluation_paths(
+            policy, evaluation_env)
+
     def get_diagnostics(self,
                         iteration,
                         batch,
