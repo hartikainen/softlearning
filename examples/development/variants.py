@@ -213,15 +213,7 @@ ENV_PARAMS = {
                     'object_initial_position_range': object_initial_position_range,
                 }
                 for target_initial_position_range, object_initial_position_range
-                in (((-np.pi/2, np.pi/2), (0, 0)),
-                    ((-np.pi/4, np.pi/4), (0, 0)),
-                    ((-np.pi*3/4, np.pi*3/4), (0, 0)),
-
-                    ((-np.pi, -np.pi/2, ), (0, 0)),
-                    ((np.pi/2, np.pi), (0, 0)),
-
-                    ((-np.pi, -np.pi*3/4, ), (0, 0)),
-                    ((np.pi*3/4, np.pi), (0, 0)))
+                in (((-np.pi, np.pi), (0, 0)), )
                 for pose_difference_cost_coeff in [0]
             ]
         ),
