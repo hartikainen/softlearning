@@ -22,6 +22,8 @@ def get_variant_spec(args):
     variant_spec['exploration_policy_params']['type'] = (
         'GoalConditionedUniformPolicy')
     variant_spec['policy_params']['type'] = 'GoalConditionedGaussianPolicy'
+    variant_spec['sampler_params'] = (
+        metric_learning_variant_spec['sampler_params'].copy())
     variant_spec['sampler_params']['type'] = 'GoalSampler'
 
     variant_spec['target_proposer_params'] = metric_learning_variant_spec[
@@ -36,9 +38,8 @@ def get_variant_spec(args):
         'on_policy_window': None,
         'use_distances': False,
         'her_strategy': {
-            'type': tune.grid_search(['episode', 'final', 'future', 'random']),
-            'resampling_probability': tune.grid_search([
-                0.0, 0.5, 0.8, 1.0])
+            'type': 'future',
+            'resampling_probability': tune.grid_search([0.5, 0.8]),
         }
     })
 
