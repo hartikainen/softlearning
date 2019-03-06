@@ -235,7 +235,7 @@ class DistancePool(SimpleReplayPool):
         return batch
 
     def random_batch(self, batch_size, *args, **kwargs):
-        if not self._fixed_path_length:
+        if True or not self._fixed_path_length:
             return self.variable_length_random_batch(
                 batch_size, *args, **kwargs)
 
