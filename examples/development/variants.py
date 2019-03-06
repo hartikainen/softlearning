@@ -206,16 +206,17 @@ ENV_PARAMS = {
         'ScrewV2-v0': {
             'object_target_distance_reward_fn': tune.grid_search([
                 *[
-                    NegativeLogLossFn(eps)
-                    for eps in [1e-5, 1e-6, 1e-7]
+                    NegativeLogLossFn(eps, offset=offset)
+                    for eps in [1e-6]
+                    for offset in [
+                            -3, -1, 0, 1, 3,
+                            -np.log(np.pi + eps),
+                            np.log(0 + eps),
+                    ]
                 ],
             ]),
-            'pose_difference_cost_coeff': tune.grid_search([
-                1e-3, 1e-2, 1e-1, 0
-            ]),
-            'joint_velocity_cost_coeff': tune.grid_search([
-                1e-3, 1e-2, 1e-1, 0
-            ]),
+            'pose_difference_cost_coeff': 0,
+            'joint_velocity_cost_coeff': 0,
             'joint_acceleration_cost_coeff': 0,
             'target_initial_velocity_range': (0, 0),
             'target_initial_position_range': (np.pi, np.pi),
