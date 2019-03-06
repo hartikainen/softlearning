@@ -102,8 +102,10 @@ ENV_PARAMS = {
     },
     'GoalHalfCheetah': {
         'v0': {
-            'exclude_current_positions_from_observation': False,
             'observation_keys': ('observation', ),
+            'forward_reward_weight': 0,
+            'ctrl_cost_weight': 0,
+            'exclude_current_positions_from_observation': False,
         }
     },
     'GoalHopper': {
@@ -129,11 +131,17 @@ ENV_PARAMS = {
 DEFAULT_NUM_EPOCHS = 200
 NUM_EPOCHS_PER_DOMAIN = {
     'Swimmer': int(3e3 + 1),
+    'GoalSwimmer': int(3e3 + 1),
     'Hopper': int(3e3 + 1),
+    'GoalHopper': int(3e3 + 1),
     'HalfCheetah': int(1e4 + 1),
+    'GoalHalfCheetah': int(1e4 + 1),
     'Walker': int(3e3 + 1),
+    'GoalWalker': int(3e3 + 1),
     'Ant': int(1e4 + 1),
+    'GoalAnt': int(1e4 + 1),
     'Humanoid': int(1e4 + 1),
+    'GoalHumanoid': int(1e4 + 1),
     'Pusher2d': int(2e3 + 1),
     'HandManipulatePen': int(1e4 + 1),
     'HandManipulateEgg': int(1e4 + 1),
@@ -260,7 +268,7 @@ def get_variant_spec(args):
                 'n_initial_exploration_steps': int(1e3),
                 'reparameterize': True,
                 'eval_render_mode': None,
-                'eval_n_episodes': 20,
+                'eval_n_episodes': 1,
                 'eval_deterministic': True,
 
                 'lr': 3e-4,
@@ -277,9 +285,22 @@ def get_variant_spec(args):
                     'reward',
                     # 'value',
                 ]),
-                'final_exploration_proportion': 0,
+                'final_exploration_proportion': 0.25,
             }
         },
+        'target_proposer_params': tune.grid_search([
+            {
+                'type': 'UnsupervisedTargetProposer',
+                'kwargs': {
+                    'target_proposal_rule': (
+                        'farthest_estimate_from_first_observation'),
+                },
+            },
+            {
+                'type': 'SemiSupervisedTargetProposer',
+                'kwargs': {},
+            },
+        ]),
         # 'target_proposer_params': {
         #     'type': 'UnsupervisedTargetProposer',
         #     'kwargs': {
@@ -291,10 +312,10 @@ def get_variant_spec(args):
         #         ]),
         #     },
         # },
-        'target_proposer_params': {
-            'type': 'RandomTargetProposer',
-            'kwargs': {}
-        },
+        # 'target_proposer_params': {
+        #     'type': 'RandomTargetProposer',
+        #     'kwargs': {}
+        # },
         # 'target_proposer_params': {
         #     'type': 'SemiSupervisedTargetProposer',
         #     'kwargs': {},
@@ -303,8 +324,7 @@ def get_variant_spec(args):
             'type': 'DistancePool',
             'kwargs': {
                 'max_size': int(1e6),
-                'on_policy_window': tune.grid_search([
-                    2000, 4000, 8000, 16000]),
+                'on_policy_window': None,
                 # tune.sample_from(lambda spec: (
                 #     {
                 #         'OnPolicyMetricLearner': 2 * max_path_length
@@ -325,7 +345,7 @@ def get_variant_spec(args):
                 'min_pool_size': max_path_length,
                 'batch_size': 256,
                 'store_last_n_paths': tune.sample_from(lambda spec: (
-                    1 + spec.get('config', spec)
+                    1 + 10 * spec.get('config', spec)
                     ['algorithm_params']
                     ['kwargs']
                     ['epoch_length'] // max_path_length)),
