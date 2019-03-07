@@ -151,7 +151,7 @@ class NegativeLogLossFn(object):
 
 
 def linear_loss_fn(object_target_distance):
-        return -object_target_distance
+    return -object_target_distance
 
 
 ENV_PARAMS = {
