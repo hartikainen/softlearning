@@ -150,6 +150,10 @@ class NegativeLogLossFn(object):
         return super(NegativeLogLossFn, self).__eq__(other)
 
 
+def linear_loss_fn(object_target_distance):
+        return -object_target_distance
+
+
 ENV_PARAMS = {
     'Swimmer': {  # 2 DoF
     },
@@ -203,8 +207,8 @@ ENV_PARAMS = {
         'ScrewV2-v0': tune.grid_search(
             [
                 {
-                    'object_target_distance_reward_fn': NegativeLogLossFn(1e-6),
-                    'pose_difference_cost_coeff': pose_difference_cost_coeff,
+                    'object_target_distance_reward_fn': tune.function(loss_function),
+                    'pose_difference_cost_coeff': 0,
                     'joint_velocity_cost_coeff': 0,
                     'joint_acceleration_cost_coeff': 0,
                     'target_initial_velocity_range': (0, 0),
@@ -213,8 +217,14 @@ ENV_PARAMS = {
                     'object_initial_position_range': object_initial_position_range,
                 }
                 for target_initial_position_range, object_initial_position_range
-                in (((-np.pi, np.pi), (0, 0)), )
-                for pose_difference_cost_coeff in [0]
+                in (
+                    ((0, 0), (np.pi, np.pi)),
+                    ((0, 0), (-np.pi, np.pi)),
+                    ((-np.pi, np.pi), (np.pi, np.pi)),
+                    ((-np.pi, np.pi), (-np.pi, np.pi)),
+                    (None, (np.pi, np.pi)),
+                    (None, (-np.pi, np.pi)))
+                for loss_function in (NegativeLogLossFn(1e-6), linear_loss_fn)
             ]
         ),
         'ImageScrewV2-v0': tune.grid_search([
