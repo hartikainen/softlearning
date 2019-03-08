@@ -371,7 +371,9 @@ def get_variant_spec_image(universe,
         preprocessor_params = {
             'type': 'convnet_preprocessor',
             'kwargs': {
-                'image_shape': variant_spec['env_params']['image_shape'],
+                'image_shape': tune.sample_from(lambda spec: (
+                    spec.get('config', spec)['env_params']['image_shape']
+                )),
                 'output_size': M,
                 'num_conv_layers': tune.grid_search([2, 3]),
                 'num_filters_per_layer': tune.grid_search([4, 8, 16, 32]),
