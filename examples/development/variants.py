@@ -141,7 +141,7 @@ class NegativeLogLossFn(object):
         return - np.log(object_target_distance + self._eps)
 
     def __str__(self):
-        return str(f'eps={self._eps:e}')
+        return str(f'NegativeLogLossFn(eps={self._eps:e})')
 
     def __eq__(self, other):
         if isinstance(other, type(self)):
@@ -150,8 +150,18 @@ class NegativeLogLossFn(object):
         return super(NegativeLogLossFn, self).__eq__(other)
 
 
-def linear_loss_fn(object_target_distance):
-    return -object_target_distance
+class LinearLossFn(object):
+    def __call__(self, object_target_distance):
+        return -object_target_distance
+
+    def __str__(self):
+        return str(f'LinearLossFn()')
+
+    def __eq__(self, other):
+        if isinstance(other, type(self)):
+            return self._eps == other._eps
+
+        return super(LinearLossFn, self).__eq__(other)
 
 
 ENV_PARAMS = {
@@ -207,7 +217,7 @@ ENV_PARAMS = {
         'ScrewV2-v0': tune.grid_search(
             [
                 {
-                    'object_target_distance_reward_fn': tune.function(loss_function),
+                    'object_target_distance_reward_fn': loss_function,
                     'pose_difference_cost_coeff': 0,
                     'joint_velocity_cost_coeff': 0,
                     'joint_acceleration_cost_coeff': 0,
@@ -224,13 +234,13 @@ ENV_PARAMS = {
                     ((-np.pi, np.pi), (-np.pi, np.pi)),
                     (None, (np.pi, np.pi)),
                     (None, (-np.pi, np.pi)))
-                for loss_function in (NegativeLogLossFn(1e-6), linear_loss_fn)
+                for loss_function in (NegativeLogLossFn(1e-6), LinearLossFn())
             ]
         ),
         'ImageScrewV2-v0': tune.grid_search([
             {
                 'image_shape': (32, 32, 3),
-                'object_target_distance_reward_fn': tune.function(loss_function),
+                'object_target_distance_reward_fn': loss_function,
                 'pose_difference_cost_coeff': 0,
                 'joint_velocity_cost_coeff': 0,
                 'joint_acceleration_cost_coeff': 0,
@@ -247,7 +257,7 @@ ENV_PARAMS = {
                 ((-np.pi, np.pi), (-np.pi, np.pi)),
                 (None, (np.pi, np.pi)),
                 (None, (-np.pi, np.pi)))
-            for loss_function in (NegativeLogLossFn(1e-6), linear_loss_fn)
+            for loss_function in (NegativeLogLossFn(1e-6), LinearLossFn())
         ]),
     },
     'HardwareDClaw3': {
