@@ -216,7 +216,7 @@ ENV_PARAMS = {
                     'object_initial_velocity_range': (0, 0),
                     'object_initial_position_range': object_initial_position_range,
                 }
-                for target_initial_position_range, object_initial_position_range
+                for object_initial_position_range, target_initial_position_range
                 in (
                     ((0, 0), (np.pi, np.pi)),
                     ((0, 0), (-np.pi, np.pi)),
