@@ -155,8 +155,10 @@ def plot_distances(figure,
                    observations_xy,
                    goals_xy,
                    num_heatmaps=16):
-    min_x, max_x = algorithm._env.unwrapped.observation_x_bounds
-    min_y, max_y = algorithm._env.unwrapped.observation_y_bounds
+    min_x, max_x = (
+        algorithm._training_environment.unwrapped.observation_x_bounds)
+    min_y, max_y = (
+        algorithm._training_environment.unwrapped.observation_y_bounds)
 
     nx = ny = int(np.sqrt(observations_xy.shape[0]))
     subplots_per_side = int(np.sqrt(num_heatmaps))
@@ -228,7 +230,7 @@ def plot_distances(figure,
                       inline=1, fmt='%d', fontsize=8)
 
             wall_collection, wall_rectangles = plot_walls(
-                ax, algorithm._env.unwrapped.walls)
+                ax, algorithm._training_environment.unwrapped.walls)
 
             ax.scatter(*goal_position,
                        s=(6 * RESOLUTION_MULTIPLIER) ** 2,
@@ -323,8 +325,10 @@ def plot_V(figure,
            training_paths,
            evaluation_paths,
            num_heatmaps=16):
-    min_x, max_x = algorithm._env.unwrapped.observation_x_bounds
-    min_y, max_y = algorithm._env.unwrapped.observation_y_bounds
+    min_x, max_x = (
+        algorithm._training_environment.unwrapped.observation_x_bounds)
+    min_y, max_y = (
+        algorithm._training_environment.unwrapped.observation_y_bounds)
 
     nx = ny = int(np.sqrt(observations_xy.shape[0]))
     ax = figure.add_subplot(grid_spec)
@@ -332,7 +336,8 @@ def plot_V(figure,
     ax.set_xlim([min_x, max_x])
     ax.set_ylim([min_y, max_y])
 
-    reset_position = algorithm._env._env.unwrapped.get_reset_position()
+    reset_position = (
+        algorithm._training_environment._env.unwrapped.get_reset_position())
 
     observations = get_observations(
         observations_xy,
@@ -426,7 +431,7 @@ def plot_V(figure,
                    marker='*')
 
     wall_collection, wall_rectangles = plot_walls(
-        ax, algorithm._env.unwrapped.walls)
+        ax, algorithm._training_environment.unwrapped.walls)
 
     handles, labels = ax.get_legend_handles_labels()
     by_label = OrderedDict(zip(labels, handles))
@@ -452,8 +457,10 @@ def plot_distance_quiver(figure,
                          observations_xy,
                          goals_xy,
                          evaluation_paths):
-    min_x, max_x = algorithm._env.unwrapped.observation_x_bounds
-    min_y, max_y = algorithm._env.unwrapped.observation_y_bounds
+    min_x, max_x = (
+        algorithm._training_environment.unwrapped.observation_x_bounds)
+    min_y, max_y = (
+        algorithm._training_environment.unwrapped.observation_y_bounds)
 
     nx = ny = 10
     x = np.linspace(min_x, max_x, nx)
@@ -554,10 +561,13 @@ def point_2d_plotter(algorithm,
     num_heatmaps = 16
     subplots_per_side = int(np.sqrt(num_heatmaps))
 
-    min_x, max_x = algorithm._env.unwrapped.observation_x_bounds
-    min_y, max_y = algorithm._env.unwrapped.observation_y_bounds
+    min_x, max_x = (
+        algorithm._training_environment.unwrapped.observation_x_bounds)
+    min_y, max_y = (
+        algorithm._training_environment.unwrapped.observation_y_bounds)
 
-    reset_position = algorithm._env._env.unwrapped.get_reset_position()
+    reset_position = (
+        algorithm._training_environment._env.unwrapped.get_reset_position())
 
     nx = ny = 100
     x = np.linspace(min_x, max_x, nx)

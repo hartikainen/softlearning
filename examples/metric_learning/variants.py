@@ -7,7 +7,7 @@ from examples.utils import variant_equals
 
 DEFAULT_LAYER_SIZE = 256
 
-ENV_PARAMS = {
+ENVIRONMENT_PARAMS = {
     'Swimmer': {
         'Parameterizable-v0': {
             'exclude_current_positions_from_observation': False,
@@ -162,11 +162,13 @@ NUM_CHECKPOINTS = 10
 
 
 def fixed_path_length(spec):
-    domain = spec.get('config', spec)['domain']
-    env_params = spec.get('config', spec)['env_params']
+    environment_params = (
+        spec.get('config', spec)['environment_params']['training'])
+    domain = environment_params['domain']
+    environment_kwargs = environment_params['kwargs']
 
     if domain == 'Point2DEnv':
-        return not env_params.get('terminate_on_success', False)
+        return not environment_kwargs.get('terminate_on_success', False)
     if domain in (
             'Swimmer', 'HalfCheetah', 'CurriculumPointEnv'):
         return True
@@ -174,7 +176,7 @@ def fixed_path_length(spec):
         if domain in (('Ant', 'Humanoid', 'Hopper', 'Walker')
                       + ('GoalSwimmer', 'GoalHalfCheetah', 'GoalHopper')
                       + ('GoalWalker', 'GoalAnt', 'GoalHumanoid')):
-            return not env_params.get('terminate_when_unhealthy', True)
+            return not environment_kwargs.get('terminate_when_unhealthy', True)
 
     raise NotImplementedError
 
@@ -237,7 +239,20 @@ def get_variant_spec(args):
         'universe': universe,
         'git_sha': get_git_rev(),
 
-        'env_params': ENV_PARAMS.get(domain, {}).get(task, {}),
+        'environment_params': {
+            'training': {
+                'domain': domain,
+                'task': task,
+                'universe': universe,
+                'kwargs': (
+                    ENVIRONMENT_PARAMS.get(domain, {}).get(task, {})),
+            },
+            'evaluation': tune.sample_from(lambda spec: (
+                spec.get('config', spec)
+                ['environment_params']
+                ['training']
+            )),
+        },
         'policy_params': {
             'type': 'GaussianPolicy',
             'kwargs': {

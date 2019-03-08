@@ -17,7 +17,6 @@ class MetricLearningAlgorithm(SAC):
 
     def __init__(self,
                  metric_learner,
-                 env,
                  target_proposer,
                  *args,
                  use_distance_for='reward',
@@ -29,13 +28,13 @@ class MetricLearningAlgorithm(SAC):
         self._metric_learner = metric_learner
         self._target_proposer = target_proposer
         self._final_exploration_proportion = final_exploration_proportion
-        super(MetricLearningAlgorithm, self).__init__(*args, env=env, **kwargs)
+        super(MetricLearningAlgorithm, self).__init__(*args, **kwargs)
 
     def _init_placeholders(self):
         super(MetricLearningAlgorithm, self)._init_placeholders()
         self._goals_ph = tf.placeholder(
             tf.float32,
-            shape=self._env.observation_space.shape,
+            shape=self._training_environment.observation_space.shape,
             name='goals')
 
     def _get_Q_target(self):
@@ -79,12 +78,14 @@ class MetricLearningAlgorithm(SAC):
         new_goal = self._target_proposer.propose_target(training_paths)
 
         try:
-            self._env._env.env.set_goal(new_goal)
+            self._training_environment._env.env.set_goal(new_goal)
         except Exception as e:
-            self._env.unwrapped.set_goal(new_goal)
+            self._training_environment.unwrapped.set_goal(new_goal)
 
-        if isinstance(self._env.unwrapped, (Point2DEnv, Point2DWallEnv)):
-            self._env.unwrapped.optimal_policy.set_goal(new_goal)
+        if isinstance(self._training_environment.unwrapped,
+                      (Point2DEnv, Point2DWallEnv)):
+            self._training_environment.unwrapped.optimal_policy.set_goal(
+                new_goal)
 
     def _epoch_after_hook(self, training_paths):
         self._previous_training_paths = training_paths
@@ -98,17 +99,29 @@ class MetricLearningAlgorithm(SAC):
             * (1.0 - self._final_exploration_proportion))
         if self.sampler._path_length >= random_explore_after:
             self.sampler.initialize(
-                self._env, self._initial_exploration_policy, self._pool)
+                self._training_environment,
+                self._initial_exploration_policy,
+                self._pool)
             # self.sampler.initialize(
-            #     self._env, self._env.unwrapped.optimal_policy, self._pool)
+            #     self._training_environment,
+            #     self._training_environment.unwrapped.optimal_policy,
+            #     self._pool)
         else:
             # self.sampler.initialize(
-            #     self._env, self._initial_exploration_policy, self._pool)
-            self.sampler.initialize(self._env, self._policy, self._pool)
+            #     self._training_environment,
+            #     self._initial_exploration_policy,
+            #     self._pool)
+            self.sampler.initialize(
+                self._training_environment,
+                self._policy,
+                self._pool)
             # self.sampler.initialize(
-            #     self._env, self._env.unwrapped.optimal_policy, self._pool)
+            #     self._training_environment,
+            #     self._training_environment.unwrapped.optimal_policy,
+            #     self._pool)
             if self.sampler.policy is not self._policy:
-                assert isinstance(self._env.unwrapped, Point2DEnv)
+                assert isinstance(self._training_environment.unwrapped,
+                                  Point2DEnv)
 
     def _do_training_repeats(self, timestep):
         """Repeat training _n_train_repeat times every _train_every_n_steps"""
@@ -158,9 +171,12 @@ class MetricLearningAlgorithm(SAC):
         result = super(MetricLearningAlgorithm, self)._evaluate_rollouts(
             paths, env)
 
-        if isinstance(self._env.unwrapped, (Point2DEnv, Point2DWallEnv)):
-            observations = self._env.unwrapped.all_pairs_observations
-            distances = self._env.unwrapped.all_pairs_shortest_distances
+        if isinstance(self._training_environment.unwrapped,
+                      (Point2DEnv, Point2DWallEnv)):
+            observations = (
+                self._training_environment.unwrapped.all_pairs_observations)
+            distances = (
+                self._training_environment.unwrapped.all_pairs_shortest_distances)
 
             boundaries = np.arange(0, np.max(distances) + 5, 5)
 
@@ -202,14 +218,14 @@ class MetricLearningAlgorithm(SAC):
             max_xy_distance = np.max(all_xy_distances)
             result['max_xy_distance'] = max_xy_distance
 
-        elif isinstance(self._env.unwrapped,
+        elif isinstance(self._training_environment.unwrapped,
                         (SwimmerEnv,
                          AntEnv,
                          HumanoidEnv,
                          HalfCheetahEnv,
                          HopperEnv,
                          Walker2dEnv)):
-            if self._env.unwrapped._exclude_current_positions_from_observation:
+            if self._training_environment.unwrapped._exclude_current_positions_from_observation:
                 raise NotImplementedError
             all_observations = np.concatenate(
                 [path['observations'] for path in paths], axis=0)
@@ -285,10 +301,10 @@ class MetricLearningAlgorithm(SAC):
 
     def _evaluation_paths(self, policy, evaluation_env):
         try:
-            goal = self._env._env.env.current_goal
+            goal = self._training_environment._env.env.current_goal
             evaluation_env._env.env.set_goal(goal)
         except Exception as e:
-            goal = self._env.unwrapped.fixed_goal
+            goal = self._training_environment.unwrapped.fixed_goal
             evaluation_env.unwrapped.set_goal(goal)
 
         if isinstance(evaluation_env.unwrapped, (Point2DEnv, Point2DWallEnv)):
@@ -314,7 +330,8 @@ class MetricLearningAlgorithm(SAC):
         ])
 
         if self._plot_distances:
-            if isinstance(self._env.unwrapped, (Point2DEnv, Point2DWallEnv)):
+            if isinstance(self._training_environment.unwrapped,
+                          (Point2DEnv, Point2DWallEnv)):
                 from softlearning.visualization import point_2d_plotter
                 point_2d_plotter.point_2d_plotter(
                     self,
@@ -326,7 +343,7 @@ class MetricLearningAlgorithm(SAC):
                     get_Q_values_fn=self.diagnostics_Q_values_fn,
                     get_V_values_fn=self.diagnostics_V_values_fn)
             else:
-                raise NotImplementedError(self._env.unwrapped)
+                raise NotImplementedError(self._training_environment.unwrapped)
 
         return diagnostics
 

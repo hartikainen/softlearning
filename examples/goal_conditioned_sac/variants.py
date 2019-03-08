@@ -29,8 +29,8 @@ def get_variant_spec(args):
     variant_spec['target_proposer_params'] = metric_learning_variant_spec[
         'target_proposer_params'].copy()
 
-    variant_spec['env_params'] = (
-        metric_learning_variant_spec['env_params'].copy())
+    variant_spec['environment_params'] = (
+        metric_learning_variant_spec['environment_params'].copy())
 
     variant_spec['replay_pool_params'] = metric_learning_variant_spec[
         'replay_pool_params'].copy()
