@@ -79,7 +79,7 @@ ALGORITHM_PARAMS_ADDITIONAL = {
         'type': 'SQL',
         'kwargs': {
             'policy_lr': 3e-4,
-            'td_target_update_interval': 1,
+            'target_update_interval': 1,
             'n_initial_exploration_steps': int(1e3),
             'reward_scale': tune.sample_from(lambda spec: (
                 {
@@ -89,8 +89,15 @@ ALGORITHM_PARAMS_ADDITIONAL = {
                     'Walker2d': 10,
                     'Ant': 300,
                     'Humanoid': 100,
-                }[spec.get('config', spec)['domain']],
-            ))
+                    'Pendulum': 1,
+                }.get(
+                    spec.get('config', spec)
+                    ['environment_params']
+                    ['training']
+                    ['domain'],
+                    1.0
+                ),
+            )),
         }
     }
 }
@@ -164,7 +171,7 @@ class LinearLossFn(object):
         return super(LinearLossFn, self).__eq__(other)
 
 
-ENV_PARAMS = {
+ENVIRONMENT_PARAMS = {
     'Swimmer': {  # 2 DoF
     },
     'Hopper': {  # 3 DoF
@@ -306,12 +313,22 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
         ALGORITHM_PARAMS_ADDITIONAL.get(algorithm, {})
     )
     variant_spec = {
-        'domain': domain,
-        'task': task,
-        'universe': universe,
         'git_sha': get_git_rev(),
 
-        'env_params': ENV_PARAMS.get(domain, {}).get(task, {}),
+        'environment_params': {
+            'training': {
+                'domain': domain,
+                'task': task,
+                'universe': universe,
+                'kwargs': (
+                    ENVIRONMENT_PARAMS.get(domain, {}).get(task, {})),
+            },
+            'evaluation': tune.sample_from(lambda spec: (
+                spec.get('config', spec)
+                ['environment_params']
+                ['training']
+            )),
+        },
         'policy_params': deep_update(
             POLICY_PARAMS_BASE[policy],
             POLICY_PARAMS_FOR_DOMAIN[policy].get(domain, {})
@@ -381,9 +398,11 @@ def get_variant_spec_image(universe,
         preprocessor_params = {
             'type': 'convnet_preprocessor',
             'kwargs': {
-                'image_shape': tune.sample_from(lambda spec: (
-                    spec.get('config', spec)['env_params']['image_shape']
-                )),
+                'image_shape': (
+                    variant_spec
+                    ['training']
+                    ['environment_params']
+                    ['image_shape']),
                 'output_size': M,
                 'num_conv_layers': tune.grid_search([2, 3]),
                 'num_filters_per_layer': tune.grid_search([4, 8, 16, 32]),

@@ -11,7 +11,7 @@ import linecache
 import tensorflow as tf
 from ray import tune
 
-from softlearning.environments.utils import get_environment_from_variant
+from softlearning.environments.utils import get_environment_from_params
 from softlearning.algorithms.utils import get_algorithm_from_variant
 from softlearning.policies.utils import get_policy_from_variant, get_policy
 from softlearning.replay_pools.utils import get_replay_pool_from_variant
@@ -122,18 +122,28 @@ class ExperimentRunner(tune.Trainable):
     def _build(self):
         variant = copy.deepcopy(self._variant)
 
-        env = self.env = get_environment_from_variant(variant)
+        environment_params = variant['environment_params']
+        training_environment = self.training_environment = (
+            get_environment_from_params(environment_params['training']))
+        evaluation_environment = self.evaluation_environment = (
+            get_environment_from_params(environment_params['evaluation'])
+            if 'evaluation' in environment_params
+            else training_environment)
+
         replay_pool = self.replay_pool = (
-            get_replay_pool_from_variant(variant, env))
+            get_replay_pool_from_variant(variant, training_environment))
         sampler = self.sampler = get_sampler_from_variant(variant)
-        Qs = self.Qs = get_Q_function_from_variant(variant, env)
-        policy = self.policy = get_policy_from_variant(variant, env, Qs)
+        Qs = self.Qs = get_Q_function_from_variant(
+            variant, training_environment)
+        policy = self.policy = get_policy_from_variant(
+            variant, training_environment, Qs)
         initial_exploration_policy = self.initial_exploration_policy = (
-            get_policy('UniformPolicy', env))
+            get_policy('UniformPolicy', training_environment))
 
         self.algorithm = get_algorithm_from_variant(
             variant=self._variant,
-            env=self.env,
+            training_environment=training_environment,
+            evaluation_environment=evaluation_environment,
             policy=policy,
             initial_exploration_policy=initial_exploration_policy,
             Qs=Qs,
@@ -189,7 +199,8 @@ class ExperimentRunner(tune.Trainable):
     def picklables(self):
         return {
             'variant': self._variant,
-            'env': self.env,
+            'training_environment': self.training_environment,
+            'evaluation_environment': self.evaluation_environment,
             'sampler': self.sampler,
             'algorithm': self.algorithm,
             'Qs': self.Qs,
@@ -251,10 +262,13 @@ class ExperimentRunner(tune.Trainable):
             with open(pickle_path, 'rb') as f:
                 picklable = pickle.load(f)
 
-        env = self.env = picklable['env']
+        training_environment = self.training_environment = picklable[
+            'training_environment']
+        evaluation_environment = self.evaluation_environment = picklable[
+            'evaluation_environment']
 
         replay_pool = self.replay_pool = (
-            get_replay_pool_from_variant(self._variant, env))
+            get_replay_pool_from_variant(self._variant, training_environment))
 
         if self._variant['run_params'].get('checkpoint_replay_pool', False):
             self._restore_replay_pool(checkpoint_dir)
@@ -263,14 +277,15 @@ class ExperimentRunner(tune.Trainable):
         Qs = self.Qs = picklable['Qs']
         # policy = self.policy = picklable['policy']
         policy = self.policy = (
-            get_policy_from_variant(self._variant, env, Qs))
+            get_policy_from_variant(self._variant, training_environment, Qs))
         self.policy.set_weights(picklable['policy_weights'])
         initial_exploration_policy = self.initial_exploration_policy = (
-            get_policy('UniformPolicy', env))
+            get_policy('UniformPolicy', training_environment))
 
         self.algorithm = get_algorithm_from_variant(
             variant=self._variant,
-            env=self.env,
+            training_environment=training_environment,
+            evaluation_environment=evaluation_environment,
             policy=policy,
             initial_exploration_policy=initial_exploration_policy,
             Qs=Qs,
