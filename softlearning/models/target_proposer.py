@@ -170,5 +170,9 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
 
 class RandomTargetProposer(BaseTargetProposer):
     def propose_target(self, paths):
-        target = self._env.unwrapped.sample_metric_goal()
+        try:
+            target = self._env._env.env.sample_metric_goal()
+        except Exception as e:
+            target = self._env.unwrapped.sample_metric_goal()
+
         return target
