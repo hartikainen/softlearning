@@ -202,12 +202,14 @@ class GoalHalfCheetahEnv(GoalEnvironment):
 
 
 class TargetlessReacherEnv(ReacherEnv):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, fixed_goal=None, *args, **kwargs):
         utils.EzPickle.__init__(self)
         xml_path = os.path.join(
             os.path.dirname(inspect.getfile(ReacherEnv)),
             'assets',
             'reacher.xml')
+
+        self.set_goal(fixed_goal)
 
         tree = ET.parse(xml_path)
         world_body = tree.find(".//worldbody")
@@ -240,8 +242,6 @@ class TargetlessReacherEnv(ReacherEnv):
         _, tmp_xml_path = tempfile.mkstemp(suffix='.xml', text=True)
         tree.write(tmp_xml_path)
 
-        self._target_position = np.zeros(2)
-
         result = super(TargetlessReacherEnv, self).__init__(
             *args, xml_file=tmp_xml_path, **kwargs)
 
@@ -249,7 +249,7 @@ class TargetlessReacherEnv(ReacherEnv):
 
     def step(self, a):
         self.do_simulation(a, self.frame_skip)
-        reward = np.linalg.norm(
+        reward = - np.linalg.norm(
             self.sim.data.qpos[:2] - self.sim.data.qpos[2:], ord=2)
         ob = self._get_obs()
         done = False
@@ -284,11 +284,23 @@ class TargetlessReacherEnv(ReacherEnv):
 
         return qpos, qvel
 
+    def sample_goal(self):
+        if self.fixed_goal is None:
+            qpos, _ = self.random_reacher_position_and_velocity()
+            qvel = np.zeros(2)
+            return np.concatenate((qpos, qvel))
+        else:
+            return self.fixed_goal
+
     def reset_model(self):
         reacher_qpos, reacher_qvel = (
             self.random_reacher_position_and_velocity())
-        target_qpos, target_qvel = (
-            self._target_position, np.zeros_like(reacher_qvel))
+
+        self._target_position = self.sample_goal()
+        self.current_goal = self._target_position
+
+        target_qpos = self._target_position[:2]
+        target_qvel = self._target_position[-2:]
 
         qpos = np.concatenate((reacher_qpos, target_qpos))
         qvel = np.concatenate((reacher_qvel, target_qvel))
@@ -299,10 +311,21 @@ class TargetlessReacherEnv(ReacherEnv):
     def _get_obs(self):
         theta = self.sim.data.qpos.flat[:2]
         return np.concatenate([
-            np.cos(theta),
-            np.sin(theta),
+            theta,
             self.sim.data.qvel.flat[:2],
         ])
+
+    def set_goal(self, goal, dtype=np.float32):
+        self.fixed_goal = (
+            np.array(goal, dtype=dtype)
+            if goal is not None
+            else None)
+        self.current_goal = self.fixed_goal
+
+        if goal is not None:
+            theta = goal[:2]
+            self.sim.data.qpos[2:] = theta
+            self.sim.data.qvel[2:] = goal[-2:]
 
 
 def angle_distance_from_positions(point1, point2, keepdims=False):
@@ -329,22 +352,31 @@ class GoalReacherEnv(GoalEnvironment):
         return goal_info
 
     def sample_metric_goal(self):
-        qpos, qvel = self.env.random_reacher_position_and_velocity()
-        theta = qpos
+        qpos, _ = self.env.random_reacher_position_and_velocity()
+        qvel = np.zeros(2)
 
-        metric_goal = np.concatenate([
-            np.cos(theta),
-            np.sin(theta),
-            qvel.flat,
-        ])
+        metric_goal = np.concatenate([qpos, qvel])
 
         return metric_goal
 
     def set_goal(self, goal, dtype=np.float32):
-        self._target = np.array(goal, dtype=dtype)
-        self.current_goal = np.array(goal, dtype=dtype)
+        self.current_goal = goal
+        self.env.set_goal(goal)
 
-        cos_theta, sin_theta = goal[0:2], goal[2:4]
-        theta = np.arctan2(sin_theta, cos_theta)
-        self.env.data.qpos[2:] = theta
-        self.env.data.qvel[2:] = goal[-2:]
+
+class GoalPendulumEnv(GoalEnvironment):
+    ENVIRONMENT_CLASS = PendulumEnv
+
+    def _get_goal_info(self, observation, reward, done, base_info):
+        l2_distance_from_goal = np.linalg.norm(
+            observation['observation'] - observation['desired_goal'], ord=2)
+        goal_info = {
+            'l2_distance_from_goal': l2_distance_from_goal,
+        }
+        return goal_info
+
+    def sample_metric_goal(self):
+        high = np.array([np.pi, 1])
+        theta, thetadot = np.random.uniform(low=-high, high=high)
+        metric_goal = np.array([np.cos(theta), np.sin(theta), thetadot])
+        return metric_goal
