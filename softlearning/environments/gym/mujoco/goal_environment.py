@@ -11,6 +11,7 @@ from gym.envs.mujoco.walker2d_v3 import Walker2dEnv
 from gym.envs.mujoco.ant_v3 import AntEnv
 from gym.envs.mujoco.humanoid_v3 import HumanoidEnv
 from gym.envs.mujoco.half_cheetah_v3 import HalfCheetahEnv
+from gym.envs.mujoco.reacher import ReacherEnv
 
 
 class ProxyEnv(object):
@@ -191,3 +192,15 @@ class GoalHalfCheetahEnv(GoalEnvironment):
 
     def _get_goal_info(self, observation, reward, done, base_info):
         return one_dimensional_goal_info(observation, reward, done, base_info)
+
+
+class GoalReacherEnv(GoalEnvironment):
+    ENVIRONMENT_CLASS = ReacherEnv
+
+    def _get_goal_info(self, observation, reward, done, base_info):
+        l2_distance_from_goal = np.linalg.norm(
+            observation['observation'] - observation['desired_goal'], ord=2)
+        goal_info = {
+            'l2_distance_from_goal': l2_distance_from_goal,
+        }
+        return goal_info

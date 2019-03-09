@@ -94,6 +94,11 @@ MUJOCO_GOAL_ENVIRONMENT_SPECS = (
         'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
                         '.goal_environment:GoalHumanoidEnv'),
     },
+    {
+        'id': 'GoalReacher-v0',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.goal_environment:GoalReacherEnv'),
+    }
 
 )
 

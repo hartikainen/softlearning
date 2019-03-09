@@ -126,6 +126,11 @@ ENVIRONMENT_PARAMS = {
             'observation_keys': ('observation', ),
         },
     },
+    'GoalReacher': {
+        'v0': {
+            'observation_keys': ('observation', ),
+        }
+    },
 }
 
 DEFAULT_NUM_EPOCHS = 200
@@ -169,14 +174,17 @@ def fixed_path_length(spec):
 
     if domain == 'Point2DEnv':
         return not environment_kwargs.get('terminate_on_success', False)
-    if domain in (
+    elif domain in (
             'Swimmer', 'HalfCheetah', 'CurriculumPointEnv'):
+        return True
+    elif domain in ('GoalReacher', ):
         return True
     else:
         if domain in (('Ant', 'Humanoid', 'Hopper', 'Walker')
                       + ('GoalSwimmer', 'GoalHalfCheetah', 'GoalHopper')
                       + ('GoalWalker', 'GoalAnt', 'GoalHumanoid')):
             return not environment_kwargs.get('terminate_when_unhealthy', True)
+
 
     raise NotImplementedError
 
