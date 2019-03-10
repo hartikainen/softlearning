@@ -131,6 +131,11 @@ ENVIRONMENT_PARAMS = {
             'observation_keys': ('observation', ),
         }
     },
+    'GoalPendulum': {
+        'v0': {
+            'observation_keys': ('observation', ),
+        }
+    },
 }
 
 DEFAULT_NUM_EPOCHS = 200
@@ -160,7 +165,8 @@ NUM_EPOCHS_PER_DOMAIN = {
 
 DEFAULT_MAX_PATH_LENGTH = 1000
 MAX_PATH_LENGTH_PER_DOMAIN = {
-    'Point2DEnv': 50
+    'Point2DEnv': 50,
+    'GoalReacher': 200,
 }
 
 NUM_CHECKPOINTS = 10
@@ -177,7 +183,7 @@ def fixed_path_length(spec):
     elif domain in (
             'Swimmer', 'HalfCheetah', 'CurriculumPointEnv'):
         return True
-    elif domain in ('GoalReacher', ):
+    elif domain in ('GoalReacher', 'GoalPendulum'):
         return True
     else:
         if domain in (('Ant', 'Humanoid', 'Hopper', 'Walker')
