@@ -39,7 +39,7 @@ def get_variant_spec(args):
         'use_distances': False,
         'her_strategy': {
             'type': 'future',
-            'resampling_probability': tune.grid_search([0.5, 0.8]),
+            'resampling_probability': 0.8,
         }
     })
 

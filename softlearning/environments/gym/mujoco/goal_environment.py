@@ -223,7 +223,8 @@ class TargetlessReacherEnv(ReacherEnv):
 
         for geom in shadow_body.findall(".//geom"):
             geom_rgba = geom.get('rgba')
-            # geom.set('conaffinity', '0')
+            geom.set('conaffinity', '0')
+            geom.set('contype', '0')
             geom.set('name', f"shadow_{geom.get('name')}")
 
             if geom_rgba is None: continue
@@ -236,6 +237,7 @@ class TargetlessReacherEnv(ReacherEnv):
 
         for joint in shadow_body.findall(".//joint"):
             joint.set('name', f"shadow_{joint.get('name')}")
+            joint.set('stiffness', '0')
 
         world_body.append(shadow_body)
 
@@ -249,8 +251,10 @@ class TargetlessReacherEnv(ReacherEnv):
 
     def step(self, a):
         self.do_simulation(a, self.frame_skip)
+        target_position = getattr(self, '_target_position', np.zeros(2))[:2]
+
         reward = - np.linalg.norm(
-            self.sim.data.qpos[:2] - self.sim.data.qpos[2:], ord=2)
+            self.sim.data.qpos[:2] - target_position, ord=2)
         ob = self._get_obs()
         done = False
         info = {}
@@ -300,7 +304,7 @@ class TargetlessReacherEnv(ReacherEnv):
         self.current_goal = self._target_position
 
         target_qpos = self._target_position[:2]
-        target_qvel = self._target_position[-2:]
+        target_qvel = self._target_position[2:4]
 
         qpos = np.concatenate((reacher_qpos, target_qpos))
         qvel = np.concatenate((reacher_qvel, target_qvel))
@@ -325,7 +329,7 @@ class TargetlessReacherEnv(ReacherEnv):
         if goal is not None:
             theta = goal[:2]
             self.sim.data.qpos[2:] = theta
-            self.sim.data.qvel[2:] = goal[-2:]
+            self.sim.data.qvel[2:] = goal[2:4]
 
 
 def angle_distance_from_positions(point1, point2, keepdims=False):
@@ -346,8 +350,16 @@ class GoalReacherEnv(GoalEnvironment):
     def _get_goal_info(self, observation, reward, done, base_info):
         l2_distance_from_goal = np.linalg.norm(
             observation['observation'] - observation['desired_goal'], ord=2)
+        qpos_l2_distance_from_goal = np.linalg.norm(
+            observation['observation'][:2] - observation['desired_goal'][:2],
+            ord=2)
+        qvel_l2_distance_from_goal = np.linalg.norm(
+            observation['observation'][2:] - observation['desired_goal'][2:],
+            ord=2)
         goal_info = {
             'l2_distance_from_goal': l2_distance_from_goal,
+            'qpos_l2_distance_from_goal': qpos_l2_distance_from_goal,
+            'qvel_l2_distance_from_goal': qvel_l2_distance_from_goal,
         }
         return goal_info
 
