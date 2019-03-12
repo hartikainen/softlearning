@@ -314,22 +314,22 @@ def get_variant_spec(args):
                     'reward',
                     # 'value',
                 ]),
-                'final_exploration_proportion': 0.25,
+                'final_exploration_proportion': 0.1,
             }
         },
-        'target_proposer_params': tune.grid_search([
-            {
-                'type': 'UnsupervisedTargetProposer',
-                'kwargs': {
-                    'target_proposal_rule': (
-                        'farthest_estimate_from_first_observation'),
-                },
-            },
-            {
-                'type': 'SemiSupervisedTargetProposer',
-                'kwargs': {},
-            },
-        ]),
+        # 'target_proposer_params': tune.grid_search([
+        #     {
+        #         'type': 'UnsupervisedTargetProposer',
+        #         'kwargs': {
+        #             'target_proposal_rule': (
+        #                 'farthest_estimate_from_first_observation'),
+        #         },
+        #     },
+        #     {
+        #         'type': 'SemiSupervisedTargetProposer',
+        #         'kwargs': {},
+        #     },
+        # ]),
         # 'target_proposer_params': {
         #     'type': 'UnsupervisedTargetProposer',
         #     'kwargs': {
@@ -341,10 +341,10 @@ def get_variant_spec(args):
         #         ]),
         #     },
         # },
-        # 'target_proposer_params': {
-        #     'type': 'RandomTargetProposer',
-        #     'kwargs': {}
-        # },
+        'target_proposer_params': {
+            'type': 'RandomTargetProposer',
+            'kwargs': {}
+        },
         # 'target_proposer_params': {
         #     'type': 'SemiSupervisedTargetProposer',
         #     'kwargs': {},
