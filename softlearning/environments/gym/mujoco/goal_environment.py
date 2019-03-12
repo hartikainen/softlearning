@@ -200,6 +200,15 @@ class GoalHalfCheetahEnv(GoalEnvironment):
     def _get_goal_info(self, observation, reward, done, base_info):
         return one_dimensional_goal_info(observation, reward, done, base_info)
 
+    def sample_metric_goal(self):
+        random_x = np.random.uniform(-10, 10)
+        reset_position = np.array((
+            random_x, -1.32567415e-01, 5.20491968e-02, 3.42479814e-02,
+            6.83982020e-02, -1.40750661e-02, -5.86704033e-02, -1.40321593e-01,
+            -1.31011421e-01, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        ))
+        return reset_position
+
 
 class TargetlessReacherEnv(ReacherEnv):
     def __init__(self, fixed_goal=None, *args, **kwargs):
