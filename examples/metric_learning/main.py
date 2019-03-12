@@ -38,7 +38,8 @@ class MetricExperimentRunner(ExperimentRunner):
         initial_exploration_policy = self.initial_exploration_policy = (
             get_policy(variant['exploration_policy_params']['type'], training_environment))
 
-        metric_learner = get_metric_learner_from_variant(variant, training_environment)
+        metric_learner = get_metric_learner_from_variant(
+            variant, training_environment, policy)
 
         self.algorithm = get_algorithm_from_variant(
             variant=variant,
@@ -87,7 +88,8 @@ class MetricExperimentRunner(ExperimentRunner):
         initial_exploration_policy = self.initial_exploration_policy = (
             get_policy('UniformPolicy', training_environment))
 
-        metric_learner = get_metric_learner_from_variant(self._variant, env)
+        metric_learner = get_metric_learner_from_variant(
+            self._variant, env, policy)
 
         self.algorithm = get_algorithm_from_variant(
             variant=self._variant,

@@ -1,11 +1,14 @@
 from copy import deepcopy
 
-from .metric_learner import HingeMetricLearner, OnPolicyMetricLearner
+from .metric_learner import (
+    HingeMetricLearner,
+    OnPolicyMetricLearner,
+    TemporalDifferenceMetricLearner)
 from .lambda_estimator import get_lambda_estimator_from_variant
 from .distance_estimator import get_distance_estimator_from_variant
 
 
-def get_metric_learner_from_variant(variant, env):
+def get_metric_learner_from_variant(variant, env, policy):
     distance_estimator = get_distance_estimator_from_variant(variant)
 
     metric_learner_params = variant['metric_learner_params']
@@ -14,6 +17,7 @@ def get_metric_learner_from_variant(variant, env):
 
     metric_learner_kwargs.update({
         'env': env,
+        'policy': policy,
         'observation_shape': env.active_observation_shape,
         'action_shape': env.action_space.shape,
         'distance_estimator': distance_estimator,
@@ -22,6 +26,9 @@ def get_metric_learner_from_variant(variant, env):
     metric_learner_type = metric_learner_params['type']
     if metric_learner_type == 'OnPolicyMetricLearner':
         metric_learner = OnPolicyMetricLearner(**metric_learner_kwargs)
+    if metric_learner_type == 'TemporalDifferenceMetricLearner':
+        metric_learner = TemporalDifferenceMetricLearner(
+            **metric_learner_kwargs)
     elif metric_learner_type == 'HingeMetricLearner':
         metric_learner_kwargs['lambda_estimators'] = {
             lambda_name: get_lambda_estimator_from_variant(variant)

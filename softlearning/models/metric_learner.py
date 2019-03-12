@@ -3,6 +3,9 @@ from collections import OrderedDict
 import numpy as np
 import tensorflow as tf
 
+
+from softlearning.algorithms.sac import td_target
+
 from gym.envs.mujoco.swimmer_v3 import SwimmerEnv
 from gym.envs.mujoco.ant_v3 import AntEnv
 from gym.envs.mujoco.humanoid_v3 import HumanoidEnv
@@ -21,6 +24,7 @@ class MetricLearner(object):
 
     def __init__(self,
                  env,
+                 policy,
                  observation_shape,
                  action_shape,
                  distance_learning_rate=3e-4,
@@ -30,6 +34,7 @@ class MetricLearner(object):
                  condition_with_action=False,
                  distance_input_type='full'):
         self._env = env
+        self._policy = policy
         self._observation_shape = observation_shape
         self._action_shape = action_shape
         self._distance_learning_rate = distance_learning_rate
@@ -56,6 +61,11 @@ class MetricLearner(object):
             tf.float32,
             shape=(None, 2, *self._observation_shape),
             name='distance_pairs_observations')
+
+        self.distance_pairs_goals_ph = tf.placeholder(
+            tf.float32,
+            shape=(None, *self._observation_shape),
+            name='distance_pairs_goals')
 
         self.distance_pairs_actions_ph = tf.placeholder(
             tf.float32,
@@ -157,6 +167,8 @@ class MetricLearner(object):
                 batch['distance_pairs_actions']),
             self.distance_pairs_distances_ph: (
                 batch['distance_pairs_distances']),
+            self.distance_pairs_goals_ph: (
+                batch['distance_pairs_goals']),
         }
 
         return feed_dict
@@ -553,6 +565,145 @@ class OnPolicyMetricLearner(MetricLearner):
             distance_grads_and_vars)
 
         self._distance_train_ops = (distance_train_op, )
+
+    def get_diagnostics(self, iteration, batch, paths, *args, **kwargs):
+        feed_dict = self._get_feed_dict(iteration, batch)
+        distance_loss = self._session.run(self.distance_loss, feed_dict)
+        return OrderedDict((
+            ('distance_loss-mean', np.mean(distance_loss)),
+        ))
+
+    @property
+    def tf_saveables(self):
+        return {
+            '_distance_optimizer': self._distance_optimizer,
+            'distance_estimator': self.distance_estimator
+        }
+
+
+class TemporalDifferenceMetricLearner(MetricLearner):
+    def __init__(self, *args, condition_with_action=True, **kwargs):
+        condition_with_action = True
+        return super(TemporalDifferenceMetricLearner, self).__init__(
+            *args, condition_with_action=condition_with_action, **kwargs)
+
+    def _init_placeholders(self):
+        """Create input placeholders for the MetricLearner algorithm."""
+        super(TemporalDifferenceMetricLearner, self)._init_placeholders()
+
+        self._observations_ph = tf.placeholder(
+            tf.float32,
+            shape=(None, *self._observation_shape),
+            name='observation',
+        )
+
+        self._next_observations_ph = tf.placeholder(
+            tf.float32,
+            shape=(None, *self._observation_shape),
+            name='next_observation',
+        )
+
+        self._actions_ph = tf.placeholder(
+            tf.float32,
+            shape=(None, *self._action_shape),
+            name='actions',
+        )
+
+        self._terminals_ph = tf.placeholder(
+            tf.float32,
+            shape=(None, 1),
+            name='terminals',
+        )
+
+        self._goals_ph = tf.placeholder(
+            tf.float32,
+            shape=(None, *self._observation_shape),
+            name='goals',
+        )
+
+    def _init_distance_update(self):
+        """Create minimization operations for distance estimator."""
+
+        observations = self._observations_ph
+        actions = self._actions_ph
+        next_observations = self._next_observations_ph
+        goals = self._goals_ph
+
+        inputs_1 = self._distance_estimator_inputs(
+            observations, goals, actions)
+        distance_predictions_1 = self.distance_estimator(inputs_1)
+
+        next_actions = self._policy.actions([next_observations, goals])
+        inputs_2 = self._distance_estimator_inputs(
+            next_observations, goals, next_actions)
+        distance_predictions_2 = self.distance_estimator(inputs_2)
+
+        assert (self._terminals_ph.shape.as_list()
+                == distance_predictions_2.shape.as_list())
+
+        distance_targets = td_target(
+            reward=1.0,
+            discount=0.99,
+            next_value=(1 - self._terminals_ph) * distance_predictions_2)
+
+        # observations = tf.unstack(
+        #     self.distance_pairs_observations_ph, 2, axis=1)
+        # goals = self.distance_pairs_goals_ph
+
+        # actions_1 = tf.unstack(self.distance_pairs_actions_ph, 2, axis=1)[0]
+        # inputs_1 = self._distance_estimator_inputs(
+        #     observations[0], goals, actions_1)
+        # distance_predictions_1 = self.distance_estimator(inputs_1)[:, 0]
+
+        # actions_2 = self._policy.actions([observations[1], goals])
+        # inputs_2 = self._distance_estimator_inputs(
+        #     observations[1], goals, actions_2)
+        # distance_predictions_2 = self.distance_estimator(inputs_2)[:, 0]
+
+        # terminals = tf.to_float(tf.norm(
+        #     observations[1] - goals,
+        #     ord=2,
+        #     axis=1,
+        # ) < 0.1)
+
+        # with tf.control_dependencies([
+        #         tf.assert_equal(self.distance_pairs_distances_ph, 1.0)]):
+        #     distance_targets = tf.stop_gradient(td_target(
+        #         reward=self.distance_pairs_distances_ph,
+        #         discount=0.99 ** self.distance_pairs_distances_ph,
+        #         next_value=(1.0 - terminals) * distance_predictions_2))
+
+        distance_loss = self.distance_loss = tf.losses.mean_squared_error(
+            labels=tf.stop_gradient(distance_targets),
+            predictions=distance_predictions_1,
+            weights=0.5)
+
+        distance_optimizer = self._distance_optimizer = tf.train.AdamOptimizer(
+            learning_rate=self._distance_learning_rate)
+        distance_grads_and_vars = distance_optimizer.compute_gradients(
+            loss=distance_loss,
+            var_list=self.distance_estimator.trainable_variables)
+
+        distance_train_op = distance_optimizer.apply_gradients(
+            distance_grads_and_vars)
+
+        self._distance_train_ops = (distance_train_op, )
+
+    def _get_feed_dict(self, iteration, batch):
+        """Construct TensorFlow feed_dict from sample batch."""
+        feed_dict = (
+            super(TemporalDifferenceMetricLearner, self)._get_feed_dict(
+                iteration, batch))
+
+        feed_dict.update({
+            self._observations_ph: batch['observations'],
+            self._actions_ph: batch['actions'],
+            self._next_observations_ph: batch['next_observations'],
+            self._terminals_ph: batch['terminals'],
+            self._goals_ph: batch['goals'],
+        })
+
+        return feed_dict
 
     def get_diagnostics(self, iteration, batch, paths, *args, **kwargs):
         feed_dict = self._get_feed_dict(iteration, batch)

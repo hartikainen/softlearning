@@ -207,10 +207,9 @@ def get_variant_spec(args):
             'distance_learning_rate': 3e-4,
             'n_train_repeat': 1,
 
-            'condition_with_action': tune.grid_search([
-                # True,
-                False
-            ]),
+            'condition_with_action': (
+                spec['metric_learner_params']['type']
+                == 'TemporalDifferenceMetricLearner'),
             'distance_input_type': tune.grid_search([
                 'full',
                 # 'xy_coordinates',
@@ -218,7 +217,8 @@ def get_variant_spec(args):
             ]),
         }
 
-        if spec['metric_learner_params']['type'] == 'OnPolicyMetricLearner':
+        if spec['metric_learner_params']['type'] in (
+                ('OnPolicyMetricLearner', 'TemporalDifferenceMetricLearner')):
             kwargs = {
                 **shared_kwargs,
                 **{
@@ -382,7 +382,8 @@ def get_variant_spec(args):
         },
         'metric_learner_params': {
             'type': tune.grid_search([
-                'OnPolicyMetricLearner',
+                'TemporalDifferenceMetricLearner',
+                # 'OnPolicyMetricLearner',
                 # 'HingeMetricLearner',
             ]),
             'kwargs': tune.sample_from(metric_learner_kwargs),
