@@ -74,9 +74,11 @@ class DistancePool(SimpleReplayPool):
             path_observations = path.get(
                 'observations', path.get('observations.observation'))
             path_length = path_observations.shape[0]
-            random_start_index = np.random.randint(0, path_length)
+            if path_length < 2:
+                continue
+            random_start_index = np.random.randint(0, path_length-1)
             random_offset = np.random.randint(
-                0, 1 + np.minimum(
+                1, 1 + np.minimum(
                     path_length - 1 - random_start_index,
                     self._max_pair_distance))
             random_end_index = random_start_index + random_offset
