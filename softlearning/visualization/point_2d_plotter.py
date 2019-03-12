@@ -524,7 +524,7 @@ def plot_distance_quiver(figure,
             quiver = ax.quiver(X, Y, U, V, M)
 
             wall_collection, wall_rectangles = plot_walls(
-                ax, algorithm._env.unwrapped.walls)
+                ax, algorithm._training_environment.unwrapped.walls)
 
             goal_scatter = ax.scatter(
                 *goal_position,
