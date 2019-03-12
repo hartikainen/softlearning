@@ -97,7 +97,7 @@ MUJOCO_GOAL_ENVIRONMENT_SPECS = (
     {
         'id': 'GoalReacher-v0',
         'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
-                        '.goal_environment:GoalReacherEnv'),
+                        '.goal_reacher:GoalReacherEnv'),
     },
     {
         'id': 'GoalPendulum-v0',
