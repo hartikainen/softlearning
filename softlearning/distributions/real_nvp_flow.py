@@ -74,11 +74,11 @@ class ConditionalRealNVPFlow(bijectors.ConditionalBijector):
     def build(self):
         D = np.prod(self._event_dims)
 
-        flow = []
+        flow_parts = []
         for i in range(self._num_coupling_layers):
             if self._use_batch_normalization:
                 batch_normalization_bijector = bijectors.BatchNormalization()
-                flow.append(batch_normalization_bijector)
+                flow_parts.append(batch_normalization_bijector)
 
             real_nvp_bijector = bijectors.RealNVP(
                 num_masked=D // 2,
@@ -88,7 +88,7 @@ class ConditionalRealNVPFlow(bijectors.ConditionalBijector):
                     activation=tf.nn.tanh),
                 name='real_nvp_{}'.format(i))
 
-            flow.append(real_nvp_bijector)
+            flow_parts.append(real_nvp_bijector)
 
             if i < self._num_coupling_layers - 1:
                 permute_bijector = bijectors.Permute(
@@ -98,16 +98,16 @@ class ConditionalRealNVPFlow(bijectors.ConditionalBijector):
                 # to the event_dim caching. See the issue filed at github:
                 # https://github.com/tensorflow/probability/issues/122
                 permute_bijector._is_constant_jacobian = False
-                flow.append(permute_bijector)
+                flow_parts.append(permute_bijector)
 
         # Note: bijectors.Chain applies the list of bijectors in the
         # _reverse_ order of what they are inputted.
-        self.flow = flow
+        self.flow = ConditionalChain(flow_parts[::-1])
 
     def _get_flow_conditions(self, **condition_kwargs):
         conditions = {
             bijector.name: condition_kwargs
-            for bijector in self.flow
+            for bijector in self.flow.bijectors
             if isinstance(bijector, bijectors.RealNVP)
         }
 
@@ -115,92 +115,27 @@ class ConditionalRealNVPFlow(bijectors.ConditionalBijector):
 
     def _forward(self, x, **condition_kwargs):
         conditions = self._get_flow_conditions(**condition_kwargs)
-        for bijector in self.flow:
-            x = bijector.forward(x, **conditions.get(bijector.name, {}))
-
-        # TODO(hartikainen): Once tfp.bijectors.Chain supports conditioning,
-        # replace the above for-loops with self.flow.forward.
-        # x = self.flow.forward(x, **conditions)
+        x = self.flow.forward(x, **conditions)
 
         return x
 
     def _inverse(self, y, **condition_kwargs):
         conditions = self._get_flow_conditions(**condition_kwargs)
-        for bijector in reversed(self.flow):
-            y = bijector.inverse(y, **conditions.get(bijector.name, {}))
-
-        # TODO(hartikainen): Once tfp.bijectors.Chain supports conditioning,
-        # replace the above for-loops with self.flow.inverse.
-        # y = self.flow.inverse(y, **conditions)
+        y = self.flow.inverse(y, **conditions)
 
         return y
 
     def _forward_log_det_jacobian(self, x, **condition_kwargs):
         conditions = self._get_flow_conditions(**condition_kwargs)
-
-        # TODO(hartikainen): Once tfp.bijectors.Chain supports conditioning,
-        # replace everything below with self.flow.forward_log_det_jacobian.
-        # fldj = self.flow.forward_log_det_jacobian(
-        #     x, event_ndims=1, **conditions)
-
-        fldj = tf.cast(0., dtype=x.dtype.base_dtype)
-        event_ndims = self._maybe_get_static_event_ndims(
-            self.forward_min_event_ndims)
-
-        if _use_static_shape(x, event_ndims):
-            event_shape = x.shape[x.shape.ndims - event_ndims:]
-        else:
-            event_shape = tf.shape(input=x)[tf.rank(x) - event_ndims:]
-        for b in self.flow:
-            fldj += b.forward_log_det_jacobian(
-                x, event_ndims=event_ndims, **conditions.get(b.name, {}))
-            if _use_static_shape(x, event_ndims):
-                event_shape = b.forward_event_shape(event_shape)
-                event_ndims = self._maybe_get_static_event_ndims(event_shape.ndims)
-            else:
-                event_shape = b.forward_event_shape_tensor(event_shape)
-                event_ndims = tf.size(input=event_shape)
-                event_ndims_ = self._maybe_get_static_event_ndims(event_ndims)
-                if event_ndims_ is not None:
-                    event_ndims = event_ndims_
-            x = b.forward(x, **conditions.get(b.name, {}))
+        fldj = self.flow.forward_log_det_jacobian(
+            x, event_ndims=1, **conditions)
 
         return fldj
 
     def _inverse_log_det_jacobian(self, y, **condition_kwargs):
         conditions = self._get_flow_conditions(**condition_kwargs)
-
-        # TODO(hartikainen): Once tfp.bijectors.Chain supports conditioning,
-        # replace everything below with self.flow.inverse_log_det_jacobian.
-        # ildj = self.flow.inverse_log_det_jacobian(
-        #     y, event_ndims=1, **conditions)
-
-        ildj = tf.cast(0., dtype=y.dtype.base_dtype)
-
-        event_ndims = self._maybe_get_static_event_ndims(
-            self.inverse_min_event_ndims)
-
-        if _use_static_shape(y, event_ndims):
-            event_shape = y.shape[y.shape.ndims - event_ndims:]
-        else:
-            event_shape = tf.shape(input=y)[tf.rank(y) - event_ndims:]
-
-        for b in reversed(self.flow):
-            ildj += b.inverse_log_det_jacobian(
-                y, event_ndims=event_ndims, **conditions.get(b.name, {}))
-
-            if _use_static_shape(y, event_ndims):
-                event_shape = b.inverse_event_shape(event_shape)
-                event_ndims = self._maybe_get_static_event_ndims(
-                    event_shape.ndims)
-            else:
-                event_shape = b.inverse_event_shape_tensor(event_shape)
-                event_ndims = tf.size(input=event_shape)
-                event_ndims_ = self._maybe_get_static_event_ndims(event_ndims)
-                if event_ndims_ is not None:
-                    event_ndims = event_ndims_
-
-            y = b.inverse(y, **conditions.get(b.name, {}))
+        ildj = self.flow.inverse_log_det_jacobian(
+            y, event_ndims=1, **conditions)
 
         return ildj
 

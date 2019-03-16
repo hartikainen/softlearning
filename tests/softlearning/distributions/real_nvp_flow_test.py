@@ -24,25 +24,26 @@ class ConditionalRealNVPFlowTest(tf.test.TestCase):
             event_dims=x_.shape[1:])
 
         real_nvp_layers = [
-            layer for layer in flow.flow
+            layer for layer in flow.flow.bijectors
             if isinstance(layer, bijectors.RealNVP)
         ]
         self.assertEqual(len(real_nvp_layers), num_coupling_layers)
 
         permute_layers = [
-            layer for layer in flow.flow
+            layer for layer in flow.flow.bijectors
             if isinstance(layer, bijectors.Permute)
         ]
         self.assertEqual(len(permute_layers), num_coupling_layers-1)
 
         batch_normalization_layers = [
-            layer for layer in flow.flow
+            layer for layer in flow.flow.bijectors
             if isinstance(layer, bijectors.BatchNormalization)
         ]
         self.assertEqual(len(batch_normalization_layers), 0)
 
         self.assertEqual(
-            len(flow.flow), len(real_nvp_layers) + len(permute_layers))
+            len(flow.flow.bijectors),
+            len(real_nvp_layers) + len(permute_layers))
 
     def test_forward_inverse_returns_identity(self):
         x_ = np.reshape(np.linspace(-1.0, 1.0, 8, dtype=np.float32), (-1, 4))
