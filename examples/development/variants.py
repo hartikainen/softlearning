@@ -3,10 +3,7 @@ import numpy as np
 
 from softlearning.misc.utils import get_git_rev, deep_update
 
-HIDDEN_LAYER_SIZES = tune.grid_search(
-    [(x, x) for x in (256, 512, 1024)]
-    + [(x, x, x) for x in (256, 512, 1024)]
-)
+M = 256
 REPARAMETERIZE = True
 
 NUM_COUPLING_LAYERS = 2
@@ -14,7 +11,7 @@ NUM_COUPLING_LAYERS = 2
 GAUSSIAN_POLICY_PARAMS_BASE = {
     'type': 'GaussianPolicy',
     'kwargs': {
-        'hidden_layer_sizes': HIDDEN_LAYER_SIZES,
+        'hidden_layer_sizes': (M, M),
         'squash': True,
     }
 }
@@ -52,7 +49,7 @@ ALGORITHM_PARAMS_BASE = {
     'kwargs': {
         'epoch_length': 1000,
         'train_every_n_steps': 1,
-        'n_train_repeat': tune.grid_search([1, 2, 4]),
+        'n_train_repeat': 1,
         'eval_render_mode': None,
         'eval_n_episodes': 1,
         'eval_deterministic': True,
@@ -238,13 +235,13 @@ ENVIRONMENT_PARAMS = {
                 }
                 for object_initial_position_range, target_initial_position_range
                 in (
-                    # ((0, 0), (np.pi, np.pi)),
-                    # ((0, 0), (-np.pi, np.pi)),
-                    # ((-np.pi, np.pi), (np.pi, np.pi)),
+                    ((0, 0), (np.pi, np.pi)),
+                    ((0, 0), (-np.pi, np.pi)),
+                    ((-np.pi, np.pi), (np.pi, np.pi)),
                     ((-np.pi, np.pi), (-np.pi, np.pi)),
-                    # (None, (np.pi, np.pi)),
+                    (None, (np.pi, np.pi)),
                     (None, (-np.pi, np.pi)))
-                for loss_function in (NegativeLogLossFn(1e-6), )
+                for loss_function in (NegativeLogLossFn(1e-6), LinearLossFn())
             ]
         ),
         'ImageScrewV2-v0': tune.grid_search([
@@ -339,12 +336,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
         'Q_params': {
             'type': 'double_feedforward_Q_function',
             'kwargs': {
-                'hidden_layer_sizes': tune.sample_from(lambda spec: (
-                    spec.get('config', spec)
-                    ['policy_params']
-                    ['kwargs']
-                    ['hidden_layer_sizes']
-                )),
+                'hidden_layer_sizes': (M, M),
             }
         },
         'algorithm_params': algorithm_params,
@@ -411,13 +403,7 @@ def get_variant_spec_image(universe,
                     ['training']
                     ['environment_params']
                     ['image_shape']),
-                'output_size': tune.sample_from(lambda spec: (
-                    spec.get('config', spec)
-                    ['policy_params']
-                    ['kwargs']
-                    ['hidden_layer_sizes']
-                    [0]
-                )),
+                'output_size': M,
                 'num_conv_layers': tune.grid_search([2, 3]),
                 'num_filters_per_layer': tune.grid_search([4, 8, 16, 32]),
                 'pool_type': 'AvgPool2D',
@@ -425,8 +411,7 @@ def get_variant_spec_image(universe,
                 'dense_hidden_layer_sizes': (),
             },
         }
-        variant_spec['policy_params']['kwargs']['hidden_layer_sizes'] = (
-            HIDDEN_LAYER_SIZES)
+        variant_spec['policy_params']['kwargs']['hidden_layer_sizes'] = (M, M)
         variant_spec['policy_params']['kwargs']['preprocessor_params'] = (
             preprocessor_params.copy())
 
@@ -437,13 +422,7 @@ def get_variant_spec_image(universe,
                 ['kwargs']
                 ['preprocessor_params']
             )))
-        variant_spec['Q_params']['kwargs']['hidden_layer_sizes'] = (
-            tune.sample_from(lambda spec: (
-                spec.get('config', spec)
-                ['policy_params']
-                ['kwargs']
-                ['hidden_layer_sizes']
-            )))
+        variant_spec['Q_params']['kwargs']['hidden_layer_sizes'] = (M, M)
 
     return variant_spec
 
