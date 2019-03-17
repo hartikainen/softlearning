@@ -3,7 +3,10 @@ import numpy as np
 
 from softlearning.misc.utils import get_git_rev, deep_update
 
-HIDDEN_LAYER_SIZES = (256, 256)
+HIDDEN_LAYER_SIZES = tune.grid_search(
+    [(x, x) for x in (256, 512, 1024)]
+    + [(x, x, x) for x in (256, 512, 1024)]
+)
 REPARAMETERIZE = True
 
 NUM_COUPLING_LAYERS = 2
@@ -37,7 +40,7 @@ POLICY_PARAMS_FOR_DOMAIN.update({
 DEFAULT_MAX_PATH_LENGTH = 1000
 MAX_PATH_LENGTH_PER_DOMAIN = {
     'Point2DEnv': 50,
-    'DClaw3': tune.grid_search([100, 200, 250, 500, 1000]),
+    'DClaw3': 200,
     'HardwareDClaw3': 200,
     'Pendulum': 200,
     'Pusher2d': 100,
@@ -49,7 +52,7 @@ ALGORITHM_PARAMS_BASE = {
     'kwargs': {
         'epoch_length': 1000,
         'train_every_n_steps': 1,
-        'n_train_repeat': 1,
+        'n_train_repeat': tune.grid_search([1, 2, 4]),
         'eval_render_mode': None,
         'eval_n_episodes': 1,
         'eval_deterministic': True,
@@ -130,15 +133,10 @@ ALGORITHM_PARAMS_PER_DOMAIN = {
             'kwargs': {
                 'n_epochs': NUM_EPOCHS_PER_DOMAIN.get(
                     domain, DEFAULT_NUM_EPOCHS),
-                'n_initial_exploration_steps': lambda spec: (
-                    10 * spec.get('config', spec)
-                    ['sampler_params']
-                    ['kwargs']
-                    ['max_path_length']
-                    # MAX_PATH_LENGTH_PER_DOMAIN.get(
-                    #     domain, DEFAULT_MAX_PATH_LENGTH
-                    # ) * 10),
-                ),
+                'n_initial_exploration_steps': (
+                    MAX_PATH_LENGTH_PER_DOMAIN.get(
+                        domain, DEFAULT_MAX_PATH_LENGTH
+                    ) * 10),
             }
         } for domain in NUM_EPOCHS_PER_DOMAIN
     }
@@ -240,11 +238,11 @@ ENVIRONMENT_PARAMS = {
                 }
                 for object_initial_position_range, target_initial_position_range
                 in (
-                    ((0, 0), (np.pi, np.pi)),
-                    ((0, 0), (-np.pi, np.pi)),
-                    ((-np.pi, np.pi), (np.pi, np.pi)),
+                    # ((0, 0), (np.pi, np.pi)),
+                    # ((0, 0), (-np.pi, np.pi)),
+                    # ((-np.pi, np.pi), (np.pi, np.pi)),
                     ((-np.pi, np.pi), (-np.pi, np.pi)),
-                    (None, (np.pi, np.pi)),
+                    # (None, (np.pi, np.pi)),
                     (None, (-np.pi, np.pi)))
                 for loss_function in (NegativeLogLossFn(1e-6), )
             ]
