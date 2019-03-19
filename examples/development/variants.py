@@ -209,8 +209,8 @@ ENV_PARAMS = {
                     NegativeLogLossFn(eps, offset=offset)
                     for eps in [1e-6]
                     for offset in [
-                            -3, -1, 0, 1, 3,
-                            -np.log(np.pi + eps),
+                            -10, -3, -1, 0, 1, 3, 10,
+                            np.log(np.pi + eps),
                             np.log(0 + eps),
                     ]
                 ],
