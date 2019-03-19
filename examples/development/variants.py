@@ -79,7 +79,7 @@ ALGORITHM_PARAMS_ADDITIONAL = {
         'type': 'SQL',
         'kwargs': {
             'policy_lr': 3e-4,
-            'td_target_update_interval': 1,
+            'target_update_interval': 1,
             'n_initial_exploration_steps': int(1e3),
             'reward_scale': tune.sample_from(lambda spec: (
                 {
@@ -89,8 +89,15 @@ ALGORITHM_PARAMS_ADDITIONAL = {
                     'Walker2d': 10,
                     'Ant': 300,
                     'Humanoid': 100,
-                }[spec.get('config', spec)['domain']],
-            ))
+                    'Pendulum': 1,
+                }.get(
+                    spec.get('config', spec)
+                    ['environment_params']
+                    ['training']
+                    ['domain'],
+                    1.0
+                ),
+            )),
         }
     }
 }
@@ -153,7 +160,7 @@ class NegativeLogLossFn(object):
         return super(NegativeLogLossFn, self).__eq__(other)
 
 
-ENV_PARAMS = {
+ENVIRONMENT_PARAMS = {
     'Swimmer': {  # 2 DoF
     },
     'Hopper': {  # 3 DoF
@@ -163,21 +170,21 @@ ENV_PARAMS = {
     'Walker2d': {  # 6 DoF
     },
     'Ant': {  # 8 DoF
-        'Parameterizable-v0': {
+        'Parameterizable-v3': {
             'healthy_reward': 0.0,
             'healthy_z_range': (-np.inf, np.inf),
             'exclude_current_positions_from_observation': False,
         }
     },
     'Humanoid': {  # 17 DoF
-        'Parameterizable-v0': {
+        'Parameterizable-v3': {
             'healthy_reward': 0.0,
             'healthy_z_range': (-np.inf, np.inf),
             'exclude_current_positions_from_observation': False,
         }
     },
     'Pusher2d': {  # 3 DoF
-        'Default-v0': {
+        'Default-v3': {
             'arm_object_distance_cost_coeff': 0.0,
             'goal_object_distance_cost_coeff': 1.0,
             'goal': (0, -1),
@@ -270,10 +277,10 @@ ENV_PARAMS = {
     },
     'Point2DEnv': {
         'Default-v0': {
-            'observation_keys': ('observation', ),
+            'observation_keys': ('observation', 'desired_goal'),
         },
         'Wall-v0': {
-            'observation_keys': ('observation', ),
+            'observation_keys': ('observation', 'desired_goal'),
         },
     }
 }
@@ -291,12 +298,22 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
         ALGORITHM_PARAMS_ADDITIONAL.get(algorithm, {})
     )
     variant_spec = {
-        'domain': domain,
-        'task': task,
-        'universe': universe,
         'git_sha': get_git_rev(),
 
-        'env_params': ENV_PARAMS.get(domain, {}).get(task, {}),
+        'environment_params': {
+            'training': {
+                'domain': domain,
+                'task': task,
+                'universe': universe,
+                'kwargs': (
+                    ENVIRONMENT_PARAMS.get(domain, {}).get(task, {})),
+            },
+            'evaluation': tune.sample_from(lambda spec: (
+                spec.get('config', spec)
+                ['environment_params']
+                ['training']
+            )),
+        },
         'policy_params': deep_update(
             POLICY_PARAMS_BASE[policy],
             POLICY_PARAMS_FOR_DOMAIN[policy].get(domain, {})
@@ -366,7 +383,11 @@ def get_variant_spec_image(universe,
         preprocessor_params = {
             'type': 'convnet_preprocessor',
             'kwargs': {
-                'image_shape': variant_spec['env_params']['image_shape'],
+                'image_shape': (
+                    variant_spec
+                    ['training']
+                    ['environment_params']
+                    ['image_shape']),
                 'output_size': M,
                 'num_conv_layers': tune.grid_search([2, 3]),
                 'num_filters_per_layer': tune.grid_search([4, 8, 16, 32]),
