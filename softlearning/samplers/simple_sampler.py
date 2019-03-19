@@ -5,6 +5,22 @@ import numpy as np
 from .base_sampler import BaseSampler
 
 
+class ReturnNormalizer(object):
+    def __init__(self):
+        self._count = 0
+        self._mean = 0.0
+
+    def update(self, new_reward):
+        self._count += 1
+        differential = (new_reward - self._mean) / self._count
+        self._mean += differential
+
+    @property
+    def mean(self):
+        mean = self._mean if self._count > 0 else np.nan
+        return mean
+
+
 class SimpleSampler(BaseSampler):
     def __init__(self, **kwargs):
         super(SimpleSampler, self).__init__(**kwargs)
@@ -17,6 +33,7 @@ class SimpleSampler(BaseSampler):
         self._n_episodes = 0
         self._current_observation = None
         self._total_samples = 0
+        self.return_normalizer = ReturnNormalizer()
 
     def _process_observations(self,
                               observation,
@@ -49,6 +66,7 @@ class SimpleSampler(BaseSampler):
         self._path_length += 1
         self._path_return += reward
         self._total_samples += 1
+        self.return_normalizer.update(reward)
 
         processed_sample = self._process_observations(
             observation=self._current_observation,
