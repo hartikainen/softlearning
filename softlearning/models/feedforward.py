@@ -4,6 +4,21 @@ import tensorflow as tf
 from softlearning.utils.keras import PicklableKerasModel
 
 
+class ConstantOffsetLayer(tf.keras.layers.Layer):
+    def build(self, input_shape):
+        self.offset = self.add_weight(name='kernel',
+                                      shape=(),
+                                      initializer='zeros',
+                                      trainable=True)
+        super(ConstantOffsetLayer, self).build(input_shape)
+
+    def call(self, x):
+        return x + self.offset
+
+    def compute_output_shape(self, input_shape):
+        return input_shape
+
+
 def feedforward_model(input_shapes,
                       output_size,
                       hidden_layer_sizes,
@@ -11,6 +26,7 @@ def feedforward_model(input_shapes,
                       output_activation='linear',
                       preprocessors=None,
                       name='feedforward_model',
+                      learn_offset=False,
                       *args,
                       **kwargs):
     inputs = [
@@ -39,6 +55,9 @@ def feedforward_model(input_shapes,
     out = tf.keras.layers.Dense(
         output_size, *args, activation=output_activation, **kwargs
     )(out)
+
+    if learn_offset:
+        out = ConstantOffsetLayer()(out)
 
     model = PicklableKerasModel(inputs, out, name=name)
 
