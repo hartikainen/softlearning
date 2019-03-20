@@ -356,8 +356,7 @@ class SAC(RLAlgorithm):
             self._observations_ph: batch['observations'],
             self._actions_ph: batch['actions'],
             self._next_observations_ph: batch['next_observations'],
-            self._rewards_ph: (
-                batch['rewards'] - self.sampler.return_normalizer.mean),
+            self._rewards_ph: batch['rewards'],
             self._terminals_ph: batch['terminals'],
         }
 
