@@ -216,33 +216,63 @@ class SAC(RLAlgorithm):
 
         assert Q_target.shape.as_list() == [None, 1]
 
-        Q_values = self._Q_values = tuple(
-            Q([self._observations_ph, self._actions_ph])
-            for Q in self._Qs)
+        self._Q_optimizer = tf.train.AdamOptimizer(
+            learning_rate=self._Q_lr, name='Q_optimizer')
 
-        Q_losses = self._Q_losses = tuple(
-            tf.losses.mean_squared_error(
-                labels=Q_target, predictions=Q_value, weights=0.5)
-            for Q_value in Q_values)
+        mu = tf.get_variable('mu', dtype=tf.float32, initializer=0.0)
+        sigma = tf.get_variable('sigma', dtype=tf.float32, initializer=1.0)
+        v = tf.get_variable('v', dtype=tf.float32, initializer=1.0)
 
-        self._Q_optimizers = tuple(
-            tf.train.AdamOptimizer(
-                learning_rate=self._Q_lr,
-                name='{}_{}_optimizer'.format(Q._name, i)
-            ) for i, Q in enumerate(self._Qs))
-        Q_training_ops = tuple(
-            tf.contrib.layers.optimize_loss(
-                Q_loss,
-                self.global_step,
-                learning_rate=self._Q_lr,
-                optimizer=Q_optimizer,
-                variables=Q.trainable_variables,
-                increment_global_step=False,
-                summaries=((
-                    "loss", "gradients", "gradient_norm", "global_gradient_norm"
-                ) if self._tf_summaries else ()))
-            for i, (Q, Q_loss, Q_optimizer)
-            in enumerate(zip(self._Qs, Q_losses, self._Q_optimizers)))
+        target = tf.reduce_mean(Q_target)
+
+        beta = 1e-3
+        mu_new = (1 - beta) * mu + beta * target
+        v = (1 - beta) * v + beta * target ** 2
+        sigma_new = v - mu ** 2
+
+        Q_training_ops = []
+        Q_values = []
+        Q_losses = []
+
+        for Q in self._Qs:
+            assert isinstance(Q.layers[-1], tf.keras.layers.Dense)
+
+            W = Q.layers[-1].kernel
+            b = Q.layers[-1].bias
+
+            with tf.control_dependencies([
+                    tf.assign(W, W * sigma / sigma_new),
+                    tf.assign(b, (sigma * b + mu - mu_new) / sigma_new),
+            ]):
+                statistics_update_ops = [
+                    tf.assign(sigma, sigma_new),
+                    tf.assign(mu, mu_new),
+                ]
+
+            with tf.control_dependencies(statistics_update_ops):
+                Q_value = Q([self._observations_ph, self._actions_ph])
+                normalized_Q_target = (Q_target - mu) / sigma
+                Q_loss = tf.losses.mean_squared_error(
+                    labels=normalized_Q_target,
+                    predictions=Q_value,
+                    weights=0.5)
+
+                Q_hidden_variables = tuple({*Q.trainable_variables} - {W, b})
+                Q_hidden_update_op = self._Q_optimizer.minimize(
+                    loss=Q_loss, var_list=Q_hidden_variables)
+
+            with tf.control_dependencies([Q_hidden_update_op]):
+                Q_head_variables = (W, b)
+                Q_head_update_op = self._Q_optimizer.minimize(
+                    loss=Q_loss, var_list=Q_head_variables)
+
+            Q_training_ops += [Q_hidden_update_op, Q_head_update_op]
+            Q_values += [Q_value]
+            Q_losses += [Q_loss]
+
+        self._Q_training_ops = Q_training_ops
+        self._Q_values = Q_values
+        self._Q_losses = Q_losses
 
         self._training_ops.update({'Q': tf.group(Q_training_ops)})
 
@@ -415,10 +445,7 @@ class SAC(RLAlgorithm):
     def tf_saveables(self):
         saveables = {
             '_policy_optimizer': self._policy_optimizer,
-            **{
-                f'Q_optimizer_{i}': optimizer
-                for i, optimizer in enumerate(self._Q_optimizers)
-            },
+            '_Q_optimizer': self._Q_optimizer,
             '_log_alpha': self._log_alpha,
         }
 
