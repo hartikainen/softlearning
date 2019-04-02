@@ -219,16 +219,21 @@ class SAC(RLAlgorithm):
         self._Q_optimizer = tf.train.AdamOptimizer(
             learning_rate=self._Q_lr, name='Q_optimizer')
 
-        mu = tf.get_variable('mu', dtype=tf.float32, initializer=0.0)
-        sigma = tf.get_variable('sigma', dtype=tf.float32, initializer=1.0)
-        v = tf.get_variable('v', dtype=tf.float32, initializer=1.0)
+        mu = tf.get_variable(
+            'mu', dtype=tf.float32, initializer=0.0, trainable=False)
+        sigma = tf.get_variable(
+            'sigma', dtype=tf.float32, initializer=1.0, trainable=False)
+        v = tf.get_variable(
+            'v', dtype=tf.float32, initializer=1.0, trainable=False)
+
+        Q_target = Q_target * sigma + mu
 
         target = tf.reduce_mean(Q_target)
 
         beta = 1e-3
         mu_new = (1 - beta) * mu + beta * target
         v = (1 - beta) * v + beta * target ** 2
-        sigma_new = v - mu ** 2
+        sigma_new = tf.sqrt(tf.maximum(v - mu_new ** 2, 1e-8))
 
         Q_training_ops = []
         Q_values = []
@@ -236,6 +241,7 @@ class SAC(RLAlgorithm):
 
         for Q in self._Qs:
             assert isinstance(Q.layers[-1], tf.keras.layers.Dense)
+            assert Q.layers[-1].activation.__name__ == 'linear'
 
             W = Q.layers[-1].kernel
             b = Q.layers[-1].bias
