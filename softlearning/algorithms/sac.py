@@ -113,6 +113,11 @@ class SAC(RLAlgorithm):
     def _build(self):
         self._training_ops = {}
 
+        self.mu = tf.get_variable(
+            'mu', dtype=tf.float32, initializer=0.0, trainable=False)
+        self.sigma = tf.get_variable(
+            'sigma', dtype=tf.float32, initializer=1.0, trainable=False)
+
         self._init_global_step()
         self._init_placeholders()
         self._init_actor_update()
@@ -190,6 +195,7 @@ class SAC(RLAlgorithm):
 
         next_Qs_values = tuple(
             Q([self._next_observations_ph, next_actions])
+            * self.sigma + self.mu
             for Q in self._Q_targets)
 
         min_next_Q = tf.reduce_min(next_Qs_values, axis=0)
@@ -212,6 +218,12 @@ class SAC(RLAlgorithm):
         See Equations (5, 6) in [1], for further information of the
         Q-function update rule.
         """
+        v = tf.get_variable(
+            'v', dtype=tf.float32, initializer=1e4, trainable=False)
+
+        mu = self.mu
+        sigma = self.sigma
+
         Q_target = tf.stop_gradient(self._get_Q_target())
 
         assert Q_target.shape.as_list() == [None, 1]
@@ -219,25 +231,17 @@ class SAC(RLAlgorithm):
         self._Q_optimizer = tf.train.AdamOptimizer(
             learning_rate=self._Q_lr, name='Q_optimizer')
 
-        mu = tf.get_variable(
-            'mu', dtype=tf.float32, initializer=0.0, trainable=False)
-        sigma = tf.get_variable(
-            'sigma', dtype=tf.float32, initializer=1.0, trainable=False)
-        v = tf.get_variable(
-            'v', dtype=tf.float32, initializer=1.0, trainable=False)
-
-        Q_target = Q_target * sigma + mu
-
-        target = tf.reduce_mean(Q_target)
+        Y = Q_target
 
         beta = 1e-3
-        mu_new = (1 - beta) * mu + beta * target
-        v = (1 - beta) * v + beta * target ** 2
-        sigma_new = tf.sqrt(tf.maximum(v - mu_new ** 2, 1e-8))
+        mu_new = (1 - beta) * mu + beta * tf.reduce_mean(Y)
+        v = (1 - beta) * v + beta * tf.reduce_mean(Y ** 2)
+        sigma_new = tf.sqrt(tf.maximum(v - mu_new ** 2, 1e-4))
 
         Q_training_ops = []
         Q_values = []
         Q_losses = []
+        head_update_ops = []
 
         for Q in self._Qs:
             assert isinstance(Q.layers[-1], tf.keras.layers.Dense)
@@ -246,26 +250,55 @@ class SAC(RLAlgorithm):
             W = Q.layers[-1].kernel
             b = Q.layers[-1].bias
 
+            head_update_ops += [
+                tf.assign(W, W * sigma / sigma_new),
+                tf.assign(b, (sigma * b + mu - mu_new) / sigma_new),
+            ]
+
+        with tf.control_dependencies(head_update_ops):
+            statistics_update_ops = [
+                tf.assign(sigma, sigma_new),
+                tf.assign(mu, mu_new),
+            ]
+
+        with tf.control_dependencies(statistics_update_ops):
+            normalized_Q_target = (Y - mu) / sigma
+
+        for Q in self._Qs:
+            with tf.control_dependencies(head_update_ops + statistics_update_ops):
+                Q_value = (
+                    Q([self._observations_ph, self._actions_ph])
+                    # * self.sigma + self.mu
+                )
+
+            W = Q.layers[-1].kernel
+            b = Q.layers[-1].bias
+
+            # unnormalized_Q_value = Q_value * sigma + mu
+            Q_loss = tf.losses.mean_squared_error(
+                labels=normalized_Q_target,
+                predictions=Q_value,
+                weights=0.5)
+
+            Q_hidden_variables = tuple({*Q.trainable_variables} - {W, b})
+            Q_hidden_update_op = self._Q_optimizer.minimize(
+                loss=Q_loss, var_list=Q_hidden_variables)
+
+            extent = tf.sqrt((1-beta) / beta)
+            print_op = tf.print([
+                mu,
+                sigma,
+                v,
+                tf.reduce_mean(Q_target),
+                tf.reduce_mean(normalized_Q_target),
+            ], summarize=-1)
+            with tf.control_dependencies([print_op]):
+                Q_loss = Q_loss + 0.0
+
             with tf.control_dependencies([
-                    tf.assign(W, W * sigma / sigma_new),
-                    tf.assign(b, (sigma * b + mu - mu_new) / sigma_new),
-            ]):
-                statistics_update_ops = [
-                    tf.assign(sigma, sigma_new),
-                    tf.assign(mu, mu_new),
-                ]
-
-            with tf.control_dependencies(statistics_update_ops):
-                Q_value = Q([self._observations_ph, self._actions_ph])
-                normalized_Q_target = (Q_target - mu) / sigma
-                Q_loss = tf.losses.mean_squared_error(
-                    labels=normalized_Q_target,
-                    predictions=Q_value,
-                    weights=0.5)
-
-                Q_hidden_variables = tuple({*Q.trainable_variables} - {W, b})
-                Q_hidden_update_op = self._Q_optimizer.minimize(
-                    loss=Q_loss, var_list=Q_hidden_variables)
+                    tf.assert_less_equal(-extent, normalized_Q_target),
+                    tf.assert_less_equal(normalized_Q_target, extent)]):
+                Q_loss = Q_loss + 0.0
 
             with tf.control_dependencies([Q_hidden_update_op]):
                 Q_head_variables = (W, b)
@@ -273,6 +306,7 @@ class SAC(RLAlgorithm):
                     loss=Q_loss, var_list=Q_head_variables)
 
             Q_training_ops += [Q_hidden_update_op, Q_head_update_op]
+
             Q_values += [Q_value]
             Q_losses += [Q_loss]
 
@@ -328,7 +362,7 @@ class SAC(RLAlgorithm):
             policy_prior_log_probs = 0.0
 
         Q_log_targets = tuple(
-            Q([self._observations_ph, actions])
+            Q([self._observations_ph, actions]) * self.sigma + self.mu
             for Q in self._Qs)
         min_Q_log_target = tf.reduce_min(Q_log_targets, axis=0)
 
