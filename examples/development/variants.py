@@ -37,7 +37,7 @@ POLICY_PARAMS_FOR_DOMAIN.update({
 DEFAULT_MAX_PATH_LENGTH = 1000
 MAX_PATH_LENGTH_PER_DOMAIN = {
     'Point2DEnv': 50,
-    'DClaw3': 250,
+    'DClaw3': 200,
     'HardwareDClaw3': 200,
     'Pendulum': 200,
     'Pusher2d': 100,
@@ -235,29 +235,13 @@ ENVIRONMENT_PARAMS = {
                 }
                 for object_initial_position_range, target_initial_position_range
                 in (
-
-                    ((-np.pi/4, np.pi/4), (-np.pi, np.pi)),
-                    ((-np.pi/2, np.pi/2), (-np.pi, np.pi)),
-                    ((-np.pi*3/4, np.pi*3/4), (-np.pi, np.pi)),
+                    ((0, 0), (np.pi, np.pi)),
+                    ((0, 0), (-np.pi, np.pi)),
+                    ((-np.pi, np.pi), (np.pi, np.pi)),
                     ((-np.pi, np.pi), (-np.pi, np.pi)),
-                    ((0, np.pi), (-np.pi, np.pi)),
-                    ((-np.pi, 0), (-np.pi, np.pi)),
-
-                    ((-np.pi, np.pi), (-np.pi/4, np.pi/4)),
-                    ((-np.pi, np.pi), (-np.pi/2, np.pi/2)),
-                    ((-np.pi, np.pi), (-np.pi*3/4, np.pi*3/4)),
-                    ((-np.pi, np.pi), (-np.pi, np.pi)),
-                    ((-np.pi, np.pi), (0, np.pi)),
-                    ((-np.pi, np.pi), (-np.pi, 0)),
-
-                    # ((0, 0), (np.pi, np.pi)),
-                    # ((0, 0), (-np.pi, np.pi)),
-                    # ((-np.pi, np.pi), (np.pi, np.pi)),
-                    # ((-np.pi, np.pi), (-np.pi, np.pi)),
-                    # (None, (np.pi, np.pi)),
-                    # (None, (-np.pi, np.pi)),
-                )
-                for loss_function in (NegativeLogLossFn(1e-6), )
+                    (None, (np.pi, np.pi)),
+                    (None, (-np.pi, np.pi)))
+                for loss_function in (NegativeLogLossFn(1e-6), LinearLossFn())
             ]
         ),
         'ImageScrewV2-v0': tune.grid_search([
