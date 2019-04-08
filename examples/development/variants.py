@@ -118,7 +118,7 @@ NUM_EPOCHS_PER_DOMAIN = {
     'HandReach': int(1e4),
     'Point2DEnv': int(200),
     'Reacher': int(200),
-    'DClaw3': int(300),
+    'DClaw3': int(500),
     'ImageDClaw3': int(300),
     'HardwareDClaw3': int(100),
     'Pendulum': 10,
@@ -235,13 +235,14 @@ ENVIRONMENT_PARAMS = {
                 }
                 for object_initial_position_range, target_initial_position_range
                 in (
-                    ((0, 0), (np.pi, np.pi)),
+                    # ((0, 0), (np.pi, np.pi)),
                     ((0, 0), (-np.pi, np.pi)),
-                    ((-np.pi, np.pi), (np.pi, np.pi)),
-                    ((-np.pi, np.pi), (-np.pi, np.pi)),
-                    (None, (np.pi, np.pi)),
-                    (None, (-np.pi, np.pi)))
-                for loss_function in (NegativeLogLossFn(1e-6), LinearLossFn())
+                    # ((-np.pi, np.pi), (np.pi, np.pi)),
+                    # ((-np.pi, np.pi), (-np.pi, np.pi)),
+                    # (None, (np.pi, np.pi)),
+                    # (None, (-np.pi, np.pi)),
+                )
+                for loss_function in (NegativeLogLossFn(1e-6), )
             ]
         ),
         'ImageScrewV2-v0': tune.grid_search([
@@ -258,13 +259,14 @@ ENVIRONMENT_PARAMS = {
             }
             for object_initial_position_range, target_initial_position_range
             in (
-                ((0, 0), (np.pi, np.pi)),
+                # ((0, 0), (np.pi, np.pi)),
                 ((0, 0), (-np.pi, np.pi)),
-                ((-np.pi, np.pi), (np.pi, np.pi)),
-                ((-np.pi, np.pi), (-np.pi, np.pi)),
-                (None, (np.pi, np.pi)),
-                (None, (-np.pi, np.pi)))
-            for loss_function in (NegativeLogLossFn(1e-6), LinearLossFn())
+                # ((-np.pi, np.pi), (np.pi, np.pi)),
+                # ((-np.pi, np.pi), (-np.pi, np.pi)),
+                # (None, (np.pi, np.pi)),
+                # (None, (-np.pi, np.pi)),
+            )
+            for loss_function in (NegativeLogLossFn(1e-6), )
         ]),
     },
     'HardwareDClaw3': {
