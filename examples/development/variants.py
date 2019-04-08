@@ -248,6 +248,7 @@ ENVIRONMENT_PARAMS = {
         'ImageScrewV2-v0': tune.grid_search([
             {
                 'image_shape': (32, 32, 3),
+                'num_repeat_goals': tune.grid_search([1, 10, 100]),
                 'object_target_distance_reward_fn': loss_function,
                 'pose_difference_cost_coeff': 0,
                 'joint_velocity_cost_coeff': 0,
