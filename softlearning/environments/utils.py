@@ -2,12 +2,21 @@ from .adapters.gym_adapter import (
     GYM_ENVIRONMENTS,
     GymAdapter,
 )
+
+from .adapters.dm_control_adapter import (
+    DM_CONTROL_ENVIRONMENTS,
+    DmControlAdapter,
+)
+
+
 ENVIRONMENTS = {
     'gym': GYM_ENVIRONMENTS,
+    'dm_control': DM_CONTROL_ENVIRONMENTS,
 }
 
 ADAPTERS = {
     'gym': GymAdapter,
+    'dm_control': DmControlAdapter,
 }
 
 

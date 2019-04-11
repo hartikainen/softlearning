@@ -165,7 +165,7 @@ def add_ray_tune_args(parser):
     parser.add_argument(
         '--trial-name-template',
         type=str,
-        default=None,
+        default='id={trial.trial_id}-seed={trial.config[run_params][seed]}',
         help=tune_help_string(
             "Optional string template for trial name. For example:"
             " '{trial.trial_id}-seed={trial.config[run_params][seed]}'"))
@@ -208,7 +208,7 @@ def add_ray_tune_args(parser):
     parser.add_argument(
         '--with-server',
         type=str,
-        default=False,
+        default=True,
         help=tune_help_string("Starts a background Tune server. Needed for"
                               " using the Client API."))
 
@@ -226,10 +226,9 @@ def get_parser(allow_policy_list=False):
     parser.add_argument(
         '--domain',
         type=str,
-        choices=AVAILABLE_DOMAINS,
         default=DEFAULT_DOMAIN)
     parser.add_argument(
-        '--task', type=str, choices=AVAILABLE_TASKS, default=DEFAULT_TASK)
+        '--task', type=str, default=DEFAULT_TASK)
 
     parser.add_argument(
         '--checkpoint-replay-pool',
