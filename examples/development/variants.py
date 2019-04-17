@@ -298,7 +298,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
         ALGORITHM_PARAMS_ADDITIONAL.get(algorithm, {})
     )
     variant_spec = {
-        'git_sha': get_git_rev(),
+        'git_sha': get_git_rev(__file__),
 
         'environment_params': {
             'training': {
@@ -385,8 +385,9 @@ def get_variant_spec_image(universe,
             'kwargs': {
                 'image_shape': (
                     variant_spec
-                    ['training']
                     ['environment_params']
+                    ['training']
+                    ['kwargs']
                     ['image_shape']),
                 'output_size': M,
                 'num_conv_layers': tune.grid_search([2, 3]),
