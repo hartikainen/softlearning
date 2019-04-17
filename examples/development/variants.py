@@ -355,12 +355,12 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             'seed': tune.sample_from(
                 lambda spec: np.random.randint(0, 10000)),
             'checkpoint_at_end': True,
-            'checkpoint_frequency': lambda spec: (
+            'checkpoint_frequency': tune.sample_from(lambda spec: (
                 25000 // (spec.get('config', spec)
                           ['algorithm_params']
                           ['kwargs']
                           ['epoch_length'])
-            ),
+            )),
             # NUM_EPOCHS_PER_DOMAIN.get(
             #     domain, DEFAULT_NUM_EPOCHS) // NUM_CHECKPOINTS
         },
