@@ -224,6 +224,10 @@ class SAC(RLAlgorithm):
                 labels=Q_target, predictions=Q_value, weights=0.5)
             for Q_value in Q_values)
 
+        self._Q_difference_values = tuple(
+            Q_target - Q_value for Q_value in Q_values)
+        self._Q_target_values = Q_target
+
         self._Q_optimizers = tuple(
             tf.train.AdamOptimizer(
                 learning_rate=self._Q_lr,
@@ -371,9 +375,17 @@ class SAC(RLAlgorithm):
 
         feed_dict = self._get_feed_dict(iteration, batch)
 
-        (Q_values, Q_losses, policy_losses, alpha, global_step) = (
+        (Q_values,
+         Q_target_values,
+         Q_difference_values,
+         Q_losses,
+         policy_losses,
+         alpha,
+         global_step) = (
             self._session.run(
                 (self._Q_values,
+                 self._Q_target_values,
+                 self._Q_difference_values,
                  self._Q_losses,
                  self._policy_losses,
                  self._alpha,
@@ -383,8 +395,22 @@ class SAC(RLAlgorithm):
         diagnostics = OrderedDict({
             'Q-avg': np.mean(Q_values),
             'Q-std': np.std(Q_values),
-            'Q_loss': np.mean(Q_losses),
-            'policy_loss': np.mean(policy_losses),
+
+            'Q_target-avg': np.mean(Q_target_values),
+            'Q_target-std': np.std(Q_target_values),
+
+            'Q_difference-avg': np.mean(Q_difference_values),
+            'Q_difference-std': np.std(Q_difference_values),
+
+            'Q_difference-abs-avg': np.mean(np.abs(Q_difference_values)),
+            'Q_difference-abs-std': np.std(np.abs(Q_difference_values)),
+
+            'Q_loss-avg': np.mean(Q_losses),
+            'Q_loss-std': np.std(Q_losses),
+
+            'policy_loss-avg': np.mean(policy_losses),
+            'policy_loss-std': np.std(policy_losses),
+
             'alpha': alpha,
         })
 
