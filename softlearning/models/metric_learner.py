@@ -586,8 +586,9 @@ class TemporalDifferenceMetricLearner(MetricLearner):
                  distance_estimator,
                  *args,
                  condition_with_action=True,
+                 ground_truth_terminals=False,
                  **kwargs):
-        condition_with_action = True
+        self._ground_truth_terminals = ground_truth_terminals
         self.distance_estimator_target = tf.keras.models.clone_model(
             distance_estimator)
         result = super(TemporalDifferenceMetricLearner, self).__init__(
@@ -651,10 +652,15 @@ class TemporalDifferenceMetricLearner(MetricLearner):
         assert (self._terminals_ph.shape.as_list()
                 == distance_predictions_2.shape.as_list())
 
+        next_values = (
+            (1 - self._terminals_ph) * distance_predictions_2
+            if self._ground_truth_terminals
+            else distance_predictions_2)
+
         distance_targets = td_target(
             reward=1.0,
             discount=0.99,
-            next_value=(1 - self._terminals_ph) * distance_predictions_2)
+            next_value=next_values)
 
         # observations = tf.unstack(
         #     self.distance_pairs_observations_ph, 2, axis=1)

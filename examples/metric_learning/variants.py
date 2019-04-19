@@ -223,6 +223,7 @@ def get_variant_spec(args):
                 **shared_kwargs,
                 **{
                     'train_every_n_steps': 1,
+                    'ground_truth_terminals': True,
                 }
             }
         elif spec['metric_learner_params']['type'] == 'HingeMetricLearner':

@@ -54,12 +54,16 @@ class MetricLearningAlgorithm(SAC):
                 self._observations_ph, self._goals_ph, self._actions_ph)
             distances = self._metric_learner.distance_estimator(inputs)
             rewards = -1.0 * distances
-            values = (1 - self._terminals_ph) * next_value
+            values = next_value
 
         elif self._use_distance_for == 'value':
             if self._metric_learner._condition_with_action:
+                action_inputs = self._action_inputs(
+                    observations=self._next_observations_ph)
+                next_actions = self._policy.actions(action_inputs)
+
                 inputs = self._metric_learner._distance_estimator_inputs(
-                    self._observations_ph, self._goals_ph, self._actions_ph)
+                    self._next_observations_ph, self._goals_ph, next_actions)
             else:
                 inputs = self._metric_learner._distance_estimator_inputs(
                     self._next_observations_ph, self._goals_ph, None)
@@ -68,8 +72,13 @@ class MetricLearningAlgorithm(SAC):
             rewards = 0.0
             values = -1.0 * distances
 
+        if self._metric_learner._ground_truth_terminals:
+            values = (1 - self._terminals_ph) * values
+
         Q_target = td_target(
-            reward=rewards, discount=self._discount, next_value=values)  # N
+            reward=rewards,
+            discount=self._discount,
+            next_value=values)  # N
 
         return Q_target
 
