@@ -9,7 +9,7 @@ from .distance_estimator import get_distance_estimator_from_variant
 
 
 def get_metric_learner_from_variant(variant, env, policy):
-    distance_estimator = get_distance_estimator_from_variant(variant)
+    distance_estimator = get_distance_estimator_from_variant(variant, env)
 
     metric_learner_params = variant['metric_learner_params']
     metric_learner_type = metric_learner_params['type']
