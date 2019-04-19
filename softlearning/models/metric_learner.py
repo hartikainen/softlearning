@@ -582,10 +582,20 @@ class OnPolicyMetricLearner(MetricLearner):
 
 
 class TemporalDifferenceMetricLearner(MetricLearner):
-    def __init__(self, *args, condition_with_action=True, **kwargs):
+    def __init__(self,
+                 distance_estimator,
+                 *args,
+                 condition_with_action=True,
+                 **kwargs):
         condition_with_action = True
-        return super(TemporalDifferenceMetricLearner, self).__init__(
-            *args, condition_with_action=condition_with_action, **kwargs)
+        self.distance_estimator_target = tf.keras.models.clone_model(
+            distance_estimator)
+        result = super(TemporalDifferenceMetricLearner, self).__init__(
+            *args,
+            distance_estimator=distance_estimator,
+            condition_with_action=condition_with_action,
+            **kwargs)
+        return result
 
     def _init_placeholders(self):
         """Create input placeholders for the MetricLearner algorithm."""
@@ -636,7 +646,7 @@ class TemporalDifferenceMetricLearner(MetricLearner):
         next_actions = self._policy.actions([next_observations, goals])
         inputs_2 = self._distance_estimator_inputs(
             next_observations, goals, next_actions)
-        distance_predictions_2 = self.distance_estimator(inputs_2)
+        distance_predictions_2 = self.distance_estimator_target(inputs_2)
 
         assert (self._terminals_ph.shape.as_list()
                 == distance_predictions_2.shape.as_list())
@@ -718,3 +728,11 @@ class TemporalDifferenceMetricLearner(MetricLearner):
             '_distance_optimizer': self._distance_optimizer,
             'distance_estimator': self.distance_estimator
         }
+
+    def _update_target(self, tau=None):
+        source_params = self.distance_estimator.get_weights()
+        target_params = self.distance_estimator_target.get_weights()
+        self.distance_estimator_target.set_weights([
+            tau * source + (1.0 - tau) * target
+            for source, target in zip(source_params, target_params)
+        ])

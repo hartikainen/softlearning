@@ -123,6 +123,10 @@ class MetricLearningAlgorithm(SAC):
                 assert isinstance(self._training_environment.unwrapped,
                                   Point2DEnv)
 
+    def _timestep_after_hook(self, *args, **kwargs):
+        if hasattr(self._metric_learner, '_update_target'):
+            self._metric_learner._update_target(tau=self._tau)
+
     def _do_training_repeats(self, timestep):
         """Repeat training _n_train_repeat times every _train_every_n_steps"""
         if timestep % self._train_every_n_steps > 0: return
