@@ -72,6 +72,31 @@ class MetricLearningAlgorithm(SAC):
             rewards = 0.0
             values = -1.0 * distances
 
+        elif self._use_distance_for == 'telescope_reward':
+            inputs1 = self._metric_learner._distance_estimator_inputs(
+                self._observations_ph, self._goals_ph, self._actions_ph)
+            distances1 = self._metric_learner.distance_estimator(inputs1)
+
+            next_actions = self._policy.actions(self._action_inputs(
+                observations=self._next_observations_ph))
+            inputs2 = self._metric_learner._distance_estimator_inputs(
+                self._next_observations_ph, self._goals_ph, next_actions)
+            distances2 = self._metric_learner.distance_estimator(inputs2)
+
+            rewards = -1.0 * (distances2 - distances1)
+
+            Q_inputs = self._Q_inputs(
+                observations=self._next_observations_ph, actions=next_actions)
+            next_Qs_values = tuple(Q(Q_inputs) for Q in self._Q_targets)
+
+            min_next_Q = tf.reduce_min(next_Qs_values, axis=0)
+            next_value = min_next_Q
+
+            values = next_value
+
+        else:
+            raise NotImplementedError(self._use_distance_for)
+
         if self._metric_learner._ground_truth_terminals:
             values = (1 - self._terminals_ph) * values
 

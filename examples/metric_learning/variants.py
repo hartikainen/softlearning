@@ -313,7 +313,8 @@ def get_variant_spec(args):
                 'plot_distances': True,
                 'use_distance_for': tune.grid_search([
                     'reward',
-                    # 'value',
+                    'value',
+                    # 'telescope_reward',
                 ]),
                 'final_exploration_proportion': 0.1,
             }
