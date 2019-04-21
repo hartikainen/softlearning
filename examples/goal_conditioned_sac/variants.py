@@ -19,6 +19,10 @@ def get_variant_spec(args):
         metric_learning_variant_spec['algorithm_params']['kwargs'].items()
         if key not in ('save_full_state', 'use_distance_for')
     }
+    variant_spec['algorithm_params']['kwargs'].update({
+        'eval_n_episodes': 1,
+        'plot_distances': False,
+    })
     variant_spec['exploration_policy_params']['type'] = (
         'GoalConditionedUniformPolicy')
     variant_spec['policy_params']['type'] = 'GoalConditionedGaussianPolicy'
@@ -36,10 +40,12 @@ def get_variant_spec(args):
         'replay_pool_params'].copy()
     variant_spec['replay_pool_params']['kwargs'].update({
         'on_policy_window': None,
+        'max_pair_distance': None,
         'use_distances': False,
         'her_strategy': {
             'type': 'future',
-            'resampling_probability': 0.8,
+            'resampling_probability': tune.grid_search([
+                0.5, 0.8, 0.9]),
         }
     })
 
