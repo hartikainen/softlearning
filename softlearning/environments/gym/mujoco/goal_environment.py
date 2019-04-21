@@ -254,7 +254,7 @@ class GoalHalfCheetahEnv(GoalEnvironment):
         return one_dimensional_goal_info(observation, reward, done, base_info)
 
     def sample_metric_goal(self):
-        random_x = np.random.uniform(-10, 10)
+        random_x = np.random.uniform(-25, 25)
         reset_position = np.array((
             random_x, -1.32567415e-01, 5.20491968e-02, 3.42479814e-02,
             6.83982020e-02, -1.40750661e-02, -5.86704033e-02, -1.40321593e-01,
