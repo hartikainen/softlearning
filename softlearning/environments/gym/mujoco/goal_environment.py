@@ -170,12 +170,34 @@ def two_dimensional_goal_info(observation, reward, done, base_info):
 class GoalSwimmerEnv(GoalEnvironment):
     ENVIRONMENT_CLASS = SwimmerEnv
 
+    def _goal_reached(self):
+        assert not self.unwrapped._exclude_current_positions_from_observation
+        goal_observation = self._get_obs()
+        goal_reached = np.linalg.norm(
+            goal_observation['observation'][:2]
+            - goal_observation['desired_goal'][:2],
+            ord=2
+        ) < 0.1
+
+        return goal_reached
+
     def _get_goal_info(self, observation, reward, done, base_info):
         return two_dimensional_goal_info(observation, reward, done, base_info)
 
 
 class GoalAntEnv(GoalEnvironment):
     ENVIRONMENT_CLASS = AntEnv
+
+    def _goal_reached(self):
+        assert not self.unwrapped._exclude_current_positions_from_observation
+        goal_observation = self._get_obs()
+        goal_reached = np.linalg.norm(
+            goal_observation['observation'][:2]
+            - goal_observation['desired_goal'][:2],
+            ord=2
+        ) < 0.1
+
+        return goal_reached
 
     def _get_goal_info(self, observation, reward, done, base_info):
         return two_dimensional_goal_info(observation, reward, done, base_info)
