@@ -1,6 +1,15 @@
 import numpy as np
 import tensorflow as tf
 
+from gym.envs.mujoco.swimmer_v3 import SwimmerEnv
+from gym.envs.mujoco.ant_v3 import AntEnv
+from gym.envs.mujoco.humanoid_v3 import HumanoidEnv
+from gym.envs.mujoco.half_cheetah_v3 import HalfCheetahEnv
+from gym.envs.mujoco.hopper_v3 import HopperEnv
+from gym.envs.mujoco.walker2d_v3 import Walker2dEnv
+from softlearning.environments.gym.mujoco.goal_environment import (
+    GoalEnvironment)
+
 from softlearning.utils.numpy import softmax
 from .sac import SAC, td_target
 from multiworld.envs.pygame.point2d import Point2DEnv, Point2DWallEnv
@@ -54,7 +63,23 @@ class GoalConditionedSAC(SAC):
         random_explore_after = (
             self.sampler._max_path_length
             * (1.0 - self._final_exploration_proportion))
-        if (self.sampler._path_length >= random_explore_after):
+        if isinstance(self._training_environment.unwrapped,
+                      (SwimmerEnv,
+                       AntEnv,
+                       HumanoidEnv,
+                       HalfCheetahEnv,
+                       HopperEnv,
+                       Walker2dEnv)):
+            succeeded_this_episode = (
+                self._training_environment._env.env.succeeded_this_episode)
+        else:
+            succeeded_this_episode = getattr(
+                self._training_environment.unwrapped,
+                'succeeded_this_episode',
+                False)
+
+        if (self.sampler._path_length >= random_explore_after
+            or succeeded_this_episode):
             self.sampler.initialize(
                 self._training_environment, self._initial_exploration_policy, self._pool)
             # self.sampler.initialize(

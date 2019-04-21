@@ -11,6 +11,8 @@ from gym.envs.mujoco.humanoid_v3 import HumanoidEnv
 from gym.envs.mujoco.half_cheetah_v3 import HalfCheetahEnv
 from gym.envs.mujoco.hopper_v3 import HopperEnv
 from gym.envs.mujoco.walker2d_v3 import Walker2dEnv
+from softlearning.environments.gym.mujoco.goal_environment import (
+    GoalEnvironment)
 
 
 class MetricLearningAlgorithm(SAC):
@@ -130,7 +132,24 @@ class MetricLearningAlgorithm(SAC):
         random_explore_after = (
             self.sampler._max_path_length
             * (1.0 - self._final_exploration_proportion))
-        if self.sampler._path_length >= random_explore_after:
+
+        if isinstance(self._training_environment.unwrapped,
+                      (SwimmerEnv,
+                       AntEnv,
+                       HumanoidEnv,
+                       HalfCheetahEnv,
+                       HopperEnv,
+                       Walker2dEnv)):
+            succeeded_this_episode = (
+                self._training_environment._env.env.succeeded_this_episode)
+        else:
+            succeeded_this_episode = getattr(
+                self._training_environment.unwrapped,
+                'succeeded_this_episode',
+                False)
+
+        if (self.sampler._path_length >= random_explore_after
+            or succeeded_this_episode):
             self.sampler.initialize(
                 self._training_environment,
                 self._initial_exploration_policy,
@@ -264,6 +283,10 @@ class MetricLearningAlgorithm(SAC):
                          Walker2dEnv)):
             if self._training_environment.unwrapped._exclude_current_positions_from_observation:
                 raise NotImplementedError
+
+            if isinstance(self._training_environment._env.env, GoalEnvironment):
+                return result
+
             all_observations = np.concatenate(
                 [path['observations'] for path in paths], axis=0)
             all_actions = np.concatenate(
