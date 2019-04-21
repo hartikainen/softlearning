@@ -361,10 +361,10 @@ class MetricLearningAlgorithm(SAC):
 
     def _evaluation_paths(self, policy, evaluation_env):
         try:
-            goal = self._training_environment._env.env.current_goal
+            goal = self._evaluation_environment._env.env.sample_metric_goal()
             evaluation_env._env.env.set_goal(goal)
         except Exception as e:
-            goal = self._training_environment.unwrapped.fixed_goal
+            goal = self._evaluation_environment.unwrapped.sample_metric_goal()
             evaluation_env.unwrapped.set_goal(goal)
 
         if isinstance(evaluation_env.unwrapped, (Point2DEnv, Point2DWallEnv)):
@@ -399,8 +399,8 @@ class MetricLearningAlgorithm(SAC):
                     training_paths=training_paths,
                     evaluation_paths=evaluation_paths,
                     get_distances_fn=self.diagnostics_distances_fn,
-                    get_quiver_gradients_fn=self.diagnostics_quiver_gradients_fn,
-                    get_Q_values_fn=self.diagnostics_Q_values_fn,
+                    get_quiver_gradients_fn=None,  # self.diagnostics_quiver_gradients_fn,
+                    get_Q_values_fn=None,  # self.diagnostics_Q_values_fn,
                     get_V_values_fn=self.diagnostics_V_values_fn)
             else:
                 raise NotImplementedError(self._training_environment.unwrapped)

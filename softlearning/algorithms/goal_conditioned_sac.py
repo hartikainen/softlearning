@@ -127,11 +127,9 @@ class GoalConditionedSAC(SAC):
 
     def _evaluation_paths(self, policy, evaluation_env):
         try:
-            # goal = self._training_environment._env.env.current_goal
             goal = self._evaluation_environment._env.env.sample_metric_goal()
             evaluation_env._env.env.set_goal(goal)
         except Exception as e:
-            # goal = self._training_environment.unwrapped.fixed_goal
             goal = self._evaluation_environment.unwrapped.sample_metric_goal()
             evaluation_env.unwrapped.set_goal(goal)
 
