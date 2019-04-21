@@ -82,9 +82,9 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
                 best_observation = new_observations[max_distance_idx]
             elif (self._target_proposal_rule
                   == 'random_weighted_estimate_from_first_observation'):
-                raise NotImplementedError("TODO: check this")
                 best_observation = new_observations[np.random.choice(
-                    new_distances.size, p=softmax(new_distances))]
+                    new_distances.size,
+                    p=softmax(new_distances).ravel())]
         else:
             raise NotImplementedError(self._target_proposal_rule)
 
