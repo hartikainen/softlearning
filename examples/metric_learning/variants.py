@@ -72,19 +72,20 @@ ENVIRONMENT_PARAMS = {
         },
         'Wall-v0': {
             'observation_keys': ('observation', ),
-            'terminate_on_success': True,
+            'terminate_on_success': False,
             # 'fixed_goal': (5.0, 5.0),
             # 'fixed_goal': (0.0, 0.0),
             # 'fixed_goal': (4.0, 0.0),
-            # 'reset_positions': (
-            #     # (-5.0, -5.0),
-            #     (-5.0, -4.0),
-            #     # (-5.0, -3.0),
-            # ),
-            'reset_positions': None,
+            'reset_positions': (
+                # (-5.0, -5.0),
+                (-5.0, -4.0),
+                # (-5.0, -3.0),
+            ),
+            # 'reset_positions': None,
             'wall_shape': tune.grid_search(['zigzag']),
             'discretize': False,
             'target_radius': 0.1,
+            'reward_type': 'sparse',
         }
     },
 
@@ -159,7 +160,7 @@ NUM_EPOCHS_PER_DOMAIN = {
     'HandReach': int(1e4 + 1),
     'DClaw3': int(5e2 + 1),
     'ImageDClaw3': int(5e3 + 1),
-    'Point2DEnv': int(100 + 1)
+    'Point2DEnv': int(50 + 1)
 }
 
 
@@ -191,7 +192,6 @@ def fixed_path_length(spec):
                       + ('GoalWalker', 'GoalAnt', 'GoalHumanoid')):
             return not environment_kwargs.get('terminate_when_unhealthy', True)
 
-
     raise NotImplementedError
 
 
@@ -212,7 +212,7 @@ def get_variant_spec(args):
                 == 'TemporalDifferenceMetricLearner'),
             'distance_input_type': tune.grid_search([
                 'full',
-                # 'xy_coordinates',
+                'xy_coordinates',
                 # 'xy_velocities',
             ]),
         }
@@ -240,7 +240,7 @@ def get_variant_spec(args):
                     'zero_constraint_threshold': 0.0,
 
                     'max_distance': 10 + max_path_length,
-                }
+                },
             }
         else:
             raise NotImplementedError(spec['metric_learner_params']['type'])
@@ -262,11 +262,19 @@ def get_variant_spec(args):
                 'kwargs': (
                     ENVIRONMENT_PARAMS.get(domain, {}).get(task, {})),
             },
-            'evaluation': tune.sample_from(lambda spec: (
-                spec.get('config', spec)
-                ['environment_params']
-                ['training']
-            )),
+            'evaluation': {
+                'domain': domain,
+                'task': task,
+                'universe': universe,
+                'kwargs': tune.sample_from(lambda spec: ({
+                    **spec.get('config', spec)
+                    ['environment_params']
+                    ['training']
+                    ['kwargs'],
+                    # 'fixed_goal': (5.0, 4.0),
+                    'terminate_on_success': True,
+                }))
+            },
         },
         'policy_params': {
             'type': 'GaussianPolicy',
@@ -310,7 +318,7 @@ def get_variant_spec(args):
                 'action_prior': 'uniform',
                 'save_full_state': False,
 
-                'plot_distances': True,
+                'plot_distances': False,
                 'use_distance_for': tune.grid_search([
                     'reward',
                     'value',
@@ -319,34 +327,21 @@ def get_variant_spec(args):
                 'final_exploration_proportion': 0.1,
             }
         },
-        # 'target_proposer_params': tune.grid_search([
-        #     {
-        #         'type': 'UnsupervisedTargetProposer',
-        #         'kwargs': {
-        #             'target_proposal_rule': (
-        #                 'farthest_estimate_from_first_observation'),
-        #         },
-        #     },
-        #     {
-        #         'type': 'SemiSupervisedTargetProposer',
-        #         'kwargs': {},
-        #     },
-        # ]),
-        # 'target_proposer_params': {
-        #     'type': 'UnsupervisedTargetProposer',
-        #     'kwargs': {
-        #         'target_proposal_rule': tune.grid_search([
-        #             # 'closest_l2_from_goal',
-        #             # 'farthest_l2_from_first_observation',
-        #             'farthest_estimate_from_first_observation',
-        #             # 'random_weighted_estimate_from_first_observation',
-        #         ]),
-        #     },
-        # },
         'target_proposer_params': {
-            'type': 'RandomTargetProposer',
-            'kwargs': {}
+            'type': 'UnsupervisedTargetProposer',
+            'kwargs': {
+                'target_proposal_rule': tune.grid_search([
+                    # 'closest_l2_from_goal',
+                    # 'farthest_l2_from_first_observation',
+                    'farthest_estimate_from_first_observation',
+                    # 'random_weighted_estimate_from_first_observation',
+                ]),
+            },
         },
+        # 'target_proposer_params': {
+        #     'type': 'RandomTargetProposer',
+        #     'kwargs': {}
+        # },
         # 'target_proposer_params': {
         #     'type': 'SemiSupervisedTargetProposer',
         #     'kwargs': {},
