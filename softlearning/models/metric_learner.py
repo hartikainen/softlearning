@@ -674,7 +674,7 @@ class TemporalDifferenceMetricLearner(MetricLearner):
         # actions_2 = self._policy.actions([observations[1], goals])
         # inputs_2 = self._distance_estimator_inputs(
         #     observations[1], goals, actions_2)
-        # distance_predictions_2 = self.distance_estimator(inputs_2)[:, 0]
+        # distance_predictions_2 = self.distance_estimator_target(inputs_2)[:, 0]
 
         # terminals = tf.to_float(tf.norm(
         #     observations[1] - goals,
