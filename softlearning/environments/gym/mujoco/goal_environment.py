@@ -36,7 +36,9 @@ class ProxyEnv(object):
 
 
 class GoalEnvironment(gym.Env, ProxyEnv):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, terminate_on_success=False, **kwargs):
+        self._terminate_on_success = terminate_on_success
+        self.succeeded_this_episode = False
         self.env = self.ENVIRONMENT_CLASS(*args, **kwargs)
         self.current_goal = self.env._get_obs()
         self.action_space = self.env.action_space
@@ -82,15 +84,27 @@ class GoalEnvironment(gym.Env, ProxyEnv):
     def _get_goal_info(self, observation, reward, done, base_info):
         raise NotImplementedError
 
+    def _goal_reached(self):
+        raise NotImplementedError
+
     def step(self, *args, **kwargs):
         observation, reward, done, base_info = self.env.step(*args, **kwargs)
+
         goal_observation = self._get_obs()
+
+        goal_reached = self._goal_reached()
+        done |= (self._terminate_on_success and goal_reached)
+        self.succeeded_this_episode |= goal_reached
 
         assert np.allclose(goal_observation['observation'], observation)
 
         goal_info = self._get_goal_info(
             goal_observation, reward, done, base_info)
-        info = {**base_info, **goal_info}
+        info = {
+            **base_info,
+            **goal_info,
+            'succeeded_this_episode': self.succeeded_this_episode
+        }
 
         return goal_observation, reward, done, info
 
@@ -105,6 +119,7 @@ class GoalEnvironment(gym.Env, ProxyEnv):
         return observation
 
     def reset(self, *args, **kwargs):
+        self.succeeded_this_episode = False
         self.env.reset(*args, **kwargs)
         return self._get_obs()
 
@@ -223,6 +238,17 @@ class GoalWalker2dEnv(GoalEnvironment):
 
 class GoalHalfCheetahEnv(GoalEnvironment):
     ENVIRONMENT_CLASS = HalfCheetahEnv
+
+    def _goal_reached(self):
+        assert not self.unwrapped._exclude_current_positions_from_observation
+        goal_observation = self._get_obs()
+        goal_reached = np.linalg.norm(
+            goal_observation['observation'][:1]
+            - goal_observation['desired_goal'][:1],
+            ord=2
+        ) < 0.1
+
+        return goal_reached
 
     def _get_goal_info(self, observation, reward, done, base_info):
         return one_dimensional_goal_info(observation, reward, done, base_info)
