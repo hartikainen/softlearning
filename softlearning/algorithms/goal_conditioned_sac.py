@@ -145,14 +145,13 @@ class HERSAC(GoalConditionedSAC):
         action_inputs = self._action_inputs(
             observations=self._next_observations_ph)
         next_actions = self._policy.actions(action_inputs)
-        # next_log_pis = self._policy.log_pis(action_inputs, next_actions)
 
         Q_inputs = self._Q_inputs(
             observations=self._next_observations_ph, actions=next_actions)
         next_Qs_values = tuple(Q(Q_inputs) for Q in self._Q_targets)
 
         min_next_Q = tf.reduce_min(next_Qs_values, axis=0)
-        next_value = min_next_Q  # - self._alpha * next_log_pis
+        next_value = min_next_Q
 
         rewards = -1.0
         values = (1 - self._terminals_ph) * next_value
