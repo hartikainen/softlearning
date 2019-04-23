@@ -164,6 +164,10 @@ class GoalConditionedSAC(SAC):
 
 
 class HERSAC(GoalConditionedSAC):
+    def __init__(self, ground_truth_terminals, *args, **kwargs):
+        self._ground_truth_terminals = ground_truth_terminals
+        super(HERSAC, self).__init__(*args, **kwargs)
+
     def _get_Q_target(self):
         action_inputs = self._action_inputs(
             observations=self._next_observations_ph)
@@ -177,7 +181,13 @@ class HERSAC(GoalConditionedSAC):
         next_value = min_next_Q
 
         rewards = -1.0
-        values = (1 - self._terminals_ph) * next_value
+        terminals = (
+            self._terminals_ph
+            if self._ground_truth_terminals
+            else 0.0 # tf.cast(next_value > -0.5, tf.float32)
+        )
+
+        values = (1 - terminals) * next_value
 
         Q_target = td_target(
             reward=rewards,
