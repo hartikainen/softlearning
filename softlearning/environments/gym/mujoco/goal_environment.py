@@ -146,6 +146,8 @@ def one_dimensional_goal_info(observation, reward, done, base_info):
         observation['observation'][0] - observation['desired_goal'][0])
     distance_to_goal = np.abs(x_distance_to_goal)
     info = {
+        'distance_from_origin': np.abs(observation['observation'][0]),
+        'goal_distance_from_origin': np.abs(observation['desired_goal'][0]),
         'distance_to_goal': distance_to_goal,
         'x_distance_to_goal': x_distance_to_goal,
         'goal_x': observation['desired_goal'][0],
@@ -157,7 +159,13 @@ def two_dimensional_goal_info(observation, reward, done, base_info):
     xy_distance_to_goal = (
         observation['observation'][:2] - observation['desired_goal'][:2])
     distance_to_goal = np.linalg.norm(xy_distance_to_goal, ord=2)
+    goal_distance_from_origin = np.linalg.norm(
+        observation['desired_goal'][:2], ord=2)
+    distance_from_origin = np.linalg.norm(
+        observation['observation'][:2], ord=2)
     info = {
+        'distance_from_origin': distance_from_origin,
+        'goal_distance_from_origin': goal_distance_from_origin,
         'distance_to_goal': distance_to_goal,
         'x_distance_to_goal': xy_distance_to_goal[0],
         'y_distance_to_goal': xy_distance_to_goal[1],
