@@ -212,7 +212,7 @@ def get_variant_spec(args):
                 == 'TemporalDifferenceMetricLearner'),
             'distance_input_type': tune.grid_search([
                 'full',
-                'xy_coordinates',
+                # 'xy_coordinates',
                 # 'xy_velocities',
             ]),
         }
