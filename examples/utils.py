@@ -207,7 +207,7 @@ def add_ray_tune_args(parser):
             " Defaults to None."))
     parser.add_argument(
         '--with-server',
-        type=str,
+        type=lambda x: bool(strtobool(x)),
         default=True,
         help=tune_help_string("Starts a background Tune server. Needed for"
                               " using the Client API."))
