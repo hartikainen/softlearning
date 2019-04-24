@@ -272,7 +272,7 @@ def get_variant_spec(args):
                     ['training']
                     ['kwargs'],
                     # 'fixed_goal': (5.0, 4.0),
-                    'terminate_on_success': True,
+                    # 'terminate_on_success': True,
                 }))
             },
         },
