@@ -22,6 +22,8 @@ def get_variant_spec(args):
     variant_spec['algorithm_params']['kwargs'].update({
         'eval_n_episodes': 1,
         'plot_distances': False,
+        'ground_truth_terminals': tune.grid_search([True]),
+        'discount': tune.grid_search([0.9, 0.99, 0.999, 1.0]),
     })
     variant_spec['exploration_policy_params']['type'] = (
         'GoalConditionedUniformPolicy')
@@ -44,8 +46,7 @@ def get_variant_spec(args):
         'use_distances': False,
         'her_strategy': {
             'type': 'future',
-            'resampling_probability': tune.grid_search([
-                0.5, 0.8, 0.9]),
+            'resampling_probability': 0.8,
         }
     })
 
