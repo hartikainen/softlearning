@@ -362,6 +362,7 @@ def get_variant_spec(args):
                 'max_pair_distance': None,
                 'path_length': max_path_length,
                 'fixed_path_length': tune.sample_from(fixed_path_length),
+                'terminal_epsilon': 0.1,
             }
         },
         'sampler_params': {

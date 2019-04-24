@@ -23,6 +23,7 @@ class DistancePool(SimpleReplayPool):
                  her_strategy=None,
                  fixed_path_length=False,
                  use_distances=True,
+                 terminal_epsilon=0.1,
                  **kwargs):
         self._on_policy_window = on_policy_window or max_size
         self._max_pair_distance = max_pair_distance or float('inf')
@@ -34,6 +35,7 @@ class DistancePool(SimpleReplayPool):
 
         self._her_strategy = her_strategy
         self._use_distances = use_distances
+        self._terminal_epsilon = terminal_epsilon
 
         super(DistancePool, self).__init__(*args, max_size=max_size, **kwargs)
 
@@ -212,7 +214,7 @@ class DistancePool(SimpleReplayPool):
                 path_next_observations[random_start_index] - goal,
                 ord=2,
                 keepdims=True,
-            ) < 0.1
+            ) <= self._terminal_epsilon
             # terminal = path['terminals'][random_start_index]
             batch_terminals.append(terminal)
             batch_rewards.append(path['rewards'][random_start_index])
