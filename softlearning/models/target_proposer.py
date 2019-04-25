@@ -29,10 +29,11 @@ class BaseTargetProposer(object):
 
 
 class UnsupervisedTargetProposer(BaseTargetProposer):
-    def __init__(self, target_proposal_rule, *args, **kwargs):
+    def __init__(self, target_proposal_rule, last_n_batch=int(1e5), *args, **kwargs):
         super(UnsupervisedTargetProposer, self).__init__(*args, **kwargs)
         self._first_observation = None
         self._target_proposal_rule = target_proposal_rule
+        self._last_n_batch = last_n_batch
 
     def propose_target(self, paths):
         if self._first_observation is None:
@@ -67,7 +68,7 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
               ('farthest_estimate_from_first_observation',
                'random_weighted_estimate_from_first_observation')):
             new_observations = self._pool.last_n_batch(
-                min(self._pool.size, int(1e5)),
+                min(self._pool.size, self._last_n_batch),
                 field_name_filter='observations',
                 observation_keys=getattr(self._env, 'observation_keys', None),
             )['observations']
@@ -169,10 +170,29 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
 
 
 class RandomTargetProposer(BaseTargetProposer):
+    def __init__(self, target_proposal_rule='uniform_from_environment',
+                 last_n_batch=int(1e5), *args, **kwargs):
+        super(RandomTargetProposer, self).__init__(*args, **kwargs)
+        self._target_proposal_rule = target_proposal_rule
+        self._last_n_batch = last_n_batch
+    
     def propose_target(self, paths):
-        try:
-            target = self._env._env.env.sample_metric_goal()
-        except Exception as e:
-            target = self._env.unwrapped.sample_metric_goal()
+        if self._target_proposal_rule == 'uniform_from_environment':
+            try:
+                target = self._env._env.env.sample_metric_goal()
+            except Exception as e:
+                target = self._env.unwrapped.sample_metric_goal()
+        elif self._target_proposal_rule == 'uniform_from_pool':
+            size = min(self._pool.size, self._last_n_batch)
+            new_observations = self._pool.last_n_batch(
+                size,
+                field_name_filter='observations',
+                observation_keys=getattr(self._env, 'observation_keys', None),
+            )['observations']
+            
+            target = new_observations[np.random.randint(size)]
+        else:
+            raise NotImplementedError
+            
 
         return target

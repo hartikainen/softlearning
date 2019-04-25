@@ -327,21 +327,29 @@ def get_variant_spec(args):
                 'final_exploration_proportion': 0.1,
             }
         },
+        # 'target_proposer_params': {
+        #     'type': 'UnsupervisedTargetProposer',
+        #     'kwargs': {
+        #         'target_proposal_rule': tune.grid_search([
+        #             # 'closest_l2_from_goal',
+        #             # 'farthest_l2_from_first_observation',
+        #             'farthest_estimate_from_first_observation',
+        #             # 'random_weighted_estimate_from_first_observation',
+        #         ]),
+        #     },
+        # },
         'target_proposer_params': {
-            'type': 'UnsupervisedTargetProposer',
+            'type': 'RandomTargetProposer',
             'kwargs': {
                 'target_proposal_rule': tune.grid_search([
-                    # 'closest_l2_from_goal',
-                    # 'farthest_l2_from_first_observation',
-                    'farthest_estimate_from_first_observation',
-                    # 'random_weighted_estimate_from_first_observation',
+                    'uniform_from_environment',
+                    'uniform_from_pool'
                 ]),
-            },
+                'last_n_batch': tune.grid_search([
+                    10, 100, 1000, int(1e5)
+                ]),
+            }
         },
-        # 'target_proposer_params': {
-        #     'type': 'RandomTargetProposer',
-        #     'kwargs': {}
-        # },
         # 'target_proposer_params': {
         #     'type': 'SemiSupervisedTargetProposer',
         #     'kwargs': {},
