@@ -145,7 +145,8 @@ NUM_EPOCHS_PER_DOMAIN = {
     'GoalSwimmer': int(3e3 + 1),
     'Hopper': int(3e3 + 1),
     'GoalHopper': int(3e3 + 1),
-    'HalfCheetah': int(1e4 + 1),
+    # 'HalfCheetah': int(1e4 + 1),
+    'HalfCheetah': int(800 + 1),
     'GoalHalfCheetah': int(1e4 + 1),
     'Walker': int(3e3 + 1),
     'GoalWalker': int(3e3 + 1),
@@ -327,29 +328,35 @@ def get_variant_spec(args):
                 'final_exploration_proportion': 0.1,
             }
         },
-        # 'target_proposer_params': {
-        #     'type': 'UnsupervisedTargetProposer',
-        #     'kwargs': {
-        #         'target_proposal_rule': tune.grid_search([
-        #             # 'closest_l2_from_goal',
-        #             # 'farthest_l2_from_first_observation',
-        #             'farthest_estimate_from_first_observation',
-        #             # 'random_weighted_estimate_from_first_observation',
-        #         ]),
-        #     },
-        # },
         'target_proposer_params': {
-            'type': 'RandomTargetProposer',
+            'type': 'UnsupervisedTargetProposer',
             'kwargs': {
                 'target_proposal_rule': tune.grid_search([
-                    'uniform_from_environment',
-                    'uniform_from_pool'
+                    # 'closest_l2_from_goal',
+                    # 'farthest_l2_from_first_observation',
+                    # 'farthest_estimate_from_first_observation',
+                    'random_weighted_estimate_from_first_observation',
                 ]),
                 'last_n_batch': tune.grid_search([
-                    10, 100, 1000, int(1e5)
+                    int(1e5), int(1e4), int(1e3)
                 ]),
-            }
+                'random_weighted_scale': tune.grid_search([
+                    1e-1, 1.0, 1e1, 1e2, 1e3
+                ])
+            },
         },
+        # 'target_proposer_params': {
+        #     'type': 'RandomTargetProposer',
+        #     'kwargs': {
+        #         'target_proposal_rule': tune.grid_search([
+        #             'uniform_from_environment',
+        #             'uniform_from_pool'
+        #         ]),
+        #         'last_n_batch': tune.grid_search([
+        #             10, 100, 1000, int(1e5)
+        #         ]),
+        #     }
+        # },
         # 'target_proposer_params': {
         #     'type': 'SemiSupervisedTargetProposer',
         #     'kwargs': {},

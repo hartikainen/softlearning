@@ -29,11 +29,13 @@ class BaseTargetProposer(object):
 
 
 class UnsupervisedTargetProposer(BaseTargetProposer):
-    def __init__(self, target_proposal_rule, last_n_batch=int(1e5), *args, **kwargs):
+    def __init__(self, target_proposal_rule, last_n_batch=int(1e5),
+                 random_weighted_scale=1.0, *args, **kwargs):
         super(UnsupervisedTargetProposer, self).__init__(*args, **kwargs)
         self._first_observation = None
         self._target_proposal_rule = target_proposal_rule
         self._last_n_batch = last_n_batch
+        self._random_weighted_scale = random_weighted_scale
 
     def propose_target(self, paths):
         if self._first_observation is None:
@@ -85,7 +87,10 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
                   == 'random_weighted_estimate_from_first_observation'):
                 best_observation = new_observations[np.random.choice(
                     new_distances.size,
-                    p=softmax(new_distances).ravel())]
+                    p=softmax(
+                        new_distances * self._random_weighted_scale
+                    ).ravel()
+                )]
         else:
             raise NotImplementedError(self._target_proposal_rule)
 

@@ -24,7 +24,7 @@ def get_variant_spec(args):
         'plot_distances': False,
         'ground_truth_terminals': tune.grid_search([True]),
         # 'discount': tune.grid_search([0.9, 0.99, 0.999, 1.0]),
-        'discount': tune.grid_search([0.999, 1.0]),
+        'discount': tune.grid_search([1.0]),
     })
     variant_spec['exploration_policy_params']['type'] = (
         'GoalConditionedUniformPolicy')
@@ -45,7 +45,8 @@ def get_variant_spec(args):
         'on_policy_window': None,
         'max_pair_distance': None,
         'use_distances': False,
-        'terminal_epsilon': tune.grid_search([0.1, 0.3, 1.0, 3.0]),
+        # 'terminal_epsilon': tune.grid_search([0.1, 0.3, 1.0, 3.0]),
+        'terminal_epsilon': tune.grid_search([0.3]),
         'her_strategy': {
             'type': 'future',
             'resampling_probability': 0.8,
