@@ -6,7 +6,8 @@ from gym import spaces, wrappers
 
 from .softlearning_env import SoftlearningEnv
 from softlearning.environments.gym import register_environments
-from softlearning.environments.gym.wrappers import NormalizeActionWrapper
+from softlearning.environments.gym.wrappers import (
+    NormalizeActionWrapper, PerturbActionWrapper)
 from collections import defaultdict
 
 
@@ -49,6 +50,7 @@ class GymAdapter(SoftlearningEnv):
                  normalize=True,
                  observation_keys=None,
                  unwrap_time_limit=True,
+                 perturb_action_kwargs=None,
                  **kwargs):
         assert not args, (
             "Gym environments don't support args. Use kwargs instead.")
@@ -82,6 +84,9 @@ class GymAdapter(SoftlearningEnv):
 
         if normalize:
             env = NormalizeActionWrapper(env)
+
+        if perturb_action_kwargs is not None:
+            env = PerturbActionWrapper(env, **perturb_action_kwargs)
 
         self._env = env
 
