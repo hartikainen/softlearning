@@ -400,7 +400,7 @@ class SAC(RLAlgorithm):
         diagnostics.update(OrderedDict([
             (f'policy/{key}', value)
             for key, value in
-            self._policy.get_diagnostics(batch['observations']).items()
+            self._policy_diagnostics(iteration, batch).items()
         ]))
 
         if self._plotter:
