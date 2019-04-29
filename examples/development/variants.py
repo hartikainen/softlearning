@@ -138,6 +138,9 @@ ENVIRONMENT_PARAMS = {
     'Swimmer': {  # 2 DoF
     },
     'Hopper': {  # 3 DoF
+        'MaxVelocity-v3': {
+            'max_velocity': tune.grid_search([1.5, 2.0, float('inf')]),
+        },
     },
     'HalfCheetah': {  # 6 DoF
     },

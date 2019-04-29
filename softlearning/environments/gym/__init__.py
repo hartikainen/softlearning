@@ -21,6 +21,11 @@ MUJOCO_ENVIRONMENT_SPECS = (
         'entry_point': (f'gym.envs.mujoco.hopper_v3:HopperEnv'),
     },
     {
+        'id': 'Hopper-MaxVelocity-v3',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.hopper_max_velocity:HopperMaxVelocityEnv'),
+    },
+    {
         'id': 'Walker2d-Parameterizable-v3',
         'entry_point': (f'gym.envs.mujoco.walker2d_v3:Walker2dEnv'),
     },
