@@ -342,7 +342,10 @@ def get_variant_spec(args):
                 ]),
                 'random_weighted_scale': tune.grid_search([
                     1e-1, 1.0, 1e1, 1e2, 1e3
-                ])
+                ]),
+                'target_candidate_strategy': tune.grid_search([
+                    'last_steps'
+                ]),
             },
         },
         # 'target_proposer_params': {

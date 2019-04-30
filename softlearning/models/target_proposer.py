@@ -29,25 +29,44 @@ class BaseTargetProposer(object):
 
 
 class UnsupervisedTargetProposer(BaseTargetProposer):
-    def __init__(self, target_proposal_rule, last_n_batch=int(1e5),
-                 random_weighted_scale=1.0, *args, **kwargs):
+    def __init__(self,
+                 target_proposal_rule,
+                 target_candidate_strategy='all_steps',
+                 last_n_batch=int(1e5),
+                 random_weighted_scale=1.0,
+                 *args,
+                 **kwargs):
         super(UnsupervisedTargetProposer, self).__init__(*args, **kwargs)
         self._first_observation = None
         self._target_proposal_rule = target_proposal_rule
         self._last_n_batch = last_n_batch
         self._random_weighted_scale = random_weighted_scale
+        self._target_candidate_strategy = target_candidate_strategy
 
     def propose_target(self, paths):
         if self._first_observation is None:
             self._first_observation = paths[0].get(
                 'observations.observation', paths[0].get('observations'))[0]
 
-        if self._target_proposal_rule == 'closest_l2_from_goal':
-            ultimate_goal = getattr(self._env.unwrapped, 'ultimate_goal', None)
-            new_observations = np.concatenate([
+        if self._target_candidate_strategy == 'last_steps':
+            paths_observations = [
+                path.get(
+                    'observations.observation', path.get('observations')
+                )[-1:]
+                for path in paths
+            ]
+        elif self._target_candidate_strategy == 'all_steps':
+            paths_observations = [
                 path.get('observations.observation', path.get('observations'))
                 for path in paths
-            ], axis=0)
+            ]
+        else:
+            raise NotImplementedError(self._target_candidate_strategy)
+
+        new_observations = np.concatenate(paths_observations, axis=0)
+
+        if self._target_proposal_rule == 'closest_l2_from_goal':
+            ultimate_goal = getattr(self._env.unwrapped, 'ultimate_goal', None)
             new_distances = np.linalg.norm(
                 new_observations - ultimate_goal, axis=1)
 
@@ -56,10 +75,6 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
 
         elif (self._target_proposal_rule ==
               'farthest_l2_from_first_observation'):
-            new_observations = np.concatenate([
-                path.get('observations.observation', path.get('observations'))
-                for path in paths
-            ], axis=0)
             new_distances = np.linalg.norm(
                 new_observations - self._first_observation, axis=1)
 
@@ -69,11 +84,6 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
         elif (self._target_proposal_rule in
               ('farthest_estimate_from_first_observation',
                'random_weighted_estimate_from_first_observation')):
-            new_observations = self._pool.last_n_batch(
-                min(self._pool.size, self._last_n_batch),
-                field_name_filter='observations',
-                observation_keys=getattr(self._env, 'observation_keys', None),
-            )['observations']
             new_distances = self.distance_fn(
                 np.tile(self._first_observation[None, :],
                         (new_observations.shape[0], 1)),
@@ -180,7 +190,7 @@ class RandomTargetProposer(BaseTargetProposer):
         super(RandomTargetProposer, self).__init__(*args, **kwargs)
         self._target_proposal_rule = target_proposal_rule
         self._last_n_batch = last_n_batch
-    
+
     def propose_target(self, paths):
         if self._target_proposal_rule == 'uniform_from_environment':
             try:
@@ -194,10 +204,10 @@ class RandomTargetProposer(BaseTargetProposer):
                 field_name_filter='observations',
                 observation_keys=getattr(self._env, 'observation_keys', None),
             )['observations']
-            
+
             target = new_observations[np.random.randint(size)]
         else:
             raise NotImplementedError
-            
+
 
         return target
