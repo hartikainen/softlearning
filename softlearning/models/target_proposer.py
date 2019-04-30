@@ -99,6 +99,9 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
                         new_distances * self._random_weighted_scale
                     ).ravel()
                 )]
+        elif self._target_proposal_rule == 'random':
+            best_observation = new_observations[
+                np.random.randint(new_observations.shape[0])]
         else:
             raise NotImplementedError(self._target_proposal_rule)
 
