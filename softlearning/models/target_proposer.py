@@ -32,14 +32,12 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
     def __init__(self,
                  target_proposal_rule,
                  target_candidate_strategy='all_steps',
-                 last_n_batch=int(1e5),
                  random_weighted_scale=1.0,
                  *args,
                  **kwargs):
         super(UnsupervisedTargetProposer, self).__init__(*args, **kwargs)
         self._first_observation = None
         self._target_proposal_rule = target_proposal_rule
-        self._last_n_batch = last_n_batch
         self._random_weighted_scale = random_weighted_scale
         self._target_candidate_strategy = target_candidate_strategy
 
@@ -185,11 +183,12 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
 
 
 class RandomTargetProposer(BaseTargetProposer):
-    def __init__(self, target_proposal_rule='uniform_from_environment',
-                 last_n_batch=int(1e5), *args, **kwargs):
+    def __init__(self,
+                 target_proposal_rule='uniform_from_environment',
+                 *args,
+                 **kwargs):
         super(RandomTargetProposer, self).__init__(*args, **kwargs)
         self._target_proposal_rule = target_proposal_rule
-        self._last_n_batch = last_n_batch
 
     def propose_target(self, paths):
         if self._target_proposal_rule == 'uniform_from_environment':
@@ -198,16 +197,14 @@ class RandomTargetProposer(BaseTargetProposer):
             except Exception as e:
                 target = self._env.unwrapped.sample_metric_goal()
         elif self._target_proposal_rule == 'uniform_from_pool':
-            size = min(self._pool.size, self._last_n_batch)
-            new_observations = self._pool.last_n_batch(
-                size,
-                field_name_filter='observations',
-                observation_keys=getattr(self._env, 'observation_keys', None),
-            )['observations']
+            new_observations = np.concatenate([
+                path.get('observations.observation', path.get('observations'))
+                for path in paths
+            ], axis=0)
 
-            target = new_observations[np.random.randint(size)]
+            target = new_observations[
+                np.random.randint(new_observations.shape[0])]
         else:
             raise NotImplementedError
-
 
         return target

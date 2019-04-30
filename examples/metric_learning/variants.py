@@ -337,9 +337,6 @@ def get_variant_spec(args):
                     # 'farthest_estimate_from_first_observation',
                     'random_weighted_estimate_from_first_observation',
                 ]),
-                'last_n_batch': tune.grid_search([
-                    int(1e5), int(1e4), int(1e3)
-                ]),
                 'random_weighted_scale': 1.0,
                 'target_candidate_strategy': tune.grid_search([
                     'last_steps'
@@ -352,9 +349,6 @@ def get_variant_spec(args):
         #         'target_proposal_rule': tune.grid_search([
         #             'uniform_from_environment',
         #             'uniform_from_pool'
-        #         ]),
-        #         'last_n_batch': tune.grid_search([
-        #             10, 100, 1000, int(1e5)
         #         ]),
         #     }
         # },
