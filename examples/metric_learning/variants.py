@@ -334,13 +334,13 @@ def get_variant_spec(args):
                 'target_proposal_rule': tune.grid_search([
                     # 'closest_l2_from_goal',
                     # 'farthest_l2_from_first_observation',
-                    # 'farthest_estimate_from_first_observation',
+                    'farthest_estimate_from_first_observation',
                     'random_weighted_estimate_from_first_observation',
                     'random',
                 ]),
                 'random_weighted_scale': 1.0,
                 'target_candidate_strategy': tune.grid_search([
-                    'last_steps'
+                    'all_steps', 'last_steps'
                 ]),
             },
         },
