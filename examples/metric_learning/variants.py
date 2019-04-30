@@ -387,10 +387,10 @@ def get_variant_spec(args):
                 'min_pool_size': max_path_length,
                 'batch_size': 256,
                 'store_last_n_paths': tune.sample_from(lambda spec: (
-                    1 + 10 * spec.get('config', spec)
-                    ['algorithm_params']
+                    2 * spec.get('config', spec)
+                    ['replay_pool_params']
                     ['kwargs']
-                    ['epoch_length'] // max_path_length)),
+                    ['max_size'] // max_path_length)),
             }
         },
         'metric_learner_params': {
