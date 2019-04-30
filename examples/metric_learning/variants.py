@@ -340,9 +340,7 @@ def get_variant_spec(args):
                 'last_n_batch': tune.grid_search([
                     int(1e5), int(1e4), int(1e3)
                 ]),
-                'random_weighted_scale': tune.grid_search([
-                    1e-1, 1.0, 1e1, 1e2, 1e3
-                ]),
+                'random_weighted_scale': 1.0,
                 'target_candidate_strategy': tune.grid_search([
                     'last_steps'
                 ]),
