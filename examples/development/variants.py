@@ -105,7 +105,7 @@ NUM_EPOCHS_PER_DOMAIN = {
     'Swimmer': int(3e2),
     'Hopper': int(1e3),
     'HalfCheetah': int(3e3),
-    'Walker2d': int(3e3),
+    'Walker2d': int(2e3),
     'Ant': int(3e3),
     'Humanoid': int(1e4),
     'Pusher2d': int(2e3),
@@ -244,11 +244,20 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                 'kwargs': (
                     ENVIRONMENT_PARAMS.get(domain, {}).get(task, {})),
             },
-            'evaluation': tune.sample_from(lambda spec: (
-                spec.get('config', spec)
-                ['environment_params']
-                ['training']
-            )),
+            'evaluation': {
+                'domain': domain,
+                'task': task,
+                'universe': universe,
+                'kwargs': tune.sample_from(lambda spec: ({
+                    **spec.get('config', spec)
+                    ['environment_params']
+                    ['training']
+                    ['kwargs'],
+                    'perturb_action_kwargs': {
+                        'perturbation_probability': 0.0,
+                    },
+                })),
+            },
         },
         'policy_params': deep_update(
             POLICY_PARAMS_BASE[policy],
