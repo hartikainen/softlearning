@@ -420,15 +420,14 @@ def get_variant_spec(args):
             'type': 'DistancePool',
             'kwargs': {
                 'max_size': int(1e6),
-                'on_policy_window': 1000,
-                # tune.sample_from(lambda spec: (
-                #     {
-                #         'OnPolicyMetricLearner': 2 * max_path_length
-                #     }.get(spec.get('config', spec)
-                #           ['metric_learner_params']
-                #           ['type'],
-                #           None)
-                # )),
+                'on_policy_window': tune.sample_from(lambda spec: (
+                    {
+                        'OnPolicyMetricLearner': 1000,
+                    }.get(spec.get('config', spec)
+                          ['metric_learner_params']
+                          ['type'],
+                          None)
+                )),
                 'max_pair_distance': None,
                 'path_length': max_path_length,
                 'fixed_path_length': tune.sample_from(fixed_path_length),
