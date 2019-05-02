@@ -94,7 +94,17 @@ class DistancePool(SimpleReplayPool):
             assert np.all(path['observations.desired_goal'] == path['observations.desired_goal'][0])
 
             pairs_observations.append(path_observations[pair_index])
-            pairs_goals.append(path['observations.desired_goal'][random_start_index])
+
+            if np.random.rand() < 0.8:
+                random_goal_offset = np.random.randint(
+                    0, path_length - random_end_index)
+                random_goal_index = random_end_index + random_goal_offset
+                pairs_goals.append(
+                    path['observations.observation'][random_goal_index])
+            else:
+                pairs_goals.append(
+                    path['observations.desired_goal'][random_start_index])
+
             pairs_actions.append(path['actions'][pair_index])
             pairs_distances.append(random_end_index - random_start_index)
             assert pairs_distances[-1] >= 0
@@ -194,10 +204,11 @@ class DistancePool(SimpleReplayPool):
                     elif her_strategy_type == 'episode':
                         end_index = np.random.randint(0, path_length)
                     elif her_strategy_type == 'future':
-                        max_offset = min(
-                            path_length - random_start_index,
-                            self._max_pair_distance)
+                        # max_offset = min(
+                        #     path_length - random_start_index,
+                        #     self._max_pair_distance)
 
+                        max_offset = path_length - random_start_index
                         offset = np.random.randint(0, max_offset)
                         end_index = random_start_index + offset
 
