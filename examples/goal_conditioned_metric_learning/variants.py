@@ -21,7 +21,7 @@ def get_variant_spec(args):
     variant_spec['replay_pool_params']['kwargs'].update({
         'max_pair_distance': None,
         'use_distances': True,
-        'terminal_epsilon': 0.1,
+        'terminal_epsilon': 0.0,
         'her_strategy': {
             'type': 'future',
             'resampling_probability': 0.8,

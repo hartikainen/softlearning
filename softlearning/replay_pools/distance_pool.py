@@ -23,7 +23,7 @@ class DistancePool(SimpleReplayPool):
                  her_strategy=None,
                  fixed_path_length=False,
                  use_distances=True,
-                 terminal_epsilon=0.1,
+                 terminal_epsilon=0.0,
                  **kwargs):
         self._on_policy_window = on_policy_window or max_size
         self._max_pair_distance = max_pair_distance or float('inf')
