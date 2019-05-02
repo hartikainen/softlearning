@@ -36,7 +36,7 @@ class MetricLearningAlgorithm(SAC):
         super(MetricLearningAlgorithm, self)._init_placeholders()
         self._goals_ph = tf.placeholder(
             tf.float32,
-            shape=self._training_environment.observation_space.shape,
+            shape=(None, *self._observation_shape),
             name='goals')
 
     def _get_Q_target(self):
