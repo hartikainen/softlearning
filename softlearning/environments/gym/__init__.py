@@ -30,6 +30,11 @@ MUJOCO_ENVIRONMENT_SPECS = (
         'entry_point': (f'gym.envs.mujoco.walker2d_v3:Walker2dEnv'),
     },
     {
+        'id': 'Walker2d-MaxVelocity-v3',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.walker2d_max_velocity:Walker2dMaxVelocityEnv'),
+    },
+    {
         'id': 'HalfCheetah-Parameterizable-v3',
         'entry_point': (f'gym.envs.mujoco.half_cheetah_v3:HalfCheetahEnv'),
     },

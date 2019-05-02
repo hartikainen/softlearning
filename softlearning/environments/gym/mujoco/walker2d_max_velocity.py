@@ -1,13 +1,13 @@
 import numpy as np
 from gym import utils
-from gym.envs.mujoco.hopper_v3 import HopperEnv
+from gym.envs.mujoco.walker2d_v3 import Walker2dEnv
 
 
-class HopperMaxVelocityEnv(HopperEnv):
+class Walker2dMaxVelocityEnv(Walker2dEnv):
     def __init__(self, *args, max_velocity=float('inf'), **kwargs):
         utils.EzPickle.__init__(**locals())
         self._max_velocity = max_velocity
-        super(HopperMaxVelocityEnv, self).__init__(*args, **kwargs)
+        super(Walker2dMaxVelocityEnv, self).__init__(*args, **kwargs)
 
     def step(self, action):
         x_position_before = self.sim.data.qpos[0]
