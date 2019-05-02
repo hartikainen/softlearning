@@ -43,7 +43,8 @@ class GoalConditionedSAC(SAC):
         return [observations, actions, self._goals_ph]
 
     def _update_goal(self, training_paths):
-        new_goal = self._target_proposer.propose_target(training_paths)
+        new_goal = self._target_proposer.propose_target(
+            training_paths, epoch=self._epoch)
 
         try:
             self._training_environment._env.env.set_goal(new_goal)
@@ -63,20 +64,24 @@ class GoalConditionedSAC(SAC):
         random_explore_after = (
             self.sampler._max_path_length
             * (1.0 - self._final_exploration_proportion))
-        if isinstance(self._training_environment.unwrapped,
-                      (SwimmerEnv,
-                       AntEnv,
-                       HumanoidEnv,
-                       HalfCheetahEnv,
-                       HopperEnv,
-                       Walker2dEnv)):
-            succeeded_this_episode = (
-                self._training_environment._env.env.succeeded_this_episode)
+
+        if getattr(self._metric_learner, '_ground_truth_terminals', False):
+            if isinstance(self._training_environment.unwrapped,
+                          (SwimmerEnv,
+                           AntEnv,
+                           HumanoidEnv,
+                           HalfCheetahEnv,
+                           HopperEnv,
+                           Walker2dEnv)):
+                succeeded_this_episode = (
+                    self._training_environment._env.env.succeeded_this_episode)
+            else:
+                succeeded_this_episode = getattr(
+                    self._training_environment.unwrapped,
+                    'succeeded_this_episode',
+                    False)
         else:
-            succeeded_this_episode = getattr(
-                self._training_environment.unwrapped,
-                'succeeded_this_episode',
-                False)
+            succeeded_this_episode = False
 
         if (self.sampler._path_length >= random_explore_after
             or succeeded_this_episode):

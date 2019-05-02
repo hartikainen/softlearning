@@ -15,72 +15,6 @@ from softlearning.environments.gym.mujoco.goal_environment import (
     GoalEnvironment)
 
 
-class LogarithmicLabelScheduler(object):
-    def __init__(self,
-                 decay_steps,
-                 end_labels,
-                 start_labels=None,
-                 start_labels_frac=None,
-                 decay_rate=1e-2):
-        assert (start_labels is None) or (start_labels_frac is None)
-        self._start_labels = int(
-            start_labels
-            if start_labels is not None
-            else start_labels_frac * end_labels)
-        self._decay_steps = decay_steps
-        self._end_labels = end_labels
-        self._decay_rate = decay_rate
-
-    @property
-    def num_pretrain_labels(self):
-        return self._start_labels
-
-    def num_labels(self, time_step):
-        """Return the number of labels desired at this point in time."""
-        decayed_labels = (
-            (self._start_labels - self._end_labels)
-            * self._decay_rate ** (time_step / self._decay_steps)
-            + self._end_labels)
-
-        return int(decayed_labels)
-
-
-class LinearLabelScheduler(object):
-    def __init__(self,
-                 decay_steps,
-                 end_labels,
-                 start_labels=None,
-                 start_labels_frac=None,
-                 power=1.0):
-        assert (start_labels is None) or (start_labels_frac is None)
-        self._start_labels = int(
-            start_labels
-            if start_labels is not None
-            else start_labels_frac * end_labels)
-        self._decay_steps = decay_steps
-        self._end_labels = end_labels
-        self._power = power
-
-    @property
-    def num_pretrain_labels(self):
-        return self._start_labels
-
-    def num_labels(self, time_step):
-        time_step = min(time_step, self._decay_steps)
-        decayed_labels = (
-            (self._start_labels - self._end_labels)
-            * (1 - time_step / self._decay_steps) ** (self._power)
-            + self._end_labels)
-
-        return int(decayed_labels)
-
-
-PREFERENCE_SCHEDULERS = {
-    'linear': LinearLabelScheduler,
-    'logarithmic': LogarithmicLabelScheduler,
-}
-
-
 class MetricLearningAlgorithm(SAC):
 
     def __init__(self,
@@ -94,14 +28,6 @@ class MetricLearningAlgorithm(SAC):
                  **kwargs):
         self._use_distance_for = use_distance_for
         self._plot_distances = plot_distances
-
-        assert supervision_schedule_params is not None
-        self._supervision_schedule_params = supervision_schedule_params
-        self._supervision_scheduler = PREFERENCE_SCHEDULERS[
-            supervision_schedule_params['type']](
-                **supervision_schedule_params['kwargs'])
-        self._supervision_labels_used = 0
-        self._last_supervision_epoch = -1
 
         self._metric_learner = metric_learner
         self._target_proposer = target_proposer
@@ -175,7 +101,7 @@ class MetricLearningAlgorithm(SAC):
         else:
             raise NotImplementedError(self._use_distance_for)
 
-        if self._metric_learner._ground_truth_terminals:
+        if getattr(self._metric_learner, '_ground_truth_terminals', False):
             values = (1 - self._terminals_ph) * values
 
         Q_target = td_target(
@@ -186,7 +112,8 @@ class MetricLearningAlgorithm(SAC):
         return Q_target
 
     def _update_goal(self, training_paths):
-        new_goal = self._target_proposer.propose_target(training_paths)
+        new_goal = self._target_proposer.propose_target(
+            training_paths, epoch=self._epoch)
 
         try:
             self._training_environment._env.env.set_goal(new_goal)
@@ -209,20 +136,23 @@ class MetricLearningAlgorithm(SAC):
             self.sampler._max_path_length
             * (1.0 - self._final_exploration_proportion))
 
-        if isinstance(self._training_environment.unwrapped,
-                      (SwimmerEnv,
-                       AntEnv,
-                       HumanoidEnv,
-                       HalfCheetahEnv,
-                       HopperEnv,
-                       Walker2dEnv)):
-            succeeded_this_episode = (
-                self._training_environment._env.env.succeeded_this_episode)
+        if getattr(self._metric_learner, '_ground_truth_terminals', False):
+            if isinstance(self._training_environment.unwrapped,
+                          (SwimmerEnv,
+                           AntEnv,
+                           HumanoidEnv,
+                           HalfCheetahEnv,
+                           HopperEnv,
+                           Walker2dEnv)):
+                succeeded_this_episode = (
+                    self._training_environment._env.env.succeeded_this_episode)
+            else:
+                succeeded_this_episode = getattr(
+                    self._training_environment.unwrapped,
+                    'succeeded_this_episode',
+                    False)
         else:
-            succeeded_this_episode = getattr(
-                self._training_environment.unwrapped,
-                'succeeded_this_episode',
-                False)
+            succeeded_this_episode = False
 
         if (self.sampler._path_length >= random_explore_after
             or succeeded_this_episode):
@@ -465,7 +395,9 @@ class MetricLearningAlgorithm(SAC):
             metric_learner_diagnostics.items()
         ])
 
-        diagnostics['supervision_labels_used'] = self._supervision_labels_used
+        if hasattr(self._target_proposer, '_supervision_labels_used'):
+            diagnostics['supervision_labels_used'] = (
+                self._target_proposer._supervision_labels_used)
 
         if self._plot_distances:
             if isinstance(self._training_environment.unwrapped,

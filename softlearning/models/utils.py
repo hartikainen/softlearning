@@ -49,6 +49,14 @@ def get_target_proposer_from_variant(variant, *args, **kwargs):
 
     target_proposer_class = getattr(target_proposer_lib, target_proposer_type)
 
+    if target_proposer_type == 'SemiSupervisedTargetProposer':
+        target_proposer_kwargs.update({
+            'epoch_length': (
+                variant['algorithm_params']['kwargs']['epoch_length']),
+            'max_path_length': (
+                variant['sampler_params']['kwargs']['max_path_length']),
+        })
+
     target_proposer = target_proposer_class(
         *args, **target_proposer_kwargs, **kwargs)
 

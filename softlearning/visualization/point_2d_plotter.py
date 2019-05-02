@@ -367,6 +367,9 @@ def plot_V(figure,
         extend='both',
         cmap='PuBuGn')
 
+    wall_collection, wall_rectangles = plot_walls(
+        ax, algorithm._training_environment.unwrapped.walls)
+
     colorbar_ax, kw = mpl.colorbar.make_axes(ax, location='bottom',)
     figure.colorbar(contour, cax=colorbar_ax, **kw)
 
@@ -429,9 +432,6 @@ def plot_V(figure,
                    s=(10 * RESOLUTION_MULTIPLIER) ** 2.0,
                    color=color,
                    marker='*')
-
-    wall_collection, wall_rectangles = plot_walls(
-        ax, algorithm._training_environment.unwrapped.walls)
 
     handles, labels = ax.get_legend_handles_labels()
     by_label = OrderedDict(zip(labels, handles))

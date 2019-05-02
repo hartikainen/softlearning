@@ -82,7 +82,7 @@ def get_algorithm_from_variant(variant,
     algorithm_kwargs = deepcopy(algorithm_params['kwargs'])
 
     if algorithm_type in NEEDS_TARGET_PROPOSER:
-        training_environment = kwargs['training_environment']
+        training_environment = kwargs['evaluation_environment']
         pool = kwargs['pool']
         target_proposer = get_target_proposer_from_variant(
             variant, env=training_environment, pool=pool)

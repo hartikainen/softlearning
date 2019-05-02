@@ -41,7 +41,7 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
         self._random_weighted_scale = random_weighted_scale
         self._target_candidate_strategy = target_candidate_strategy
 
-    def propose_target(self, paths):
+    def propose_target(self, paths, epoch):
         if self._first_observation is None:
             self._first_observation = paths[0].get(
                 'observations.observation', paths[0].get('observations'))[0]
@@ -108,21 +108,125 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
         return best_observation
 
 
-class SemiSupervisedTargetProposer(BaseTargetProposer):
-    def __init__(self, *args, proposal_scheduler=None, **kwargs):
-        super(SemiSupervisedTargetProposer, self).__init__(*args, **kwargs)
-        self._proposal_scheduler = proposal_scheduler
+class LogarithmicLabelScheduler(object):
+    def __init__(self,
+                 decay_steps,
+                 end_labels,
+                 start_labels=None,
+                 start_labels_frac=None,
+                 decay_rate=1e-2):
+        assert (start_labels is None) or (start_labels_frac is None)
+        self._start_labels = int(
+            start_labels
+            if start_labels is not None
+            else start_labels_frac * end_labels)
+        self._decay_steps = decay_steps
+        self._end_labels = end_labels
+        self._decay_rate = decay_rate
 
-    def propose_target(self, paths):
+    @property
+    def num_pretrain_labels(self):
+        return self._start_labels
+
+    def num_labels(self, time_step):
+        """Return the number of labels desired at this point in time."""
+        decayed_labels = (
+            (self._start_labels - self._end_labels)
+            * self._decay_rate ** (time_step / self._decay_steps)
+            + self._end_labels)
+
+        return int(decayed_labels)
+
+
+class LinearLabelScheduler(object):
+    def __init__(self,
+                 decay_steps,
+                 end_labels,
+                 start_labels=None,
+                 start_labels_frac=None,
+                 power=1.0):
+        assert (start_labels is None) or (start_labels_frac is None)
+        self._start_labels = int(
+            start_labels
+            if start_labels is not None
+            else start_labels_frac * end_labels)
+        self._decay_steps = decay_steps
+        self._end_labels = end_labels
+        self._power = power
+
+    @property
+    def num_pretrain_labels(self):
+        return self._start_labels
+
+    def num_labels(self, time_step):
+        time_step = min(time_step, self._decay_steps)
+        decayed_labels = (
+            (self._start_labels - self._end_labels)
+            * (1 - time_step / self._decay_steps) ** (self._power)
+            + self._end_labels)
+
+        return int(decayed_labels)
+
+
+PREFERENCE_SCHEDULERS = {
+    'linear': LinearLabelScheduler,
+    'logarithmic': LogarithmicLabelScheduler,
+}
+
+
+class SemiSupervisedTargetProposer(BaseTargetProposer):
+    def __init__(self,
+                 supervision_schedule_params,
+                 epoch_length,
+                 max_path_length,
+                 *args,
+                 **kwargs):
+        super(SemiSupervisedTargetProposer, self).__init__(*args, **kwargs)
+        assert supervision_schedule_params is not None
+        self._supervision_schedule_params = supervision_schedule_params
+
+        self._supervision_scheduler = PREFERENCE_SCHEDULERS[
+            supervision_schedule_params['type']](
+                **supervision_schedule_params['kwargs'])
+        self._supervision_labels_used = 0
+        self._last_supervision_epoch = -1
+        self._current_target = None
+
+        self._epoch_length = epoch_length
+        self._max_path_length = max_path_length
+
+    def propose_target(self, paths, epoch):
         env = self._env.unwrapped
+
+        expected_num_supervision_labels = (
+            self._supervision_scheduler.num_labels(epoch))
+        should_supervise = (
+            expected_num_supervision_labels > self._supervision_labels_used)
+
+        if self._current_target is None:
+            self._current_target = (
+                paths[0]
+                .get('observations.observation', paths[0].get('observations'))
+                [-1])
+
+        if not should_supervise:
+            return self._current_target
+
+        self._supervision_labels_used += 1
+
+        num_epochs_since_last_supervision = (
+            epoch - self._last_supervision_epoch)
+        self._last_supervision_epoch = epoch
+        use_last_n_paths = num_epochs_since_last_supervision * (
+            self._epoch_length // self._max_path_length)
 
         new_observations = np.concatenate([
             path.get('observations.observation', path.get('observations'))
-            for path in paths
+            for path in paths[:use_last_n_paths]
         ], axis=0)
         path_last_observations = np.concatenate([
             path.get('observations.observation', path.get('observations'))[-1:]
-            for path in paths
+            for path in paths[:use_last_n_paths]
         ], axis=0)
 
         if isinstance(env, (Point2DEnv, Point2DWallEnv)):
@@ -137,6 +241,7 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
             best_observation = path_last_observations[min_distance_idx]
 
         elif isinstance(env, (GymAntEnv, GymHalfCheetahEnv, GymHumanoidEnv)):
+            raise NotImplementedError(env)
             velocity_indices = {
                 GymAntEnv:
                 slice(env.sim.data.qpos.size - 2, env.sim.data.qpos.size),
@@ -171,16 +276,20 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
                 Walker2dEnv: slice(0, 1),
             }[type(env)]
 
-            last_observations_positions = path_last_observations[
-                :, position_slice]
-            last_observations_distances = np.linalg.norm(
-                last_observations_positions, ord=2, axis=1)
+            last_observations_x_positions = path_last_observations[:, 0:1]
+            last_observations_distances = last_observations_x_positions
+            # last_observations_positions = path_last_observations[
+            #     :, position_slice]
+            # last_observations_distances = np.linalg.norm(
+            #     last_observations_positions, ord=2, axis=1)
 
             max_distance_idx = np.argmax(last_observations_distances)
             best_observation = path_last_observations[max_distance_idx]
 
         else:
             raise NotImplementedError
+
+        self._current_target = best_observation
 
         return best_observation
 
@@ -193,7 +302,7 @@ class RandomTargetProposer(BaseTargetProposer):
         super(RandomTargetProposer, self).__init__(*args, **kwargs)
         self._target_proposal_rule = target_proposal_rule
 
-    def propose_target(self, paths):
+    def propose_target(self, paths, epoch):
         if self._target_proposal_rule == 'uniform_from_environment':
             try:
                 target = self._env._env.env.sample_metric_goal()

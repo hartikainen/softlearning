@@ -89,7 +89,7 @@ class MetricExperimentRunner(ExperimentRunner):
             get_policy('UniformPolicy', training_environment))
 
         metric_learner = get_metric_learner_from_variant(
-            self._variant, env, policy)
+            self._variant, evaluation_environment, policy)
 
         self.algorithm = get_algorithm_from_variant(
             variant=self._variant,

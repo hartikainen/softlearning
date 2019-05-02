@@ -9,7 +9,7 @@ DEFAULT_LAYER_SIZE = 256
 
 ENVIRONMENT_PARAMS = {
     'Swimmer': {
-        'Parameterizable-v0': {
+        'Parameterizable-v3': {
             'exclude_current_positions_from_observation': False,
             'reset_noise_scale': 0,
         },
@@ -19,10 +19,10 @@ ENVIRONMENT_PARAMS = {
         },
     },
     'Ant': {
-        'Parameterizable-v0': {
+        'Parameterizable-v3': {
             'exclude_current_positions_from_observation': False,
-            'terminate_when_unhealthy': True,
-            'reset_noise_scale': 0,
+            'terminate_when_unhealthy': False,
+            'healthy_reward': 1.0,
         },
         'Maze-v0': {
             'exclude_current_positions_from_observation': False,
@@ -31,21 +31,20 @@ ENVIRONMENT_PARAMS = {
         },
     },
     'HalfCheetah': {
-        'Parameterizable-v0': {
+        'Parameterizable-v3': {
             'exclude_current_positions_from_observation': False,
-            'reset_noise_scale': 0,
         },
     },
     'Hopper': {
-        'Parameterizable-v0': {
+        'Parameterizable-v3': {
             'exclude_current_positions_from_observation': False,
-            'terminate_when_unhealthy': True,
+            'terminate_when_unhealthy': False,
             'healthy_reward': 1.0,
             'reset_noise_scale': 0,
         },
     },
     'Walker': {
-        'Parameterizable-v0': {
+        'Parameterizable-v3': {
             'exclude_current_positions_from_observation': False,
             'terminate_when_unhealthy': False,
             'healthy_reward': 1.0,
@@ -53,7 +52,7 @@ ENVIRONMENT_PARAMS = {
         },
     },
     'Humanoid': {
-        'Parameterizable-v0': {
+        'Parameterizable-v3': {
             'exclude_current_positions_from_observation': False,
             'terminate_when_unhealthy': False,
             'healthy_reward': 1.0,
@@ -70,7 +69,7 @@ ENVIRONMENT_PARAMS = {
         'Wall-v0': {
             'observation_keys': ('observation', ),
             'terminate_on_success': False,
-            # 'fixed_goal': (5.0, 5.0),
+            # 'fixed_goal': (5.0, 4.0),
             # 'fixed_goal': (0.0, 0.0),
             # 'fixed_goal': (4.0, 0.0),
             'reset_positions': (
@@ -167,7 +166,7 @@ NUM_CHECKPOINTS = 10
 
 def get_supervision_schedule_params(domain):
     DECAY_STEPS_AND_LABELS_EVERY_N_STEPS = {
-        'HalfCheetah': (
+        'GoalHalfCheetah': (
             (100.0, 1),
             (100.0, 2),
             (100.0, 4),
@@ -181,7 +180,7 @@ def get_supervision_schedule_params(domain):
             (1000.0, 8),
             (1000.0, 16),
         ),
-        'Ant': (
+        'GoalAnt': (
             (300.0, 1),
 
             (1000.0, 2),
@@ -192,7 +191,8 @@ def get_supervision_schedule_params(domain):
             (3000.0, 4),
             (3000.0, 8),
             (3000.0, 16),
-        )
+        ),
+        'Point2DEnv': ((20, 1), )
     }[domain]
     SCHEDULER_TYPES = ('linear', 'logarithmic')
     # DECAY_STEPS = {
@@ -266,14 +266,22 @@ def get_variant_spec(args):
             ]),
         }
 
-        if spec['metric_learner_params']['type'] in (
-                ('OnPolicyMetricLearner', 'TemporalDifferenceMetricLearner')):
+        if (spec['metric_learner_params']['type']
+            == 'TemporalDifferenceMetricLearner'):
             kwargs = {
                 **shared_kwargs,
                 **{
-                    'train_every_n_steps': 64,
+                    'train_every_n_steps': 1,
                     'ground_truth_terminals': True,
-                }
+                },
+            }
+        elif (spec['metric_learner_params']['type']
+              == 'OnPolicyMetricLearner'):
+            kwargs = {
+                **shared_kwargs,
+                **{
+                    'train_every_n_steps': 1,
+                },
             }
         elif spec['metric_learner_params']['type'] == 'HingeMetricLearner':
             kwargs = {
@@ -320,7 +328,7 @@ def get_variant_spec(args):
                     ['environment_params']
                     ['training']
                     ['kwargs'],
-                    # 'fixed_goal': (5.0, 4.0),
+                    'fixed_goal': (5.0, 4.0),
                     # 'terminate_on_success': True,
                 }))
             },
@@ -368,38 +376,30 @@ def get_variant_spec(args):
                 'save_full_state': False,
 
                 'plot_distances': True,
-                'temporary_goal_update_rule': tune.grid_search([
-                    # 'closest_l2_from_goal',
-                    # 'farthest_estimate_from_first_observation',
-                    'operator_query_last_step',
-                    # 'random',
-                ]),
-                'supervision_schedule_params': get_supervision_schedule_params(
-                    domain),
                 'use_distance_for': tune.grid_search([
                     'reward',
-                    'value',
+                    # 'value',
                     # 'telescope_reward',
                 ]),
-                'final_exploration_proportion': 0.1,
+                'final_exploration_proportion': 0.25,
             }
         },
-        'target_proposer_params': {
-            'type': 'UnsupervisedTargetProposer',
-            'kwargs': {
-                'target_proposal_rule': tune.grid_search([
-                    # 'closest_l2_from_goal',
-                    # 'farthest_l2_from_first_observation',
-                    'farthest_estimate_from_first_observation',
-                    'random_weighted_estimate_from_first_observation',
-                    'random',
-                ]),
-                'random_weighted_scale': 1.0,
-                'target_candidate_strategy': tune.grid_search([
-                    'all_steps', 'last_steps'
-                ]),
-            },
-        },
+        # 'target_proposer_params': {
+        #     'type': 'UnsupervisedTargetProposer',
+        #     'kwargs': {
+        #         'target_proposal_rule': tune.grid_search([
+        #             # 'closest_l2_from_goal',
+        #             # 'farthest_l2_from_first_observation',
+        #             'farthest_estimate_from_first_observation',
+        #             'random_weighted_estimate_from_first_observation',
+        #             'random',
+        #         ]),
+        #         'random_weighted_scale': 1.0,
+        #         'target_candidate_strategy': tune.grid_search([
+        #             'all_steps', 'last_steps'
+        #         ]),
+        #     },
+        # },
         # 'target_proposer_params': {
         #     'type': 'RandomTargetProposer',
         #     'kwargs': {
@@ -409,10 +409,13 @@ def get_variant_spec(args):
         #         ]),
         #     }
         # },
-        # 'target_proposer_params': {
-        #     'type': 'SemiSupervisedTargetProposer',
-        #     'kwargs': {},
-        # },
+        'target_proposer_params': {
+            'type': 'SemiSupervisedTargetProposer',
+            'kwargs': {
+                'supervision_schedule_params': get_supervision_schedule_params(
+                    domain),
+            },
+        },
         'replay_pool_params': {
             'type': 'DistancePool',
             'kwargs': {
@@ -447,8 +450,8 @@ def get_variant_spec(args):
         },
         'metric_learner_params': {
             'type': tune.grid_search([
-                'TemporalDifferenceMetricLearner',
-                # 'OnPolicyMetricLearner',
+                # 'TemporalDifferenceMetricLearner',
+                'OnPolicyMetricLearner',
                 # 'HingeMetricLearner',
             ]),
             'kwargs': tune.sample_from(metric_learner_kwargs),
