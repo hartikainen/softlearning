@@ -6,6 +6,7 @@ import pickle
 
 import tensorflow as tf
 
+from softlearning.environments.utils import get_environment_from_params
 from softlearning.policies.utils import get_policy_from_variant
 from softlearning.samplers import rollouts
 
@@ -23,7 +24,7 @@ def parse_args():
                         choices=('human', 'rgb_array', None),
                         help="Mode to render the rollouts in.")
     parser.add_argument('--deterministic', '-d',
-                        type=strtobool,
+                        type=lambda x: bool(strtobool(x)),
                         nargs='?',
                         const=True,
                         default=True,
@@ -46,18 +47,23 @@ def simulate_policy(args):
     with session.as_default():
         pickle_path = os.path.join(checkpoint_path, 'checkpoint.pkl')
         with open(pickle_path, 'rb') as f:
-            pickleable = pickle.load(f)
+            picklable = pickle.load(f)
 
-    env = pickleable['env']
+    environment_params = (
+        variant['environment_params']['evaluation']
+        if 'evaluation' in variant['environment_params']
+        else variant['environment_params']['training'])
+    evaluation_environment = get_environment_from_params(environment_params)
+
     policy = (
-        get_policy_from_variant(variant, env, Qs=[None]))
-    policy.set_weights(pickleable['policy_weights'])
+        get_policy_from_variant(variant, evaluation_environment, Qs=[None]))
+    policy.set_weights(picklable['policy_weights'])
 
     with policy.set_deterministic(args.deterministic):
-        paths = rollouts(env,
+        paths = rollouts(args.num_rollouts,
+                         evaluation_environment,
                          policy,
                          path_length=args.max_path_length,
-                         n_paths=args.num_rollouts,
                          render_mode=args.render_mode)
 
     if args.render_mode != 'human':

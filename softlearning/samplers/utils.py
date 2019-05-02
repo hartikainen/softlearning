@@ -7,8 +7,9 @@ from . import (
     dummy_sampler,
     extra_policy_info_sampler,
     remote_sampler,
-    sampler_base,
-    simple_sampler)
+    base_sampler,
+    simple_sampler,
+    goal_sampler)
 
 
 def get_sampler_from_variant(variant, *args, **kwargs):
@@ -17,8 +18,9 @@ def get_sampler_from_variant(variant, *args, **kwargs):
         'ExtraPolicyInfoSampler': (
             extra_policy_info_sampler.ExtraPolicyInfoSampler),
         'RemoteSampler': remote_sampler.RemoteSampler,
-        'Sampler': sampler_base.BaseSampler,
+        'Sampler': base_sampler.BaseSampler,
         'SimpleSampler': simple_sampler.SimpleSampler,
+        'GoalSampler': goal_sampler.GoalSampler,
     }
 
     sampler_params = variant['sampler_params']
@@ -36,6 +38,7 @@ def get_sampler_from_variant(variant, *args, **kwargs):
 def rollout(env,
             policy,
             path_length,
+            sampler_class=simple_sampler.SimpleSampler,
             callback=None,
             render_mode=None,
             break_on_terminal=True):
@@ -44,7 +47,7 @@ def rollout(env,
 
     pool = replay_pools.SimpleReplayPool(
         observation_space, action_space, max_size=path_length)
-    sampler = simple_sampler.SimpleSampler(
+    sampler = sampler_class(
         max_path_length=path_length,
         min_pool_size=None,
         batch_size=None)
@@ -64,7 +67,8 @@ def rollout(env,
 
         if render_mode is not None:
             if render_mode == 'rgb_array':
-                image = env.render(mode=render_mode)
+                image = env.render(
+                    mode=render_mode, width=100, height=100)
                 images.append(image)
             else:
                 env.render()
@@ -86,10 +90,6 @@ def rollout(env,
     return path
 
 
-def rollouts(env, policy, path_length, n_paths, render_mode=None):
-    paths = [
-        rollout(env, policy, path_length, render_mode=render_mode)
-        for i in range(n_paths)
-    ]
-
+def rollouts(n_paths, *args, **kwargs):
+    paths = [rollout(*args, **kwargs) for i in range(n_paths)]
     return paths

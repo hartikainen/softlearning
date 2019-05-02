@@ -1,10 +1,11 @@
 import os
 import copy
 import pickle
+import sys
 
 import tensorflow as tf
 
-from softlearning.environments.utils import get_environment_from_variant
+from softlearning.environments.utils import get_environment_from_params
 from softlearning.algorithms.utils import get_algorithm_from_variant
 from softlearning.policies.utils import get_policy_from_variant, get_policy
 from softlearning.replay_pools.utils import get_replay_pool_from_variant
@@ -13,32 +14,37 @@ from softlearning.value_functions.utils import get_Q_function_from_variant
 from softlearning.models.utils import get_metric_learner_from_variant
 from softlearning.misc.utils import initialize_tf_variables
 
-from examples.utils import (
-    parse_universe_domain_task,
-    get_parser,
-    launch_experiments_ray)
 from examples.development.main import ExperimentRunner
-from .variants import get_variant_spec
+from examples.instrument import run_example_local
 
 
 class MetricExperimentRunner(ExperimentRunner):
     def _build(self):
         variant = copy.deepcopy(self._variant)
 
-        env = self.env = get_environment_from_variant(variant)
-        replay_pool = self.replay_pool = (
-            get_replay_pool_from_variant(variant, env))
-        sampler = self.sampler = get_sampler_from_variant(variant)
-        Qs = self.Qs = get_Q_function_from_variant(variant, env)
-        policy = self.policy = get_policy_from_variant(variant, env, Qs)
-        initial_exploration_policy = self.initial_exploration_policy = (
-            get_policy('UniformPolicy', env))
+        environment_params = variant['environment_params']
+        training_environment = self.training_environment = (
+            get_environment_from_params(environment_params['training']))
+        evaluation_environment = self.evaluation_environment = (
+            get_environment_from_params(environment_params['evaluation'])
+            if 'evaluation' in environment_params
+            else training_environment)
 
-        metric_learner = get_metric_learner_from_variant(variant, env)
+        replay_pool = self.replay_pool = (
+            get_replay_pool_from_variant(variant, training_environment))
+        sampler = self.sampler = get_sampler_from_variant(variant)
+        Qs = self.Qs = get_Q_function_from_variant(variant, training_environment)
+        policy = self.policy = get_policy_from_variant(variant, training_environment, Qs)
+        initial_exploration_policy = self.initial_exploration_policy = (
+            get_policy(variant['exploration_policy_params']['type'], training_environment))
+
+        metric_learner = get_metric_learner_from_variant(
+            variant, training_environment, policy)
 
         self.algorithm = get_algorithm_from_variant(
             variant=variant,
-            env=env,
+            training_environment=training_environment,
+            evaluation_environment=evaluation_environment,
             policy=policy,
             initial_exploration_policy=initial_exploration_policy,
             Qs=Qs,
@@ -60,30 +66,35 @@ class MetricExperimentRunner(ExperimentRunner):
         with self._session.as_default():
             pickle_path = self._pickle_path(checkpoint_dir)
             with open(pickle_path, 'rb') as f:
-                pickleable = pickle.load(f)
+                picklable = pickle.load(f)
 
-        env = self.env = pickleable['env']
+        training_environment = self.training_environment = picklable[
+            'training_environment']
+        evaluation_environment = self.evaluation_environment = picklable[
+            'evaluation_environment']
 
         replay_pool = self.replay_pool = (
-            get_replay_pool_from_variant(self._variant, env))
+            get_replay_pool_from_variant(self._variant, training_environment))
 
         if self._variant['run_params'].get('checkpoint_replay_pool', False):
             self._restore_replay_pool(checkpoint_dir)
 
-        sampler = self.sampler = pickleable['sampler']
-        Qs = self.Qs = pickleable['Qs']
-        # policy = self.policy = pickleable['policy']
+        sampler = self.sampler = picklable['sampler']
+        Qs = self.Qs = picklable['Qs']
+        # policy = self.policy = picklable['policy']
         policy = self.policy = (
-            get_policy_from_variant(self._variant, env, Qs))
-        self.policy.set_weights(pickleable['policy_weights'])
+            get_policy_from_variant(self._variant, training_environment, Qs))
+        self.policy.set_weights(picklable['policy_weights'])
         initial_exploration_policy = self.initial_exploration_policy = (
-            get_policy('UniformPolicy', env))
+            get_policy('UniformPolicy', training_environment))
 
-        metric_learner = get_metric_learner_from_variant(self._variant, env)
+        metric_learner = get_metric_learner_from_variant(
+            self._variant, env, policy)
 
         self.algorithm = get_algorithm_from_variant(
             variant=self._variant,
-            env=self.env,
+            training_environment=training_environment,
+            evaluation_environment=evaluation_environment,
             policy=policy,
             initial_exploration_policy=initial_exploration_policy,
             Qs=Qs,
@@ -91,7 +102,7 @@ class MetricExperimentRunner(ExperimentRunner):
             sampler=sampler,
             metric_learner=metric_learner,
             session=self._session)
-        self.algorithm.__setstate__(pickleable['algorithm'].__getstate__())
+        self.algorithm.__setstate__(picklable['algorithm'].__getstate__())
 
         initialize_tf_variables(self._session, only_uninitialized=True)
 
@@ -109,22 +120,17 @@ class MetricExperimentRunner(ExperimentRunner):
         self._built = True
 
 
-def main():
-    args = get_parser().parse_args()
+def main(argv=None):
+    """Run ExperimentRunner locally on ray.
 
-    universe, domain, task = parse_universe_domain_task(args)
+    To run this example on cloud (e.g. gce/ec2), use the setup scripts:
+    'softlearning launch_example_{gce,ec2} examples.development <options>'.
 
-    variant_spec = get_variant_spec(universe, domain, task, args.policy)
-    variant_spec['mode'] = args.mode
-
-    local_dir_base = (
-        '~/ray_results/local'
-        if args.mode in ('local', 'debug')
-        else '~/ray_results')
-    local_dir = os.path.join(local_dir_base, universe, domain, task)
-    launch_experiments_ray(
-        [variant_spec], args, local_dir, MetricExperimentRunner)
+    Run 'softlearning launch_example_{gce,ec2} --help' for further
+    instructions.
+    """
+    run_example_local('examples.metric_learning', argv)
 
 
 if __name__ == '__main__':
-    main()
+    main(argv=sys.argv[1:])

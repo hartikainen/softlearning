@@ -43,11 +43,16 @@ CONFIG = {
         },
         'type': 'FeedforwardDistanceEstimator'
     },
-    'domain': 'Swimmer',
-    'task': 'Custom',
-    'env_params': {
-        'exclude_current_positions_from_observation': False,
-        'reset_noise_scale': 0
+    'environment_params': {
+        'training': {
+            'universe': 'gym',
+            'domain': 'Swimmer',
+            'task': 'v3',
+            'kwargs': {
+                'exclude_current_positions_from_observation': False,
+                'reset_noise_scale': 0
+            },
+        },
     },
     'git_sha':
     'fb03db4b0ffafc61d8ea6d550e7fdebeecb34d15 '
@@ -107,7 +112,6 @@ CONFIG = {
         },
         'type': 'SimpleSampler'
     },
-    'universe': 'gym'
 }
 
 

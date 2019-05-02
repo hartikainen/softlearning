@@ -7,35 +7,45 @@ from examples.utils import variant_equals
 
 DEFAULT_LAYER_SIZE = 256
 
-ENV_PARAMS = {
+ENVIRONMENT_PARAMS = {
     'Swimmer': {
-        'Custom': {
+        'Parameterizable-v0': {
+            'exclude_current_positions_from_observation': False,
+            'reset_noise_scale': 0,
+        },
+        'Maze-v0': {
             'exclude_current_positions_from_observation': False,
             'reset_noise_scale': 0,
         },
     },
     'Ant': {
-        'Custom': {
+        'Parameterizable-v0': {
             'exclude_current_positions_from_observation': False,
-            'terminate_when_unhealthy': False,
-            'healthy_reward': 1.0,
+            'terminate_when_unhealthy': True,
+            'reset_noise_scale': 0,
+        },
+        'Maze-v0': {
+            'exclude_current_positions_from_observation': False,
+            'terminate_when_unhealthy': True,
+            'reset_noise_scale': 0,
         },
     },
     'HalfCheetah': {
-        'Custom': {
+        'Parameterizable-v0': {
             'exclude_current_positions_from_observation': False,
+            'reset_noise_scale': 0,
         },
     },
     'Hopper': {
-        'Custom': {
+        'Parameterizable-v0': {
             'exclude_current_positions_from_observation': False,
-            'terminate_when_unhealthy': False,
+            'terminate_when_unhealthy': True,
             'healthy_reward': 1.0,
             'reset_noise_scale': 0,
         },
     },
     'Walker': {
-        'Custom': {
+        'Parameterizable-v0': {
             'exclude_current_positions_from_observation': False,
             'terminate_when_unhealthy': False,
             'healthy_reward': 1.0,
@@ -43,7 +53,7 @@ ENV_PARAMS = {
         },
     },
     'Humanoid': {
-        'Custom': {
+        'Parameterizable-v0': {
             'exclude_current_positions_from_observation': False,
             'terminate_when_unhealthy': False,
             'healthy_reward': 1.0,
@@ -51,14 +61,16 @@ ENV_PARAMS = {
         },
     },
     'Point2DEnv': {
-        'Default': {
+        'Default-v0': {
             'observation_keys': ('observation', ),
+            'terminate_on_success': True,
             'fixed_goal': (5.0, 5.0),
             'reset_positions': ((-5.0, -5.0), ),
         },
-        'Wall': {
+        'Wall-v0': {
             'observation_keys': ('observation', ),
-            'fixed_goal': (5.0, 5.0),
+            'terminate_on_success': False,
+            # 'fixed_goal': (5.0, 5.0),
             # 'fixed_goal': (0.0, 0.0),
             # 'fixed_goal': (4.0, 0.0),
             'reset_positions': (
@@ -66,15 +78,68 @@ ENV_PARAMS = {
                 (-5.0, -4.0),
                 # (-5.0, -3.0),
             ),
+            # 'reset_positions': None,
             'wall_shape': tune.grid_search(['zigzag']),
             'discretize': False,
+            'target_radius': 0.1,
+            'reward_type': 'sparse',
         }
-    }
+    },
+
+    'GoalSwimmer': {
+        'v0': {
+            'exclude_current_positions_from_observation': False,
+            'observation_keys': ('observation', ),
+        },
+    },
+    'GoalAnt': {
+        'v0': {
+            'exclude_current_positions_from_observation': False,
+            'observation_keys': ('observation', ),
+        },
+    },
+    'GoalHalfCheetah': {
+        'v0': {
+            'observation_keys': ('observation', ),
+            'forward_reward_weight': 0,
+            'ctrl_cost_weight': 0,
+            'exclude_current_positions_from_observation': False,
+        }
+    },
+    'GoalHopper': {
+        'v0': {
+            'exclude_current_positions_from_observation': False,
+            'observation_keys': ('observation', ),
+        }
+    },
+    'GoalWalker': {
+        'v0': {
+            'exclude_current_positions_from_observation': False,
+            'observation_keys': ('observation', ),
+        }
+    },
+    'GoalHumanoid': {
+        'v0': {
+            'exclude_current_positions_from_observation': False,
+            'observation_keys': ('observation', ),
+        },
+    },
+    'GoalReacher': {
+        'v0': {
+            'observation_keys': ('observation', ),
+        }
+    },
+    'GoalPendulum': {
+        'v0': {
+            'observation_keys': ('observation', ),
+        }
+    },
 }
 
 DEFAULT_NUM_EPOCHS = 200
 NUM_EPOCHS_PER_DOMAIN = {
     'Swimmer': int(3e3 + 1),
+    'GoalSwimmer': int(3e3 + 1),
     'Hopper': int(3e3 + 1),
     'HalfCheetah': int(1e4 + 1),
     'Walker': int(1e4 + 1),
@@ -87,13 +152,14 @@ NUM_EPOCHS_PER_DOMAIN = {
     'HandReach': int(1e4 + 1),
     'DClaw3': int(5e2 + 1),
     'ImageDClaw3': int(5e3 + 1),
-    'Point2DEnv': int(30 + 1)
+    'Point2DEnv': int(50 + 1)
 }
 
 
 DEFAULT_MAX_PATH_LENGTH = 1000
 MAX_PATH_LENGTH_PER_DOMAIN = {
-    'Point2DEnv': 50
+    'Point2DEnv': 50,
+    'GoalReacher': 200,
 }
 
 NUM_CHECKPOINTS = 10
@@ -156,7 +222,80 @@ def get_supervision_schedule_params(domain):
     ])
 
 
-def get_variant_spec(universe, domain, task, policy):
+def fixed_path_length(spec):
+    environment_params = (
+        spec.get('config', spec)['environment_params']['training'])
+    domain = environment_params['domain']
+    environment_kwargs = environment_params['kwargs']
+
+    if domain == 'Point2DEnv':
+        return not environment_kwargs.get('terminate_on_success', False)
+    elif domain in (
+            'Swimmer', 'HalfCheetah', 'CurriculumPointEnv'):
+        return True
+    elif domain in ('GoalReacher', 'GoalPendulum'):
+        return True
+    else:
+        if domain in (('Ant', 'Humanoid', 'Hopper', 'Walker')
+                      + ('GoalSwimmer', 'GoalHalfCheetah', 'GoalHopper')
+                      + ('GoalWalker', 'GoalAnt', 'GoalHumanoid')):
+            return not environment_kwargs.get('terminate_when_unhealthy', True)
+
+    raise NotImplementedError
+
+
+def get_variant_spec(args):
+    universe, domain, task = args.universe, args.domain, args.task
+    max_path_length = MAX_PATH_LENGTH_PER_DOMAIN.get(
+        domain, DEFAULT_MAX_PATH_LENGTH)
+
+    def metric_learner_kwargs(spec):
+        spec = spec.get('config', spec)
+
+        shared_kwargs = {
+            'distance_learning_rate': 3e-4,
+            'n_train_repeat': 1,
+
+            'condition_with_action': (
+                spec['metric_learner_params']['type']
+                == 'TemporalDifferenceMetricLearner'),
+            'distance_input_type': tune.grid_search([
+                'full',
+                # 'xy_coordinates',
+                # 'xy_velocities',
+            ]),
+        }
+
+        if spec['metric_learner_params']['type'] in (
+                ('OnPolicyMetricLearner', 'TemporalDifferenceMetricLearner')):
+            kwargs = {
+                **shared_kwargs,
+                **{
+                    'train_every_n_steps': 64,
+                    'ground_truth_terminals': True,
+                }
+            }
+        elif spec['metric_learner_params']['type'] == 'HingeMetricLearner':
+            kwargs = {
+                **shared_kwargs,
+                **{
+                    'train_every_n_steps': 1,
+
+                    'lambda_learning_rate': 3e-4,
+                    'constraint_exp_multiplier': 0.0,
+                    'objective_type': 'linear',
+                    'step_constraint_coeff': 1.0,
+
+                    'zero_constraint_threshold': 0.0,
+
+                    'max_distance': 10 + max_path_length,
+                },
+            }
+        else:
+            raise NotImplementedError(spec['metric_learner_params']['type'])
+
+        return kwargs
+
     variant_spec = {
         'prefix': '{}/{}/{}'.format(universe, domain, task),
         'domain': domain,
@@ -164,13 +303,38 @@ def get_variant_spec(universe, domain, task, policy):
         'universe': universe,
         'git_sha': get_git_rev(),
 
-        'env_params': ENV_PARAMS.get(domain, {}).get(task, {}),
+        'environment_params': {
+            'training': {
+                'domain': domain,
+                'task': task,
+                'universe': universe,
+                'kwargs': (
+                    ENVIRONMENT_PARAMS.get(domain, {}).get(task, {})),
+            },
+            'evaluation': {
+                'domain': domain,
+                'task': task,
+                'universe': universe,
+                'kwargs': tune.sample_from(lambda spec: ({
+                    **spec.get('config', spec)
+                    ['environment_params']
+                    ['training']
+                    ['kwargs'],
+                    # 'fixed_goal': (5.0, 4.0),
+                    # 'terminate_on_success': True,
+                }))
+            },
+        },
         'policy_params': {
             'type': 'GaussianPolicy',
             'kwargs': {
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
                 'squash': True,
             },
+        },
+        'exploration_policy_params': {
+            'type': 'UniformPolicy',
+            'kwargs': {},
         },
         'Q_params': {
             'type': 'double_feedforward_Q_function',
@@ -214,82 +378,80 @@ def get_variant_spec(universe, domain, task, policy):
                     domain),
                 'use_distance_for': tune.grid_search([
                     'reward',
-                    # 'value',
+                    'value',
+                    # 'telescope_reward',
                 ]),
+                'final_exploration_proportion': 0.1,
             }
         },
+        'target_proposer_params': {
+            'type': 'UnsupervisedTargetProposer',
+            'kwargs': {
+                'target_proposal_rule': tune.grid_search([
+                    # 'closest_l2_from_goal',
+                    # 'farthest_l2_from_first_observation',
+                    'farthest_estimate_from_first_observation',
+                    'random_weighted_estimate_from_first_observation',
+                    'random',
+                ]),
+                'random_weighted_scale': 1.0,
+                'target_candidate_strategy': tune.grid_search([
+                    'all_steps', 'last_steps'
+                ]),
+            },
+        },
+        # 'target_proposer_params': {
+        #     'type': 'RandomTargetProposer',
+        #     'kwargs': {
+        #         'target_proposal_rule': tune.grid_search([
+        #             'uniform_from_environment',
+        #             'uniform_from_pool'
+        #         ]),
+        #     }
+        # },
+        # 'target_proposer_params': {
+        #     'type': 'SemiSupervisedTargetProposer',
+        #     'kwargs': {},
+        # },
         'replay_pool_params': {
             'type': 'DistancePool',
             'kwargs': {
                 'max_size': int(1e6),
                 'on_policy_window': 1000,
-                # 'on_policy_window': lambda spec: (
-                #     2 * spec.get('config', spec)
-                #     ['sampler_params']
-                #     ['kwargs']
-                #     ['max_path_length']
-                #     if (spec.get('config', spec)
-                #         ['metric_learner_params']
-                #         ['type']
-                #         == 'OnPolicyMetricLearner')
-                #     else None),
+                # tune.sample_from(lambda spec: (
+                #     {
+                #         'OnPolicyMetricLearner': 2 * max_path_length
+                #     }.get(spec.get('config', spec)
+                #           ['metric_learner_params']
+                #           ['type'],
+                #           None)
+                # )),
                 'max_pair_distance': None,
-                'path_length': variant_equals(
-                    'sampler_params',
-                    'kwargs',
-                    'max_path_length')
+                'path_length': max_path_length,
+                'fixed_path_length': tune.sample_from(fixed_path_length),
+                'terminal_epsilon': 0.1,
             }
         },
         'sampler_params': {
             'type': 'SimpleSampler',
             'kwargs': {
-                'max_path_length': MAX_PATH_LENGTH_PER_DOMAIN.get(
-                    domain, DEFAULT_MAX_PATH_LENGTH),
-                'min_pool_size': MAX_PATH_LENGTH_PER_DOMAIN.get(
-                    domain, DEFAULT_MAX_PATH_LENGTH),
+                'max_path_length': max_path_length,
+                'min_pool_size': max_path_length,
                 'batch_size': 256,
+                'store_last_n_paths': tune.sample_from(lambda spec: (
+                    2 * spec.get('config', spec)
+                    ['replay_pool_params']
+                    ['kwargs']
+                    ['max_size'] // max_path_length)),
             }
         },
         'metric_learner_params': {
             'type': tune.grid_search([
-                'OnPolicyMetricLearner',
-                # 'MetricLearner',
+                'TemporalDifferenceMetricLearner',
+                # 'OnPolicyMetricLearner',
+                # 'HingeMetricLearner',
             ]),
-            'kwargs': {
-                'distance_learning_rate': 3e-4,
-                'lambda_learning_rate': 3e-4,
-                'train_every_n_steps': 64,
-                # lambda spec: (
-                #     {
-                #         'OnPolicyMetricLearner': 128,
-                #         'MetricLearner': 1,
-                #     }[spec.get('config', spec)
-                #       ['metric_learner_params']
-                #       ['type']]),
-                'n_train_repeat': 1,
-
-                'constraint_exp_multiplier': 0.0,
-                'objective_type': 'linear',
-                'step_constraint_coeff': 1e-1,
-
-                'zero_constraint_threshold': 0.0,
-
-                'max_distance': lambda spec: (
-                    10 + spec.get('config', spec)
-                    ['sampler_params']
-                    ['kwargs']
-                    ['max_path_length']),
-
-                'condition_with_action': tune.grid_search([
-                    # True,
-                    False
-                ]),
-                'distance_input_type': tune.grid_search([
-                    'full',
-                    # 'xy_coordinates',
-                    # 'xy_velocities',
-                ]),
-            },
+            'kwargs': tune.sample_from(metric_learner_kwargs),
         },
         'distance_estimator_params': {
             'type': 'FeedforwardDistanceEstimator',

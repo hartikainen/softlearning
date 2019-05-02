@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
 import matplotlib as mpl
-mpl.use('TkAgg')
+mpl.use('Agg')
 
 
 RESOLUTION_MULTIPLIER = 2.0
@@ -37,7 +37,7 @@ def plot_walls(ax, walls):
     wall_patch_collection = PatchCollection(
         wall_rectangles,
         facecolor='black',
-        edgecolor='black')
+        edgecolor=None)
 
     ax.add_collection(wall_patch_collection)
 
@@ -155,19 +155,15 @@ def plot_distances(figure,
                    observations_xy,
                    goals_xy,
                    num_heatmaps=16):
-    min_x, max_x = algorithm._env.unwrapped.observation_x_bounds
-    min_y, max_y = algorithm._env.unwrapped.observation_y_bounds
+    min_x, max_x = (
+        algorithm._training_environment.unwrapped.observation_x_bounds)
+    min_y, max_y = (
+        algorithm._training_environment.unwrapped.observation_y_bounds)
 
     nx = ny = int(np.sqrt(observations_xy.shape[0]))
     subplots_per_side = int(np.sqrt(num_heatmaps))
     gridspec_0 = mpl.gridspec.GridSpecFromSubplotSpec(
         subplots_per_side, subplots_per_side, subplot_spec=grid_spec)
-
-    goal_estimate = algorithm._temporary_goal
-
-    algorithm._previous_goals = getattr(algorithm, '_previous_goals', np.zeros((0, 2)))
-    algorithm._previous_goals = np.append(
-        algorithm._previous_goals, goal_estimate[None], axis=0)
 
     V_star_axes = []
     V_star_axes_dict = {}
@@ -208,6 +204,9 @@ def plot_distances(figure,
                 velocities=None,
                 observation_type=None)
 
+            if i - goals_xy.shape[0] == -1:
+                observations_2, observations_1 = observations_1, observations_2
+
             distances = get_distances_fn(observations_1, observations_2)
             X = np.reshape(observations_xy[:, 0], (nx, ny))
             Y = np.reshape(observations_xy[:, 1], (nx, ny))
@@ -215,7 +214,8 @@ def plot_distances(figure,
 
             filled_contour = ax.contourf(
                 X, Y, Z,
-                levels=np.arange(algorithm.sampler._max_path_length),
+                levels=np.arange(
+                    int(algorithm.sampler._max_path_length * 1.2)),
                 extend='both',
                 cmap='PuBuGn')
 
@@ -230,16 +230,13 @@ def plot_distances(figure,
                       inline=1, fmt='%d', fontsize=8)
 
             wall_collection, wall_rectangles = plot_walls(
-                ax, algorithm._env.unwrapped.walls)
+                ax, algorithm._training_environment.unwrapped.walls)
 
             ax.scatter(*goal_position,
                        s=(6 * RESOLUTION_MULTIPLIER) ** 2,
                        color='blue',
-                       marker='*',
+                       marker=('o' if i - goals_xy.shape[0] == -1 else '*'),
                        label='s1')
-
-            # if i == num_heatmaps - 1:
-            #     ax.plot(*reset_position, 'go')
 
     colorbar_ax, kw = mpl.colorbar.make_axes(
         V_star_axes,
@@ -277,15 +274,11 @@ def plot_Q(figure,
     actions_xy = np.stack([actions_X, actions_Y], axis=-1).reshape(-1, 2)
 
     Q_axes = []
-    # for row in range(subplots_per_side-1, -1, -1):
     for row in range(subplots_per_side):
         for column in range(subplots_per_side):
             i = row * subplots_per_side + column
             ax = figure.add_subplot(gridspec_01[row, column])
-            # ax = subplots[row][column]
             Q_axes.append(ax)
-
-            # raise ValueError('nope')
 
             position = observations_xy[i, :]
             goal = goals_xy[i, :]
@@ -316,7 +309,6 @@ def plot_Q(figure,
                 linestyles='dashed',
                 extend='both',
                 cmap='PuBuGn')
-            # ax.plot(*state, 'go')
 
     colorbar_ax, kw = mpl.colorbar.make_axes(
         Q_axes,
@@ -333,17 +325,19 @@ def plot_V(figure,
            training_paths,
            evaluation_paths,
            num_heatmaps=16):
-    min_x, max_x = algorithm._env.unwrapped.observation_x_bounds
-    min_y, max_y = algorithm._env.unwrapped.observation_y_bounds
+    min_x, max_x = (
+        algorithm._training_environment.unwrapped.observation_x_bounds)
+    min_y, max_y = (
+        algorithm._training_environment.unwrapped.observation_y_bounds)
 
     nx = ny = int(np.sqrt(observations_xy.shape[0]))
-    # V_pi
     ax = figure.add_subplot(grid_spec)
-    # figure = plt.figure(figsize=(8.4, 8.4))
-    # ax = figure.gca()
 
     ax.set_xlim([min_x, max_x])
     ax.set_ylim([min_y, max_y])
+
+    reset_position = (
+        algorithm._training_environment._env.unwrapped.get_reset_position())
 
     observations = get_observations(
         observations_xy,
@@ -353,7 +347,7 @@ def plot_V(figure,
         velocities=None,
         observation_type=None)
     goals = get_observations(
-        algorithm._temporary_goal,
+        reset_position,
         goals_xy[-1, :],
         nx,
         ny,
@@ -376,74 +370,68 @@ def plot_V(figure,
     colorbar_ax, kw = mpl.colorbar.make_axes(ax, location='bottom',)
     figure.colorbar(contour, cax=colorbar_ax, **kw)
 
-    if getattr(algorithm._env.unwrapped, 'fixed_goal', None) is not None:
-        fixed_goal = algorithm._env._env.unwrapped.fixed_goal[:2]
-        goals_xy[-1, :] = fixed_goal
-    else:
-        fixed_goal = None
-
-    ax.scatter(*goals_xy[-1],
+    ax.scatter(*reset_position,
                s=(10 * RESOLUTION_MULTIPLIER) ** 2,
-               color='blue',
-               marker='*',
-               label='final goal')
+               color=(0.0, 0.0, 1.0, 1.0),
+               label='reset position',
+               marker='o')
 
-    goal_estimate = algorithm._temporary_goal
-    ax.scatter(*goal_estimate,
-               s=(10 * RESOLUTION_MULTIPLIER) ** 2,
-               color=(1.0, 0.0, 0.0, 1.0),
-               label='temporary goal',
-               marker='*')
-    ax.scatter(algorithm._previous_goals[:-1, 0],
-               algorithm._previous_goals[:-1, 1],
-               s=(10 * RESOLUTION_MULTIPLIER) ** 2,
-               color=(1.0, 0.0, 0.0, 0.2),
-               marker='*',
-               label="past temporary goals")
-
+    training_cmap = plt.cm.get_cmap('Set1', len(training_paths))
     for i, training_path in enumerate(training_paths):
-        observations = training_path['observations']
+        positions = training_path['observations.observation']
+        target_positions = training_path['observations.desired_goal']
 
-        if observations.shape[1] == 11:
-            # Reacher
-            assert np.all(observations[:, :2] == observations[:, 2:4])
-            positions = observations[:, :2]
-            target_positions = observations[:, 4:6]
-            observation_target_distances = observations[:, -3:-1]
-            assert np.allclose(
-                observation_target_distances,
-                positions - target_positions, rtol=1e-01)
-        elif observations.shape[1] == 2:
-            positions = observations
+        assert np.allclose(target_positions[0], target_positions)
+        assert observations.shape[1] == 2, observations.shape
+
+        target_position = target_positions[0]
+        color = training_cmap(i)
 
         ax.plot(positions[:, 0],
                 positions[:, 1],
-                'y:',
+                color=color,
+                linestyle=':',
                 linewidth=1.0,
                 label="training paths" if i == 0 else None)
-        ax.scatter(*positions[0], color='y', marker='o')
-        ax.scatter(*positions[-1], color='y', marker='x')
+        ax.scatter(*positions[0], color=color, marker='o')
+        ax.scatter(*positions[-1], color=color, marker='x')
+        ax.scatter(*target_position,
+                   s=(10 * RESOLUTION_MULTIPLIER) ** 1.75,
+                   color=color,
+                   marker='*')
 
-    for path in evaluation_paths:
-        observations = path['observations']
+    evaluation_cmap = plt.cm.get_cmap('Set2', len(evaluation_paths))
+    for i, evaluation_path in enumerate(evaluation_paths):
+        positions = evaluation_path['observations.observation']
+        target_positions = evaluation_path['observations.desired_goal']
+
+        assert np.allclose(target_positions[0], target_positions)
         assert observations.shape[1] == 2, observations.shape
-        positions = observations
 
-        ax.plot(positions[:, 0], positions[:, 1],
-                'k:',
+        target_position = target_positions[0]
+        color = evaluation_cmap(i)
+
+        ax.plot(positions[:, 0],
+                positions[:, 1],
+                color=color,
+                linestyle=':',
                 linewidth=1.0 * RESOLUTION_MULTIPLIER,
-                label="evaluation paths")
+                label="evaluation paths" if i == 0 else None)
         ax.scatter(*positions[0],
-                   color='black',
+                   color=color,
                    marker='o',
                    s=15 * RESOLUTION_MULTIPLIER)
         ax.scatter(*positions[-1],
-                   color='black',
+                   color=color,
                    marker='x',
                    s=15 * RESOLUTION_MULTIPLIER)
+        ax.scatter(*target_position,
+                   s=(10 * RESOLUTION_MULTIPLIER) ** 2.0,
+                   color=color,
+                   marker='*')
 
     wall_collection, wall_rectangles = plot_walls(
-        ax, algorithm._env.unwrapped.walls)
+        ax, algorithm._training_environment.unwrapped.walls)
 
     handles, labels = ax.get_legend_handles_labels()
     by_label = OrderedDict(zip(labels, handles))
@@ -458,6 +446,9 @@ def plot_V(figure,
         bbox_to_anchor=rightmost_rectangle.get_bbox(),
         bbox_transform=ax.transData)
 
+    for spine in ('top', 'right', 'bottom', 'left'):
+        ax.spines[spine].set_visible(False)
+
 
 def plot_distance_quiver(figure,
                          grid_spec,
@@ -466,8 +457,10 @@ def plot_distance_quiver(figure,
                          observations_xy,
                          goals_xy,
                          evaluation_paths):
-    min_x, max_x = algorithm._env.unwrapped.observation_x_bounds
-    min_y, max_y = algorithm._env.unwrapped.observation_y_bounds
+    min_x, max_x = (
+        algorithm._training_environment.unwrapped.observation_x_bounds)
+    min_y, max_y = (
+        algorithm._training_environment.unwrapped.observation_y_bounds)
 
     nx = ny = 10
     x = np.linspace(min_x, max_x, nx)
@@ -528,16 +521,10 @@ def plot_distance_quiver(figure,
 
             M = np.hypot(U, V)
 
-            quiver = ax.quiver(
-                X, Y, U, V, M,
-                # units='xy',
-                # angles='xy',
-                # scale_units='xy',
-                # scale=1,
-            )
+            quiver = ax.quiver(X, Y, U, V, M)
 
             wall_collection, wall_rectangles = plot_walls(
-                ax, algorithm._env.unwrapped.walls)
+                ax, algorithm._training_environment.unwrapped.walls)
 
             goal_scatter = ax.scatter(
                 *goal_position,
@@ -557,17 +544,6 @@ def plot_distance_quiver(figure,
         bbox_transform=ax.transData)
 
 
-def plot_lagrange_multipliers(figure,
-                              grid_spec,
-                              algorithm,
-                              observations_xy,
-                              goals_xy,
-                              evaluation_paths,
-                              num_heatmaps=16):
-    from pdb import set_trace; from pprint import pprint; set_trace()
-    pass
-
-
 def point_2d_plotter(algorithm,
                      iteration,
                      training_paths,
@@ -582,21 +558,16 @@ def point_2d_plotter(algorithm,
     if not os.path.exists(heatmap_dir):
         os.makedirs(heatmap_dir)
 
-    PLOT = (
-        'distances',
-        # 'Q',
-        'distance-quiver',
-        'V',
-        # 'lagrange-multipliers'
-    )
-
     num_heatmaps = 16
     subplots_per_side = int(np.sqrt(num_heatmaps))
 
-    min_x, max_x = algorithm._env.unwrapped.observation_x_bounds
-    min_y, max_y = algorithm._env.unwrapped.observation_y_bounds
+    min_x, max_x = (
+        algorithm._training_environment.unwrapped.observation_x_bounds)
+    min_y, max_y = (
+        algorithm._training_environment.unwrapped.observation_y_bounds)
 
-    reset_position = algorithm._env._env.unwrapped.get_reset_position()
+    reset_position = (
+        algorithm._training_environment._env.unwrapped.get_reset_position())
 
     nx = ny = 100
     x = np.linspace(min_x, max_x, nx)
@@ -613,16 +584,23 @@ def point_2d_plotter(algorithm,
     goals_X, goals_Y = np.meshgrid(goals_x, goals_y)
     goals_xy = np.stack([goals_X, goals_Y], axis=-1).reshape(-1, 2)
 
-    goal_estimate = algorithm._temporary_goal
-    goals_xy[-2, :] = goal_estimate
-    goals_xy[-3, :] = reset_position
+    goals_xy[-1, :] = reset_position
 
     RESOLUTION = RESOLUTION_MULTIPLIER * 8.4
-    fig = plt.figure(figsize=(RESOLUTION * len(PLOT), RESOLUTION), frameon=False)
-    grid_spec = mpl.gridspec.GridSpec(1, len(PLOT))
+    num_plots = sum(
+        (fn is not None)
+        for fn in
+        (get_distances_fn,
+         get_quiver_gradients_fn,
+         get_Q_values_fn,
+         get_V_values_fn)
+    )
+    figure_size = (RESOLUTION * num_plots, RESOLUTION)
+    fig = plt.figure(figsize=figure_size, frameon=False)
+    grid_spec = mpl.gridspec.GridSpec(1, num_plots)
 
     i = 0
-    if 'distances' in PLOT:
+    if get_distances_fn is not None:
         plot_distances(fig,
                        grid_spec[i],
                        algorithm,
@@ -639,7 +617,7 @@ def point_2d_plotter(algorithm,
                  size=15 * RESOLUTION_MULTIPLIER)
         i += 1
 
-    if 'distance-quiver' in PLOT and get_quiver_gradients_fn is not None:
+    if get_quiver_gradients_fn is not None:
         x_delta = (max_x - min_x) / 10.0
         y_delta = (max_y - min_y) / 10.0
         quiver_goals = np.array((
@@ -669,7 +647,7 @@ def point_2d_plotter(algorithm,
                  size=15 * RESOLUTION_MULTIPLIER)
         i += 1
 
-    if 'Q' in PLOT and get_Q_values_fn is not None:
+    if get_Q_values_fn is not None:
         plot_Q(fig,
                grid_spec[i],
                algorithm,
@@ -679,7 +657,7 @@ def point_2d_plotter(algorithm,
                num_heatmaps=num_heatmaps)
         i += 1
 
-    if 'V' in PLOT and get_V_values_fn is not None:
+    if get_V_values_fn is not None:
         V_title = f"Value function with training/evaluation rollouts."
         x_min, x_max = grid_spec[i].get_position(fig).extents[[0, 2]]
         V_title_x_position = (x_max + x_min) / 2
@@ -698,16 +676,6 @@ def point_2d_plotter(algorithm,
                  horizontalalignment='center',
                  size=15 * RESOLUTION_MULTIPLIER)
 
-        i += 1
-
-    if 'lagrange-multipliers' in PLOT:
-        plot_lagrange_multipliers(fig,
-                                  grid_spec[i],
-                                  algorithm,
-                                  observations_xy,
-                                  goals_xy,
-                                  evaluation_paths,
-                                  num_heatmaps=num_heatmaps)
         i += 1
 
     fig.suptitle(f'iteration={iteration}',

@@ -1,52 +1,52 @@
+import numpy as np
 import tensorflow as tf
 
 
-class FeedforwardDistanceEstimator(tf.keras.Model):
-    def __init__(self,
-                 hidden_layer_sizes,
-                 hidden_activation,
-                 output_activation):
-        super(FeedforwardDistanceEstimator, self).__init__()
-        self.hidden_layer_sizes = hidden_layer_sizes
-        self.hidden_activation = hidden_activation
-        self.output_activation = output_activation
-
-    def build(self, input_shape):
-        input_ = tf.keras.layers.Input(shape=input_shape[1:])
-
-        out = input_
-        for layer_size in self.hidden_layer_sizes:
-            out = tf.keras.layers.Dense(
-                layer_size, activation=self.hidden_activation
-            )(out)
-            # out = tf.keras.layers.Dense(layer_size)(out)
-            # out = tf.keras.layers.BatchNormalization()(out)
-            # out = tf.keras.layers.Activation(
-            #     activation=self.hidden_activation
-            # )(out)
-
-        out = tf.keras.layers.Dense(1, activation=self.output_activation)(out)
-        self.distance_model = tf.keras.Model(input_, out)
-
-    def call(self, inputs, training=True):
-        return self.distance_model(inputs)
-
-    def predict(self, inputs):
-        return self.distance_model.predict(inputs)
-
-    def compute_output_shape(self, input_shape):
-        return tf.TensorShape((input_shape[0], 1))
+def feedforward_distance_estimator(input_shape,
+                                   hidden_layer_sizes,
+                                   hidden_activation='relu',
+                                   output_activation='linear'):
+    model = tf.keras.Sequential([
+        tf.keras.layers.InputLayer(input_shape=input_shape)
+    ] + [
+        tf.keras.layers.Dense(layer_size, activation=hidden_activation)
+        for layer_size in hidden_layer_sizes
+    ] + [
+        tf.keras.layers.Dense(1, activation=output_activation)
+    ])
+    return model
 
 
 DISTANCE_ESTIMATORS = {
-    'FeedforwardDistanceEstimator': FeedforwardDistanceEstimator,
+    'FeedforwardDistanceEstimator': feedforward_distance_estimator,
 }
 
 
-def get_distance_estimator_from_variant(variant, *args, **kwargs):
+def get_distance_estimator_from_variant(variant, env, *args, **kwargs):
+    observation_shape = env.active_observation_shape
+    action_shape = env.action_space.shape
+
+    distance_input_type = (
+        variant['metric_learner_params']['kwargs']['distance_input_type'])
+
+    if distance_input_type == 'full':
+        input_shapes = (observation_shape, observation_shape)
+    elif distance_input_type in ('xy_coordinates', 'xy_velocities'):
+        input_shapes = (observation_shape, (2, ))
+    else:
+        raise NotImplementedError(distance_input_type)
+
+    if variant['metric_learner_params']['kwargs']['condition_with_action']:
+        input_shapes = (input_shapes[0], action_shape, input_shapes[1])
+    input_shape = tuple(
+        sum(np.prod(shape, keepdims=True) for shape in input_shapes))
+
     distance_estimator_params = variant['distance_estimator_params']
     distance_estimator_type = distance_estimator_params['type']
     distance_estimator_kwargs = distance_estimator_params.get('kwargs', {})
 
     return DISTANCE_ESTIMATORS[distance_estimator_type](
-        *args, **distance_estimator_kwargs, **kwargs)
+        input_shape,
+        *args,
+        **distance_estimator_kwargs,
+        **kwargs)

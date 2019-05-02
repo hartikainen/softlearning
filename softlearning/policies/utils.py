@@ -13,6 +13,18 @@ def get_gaussian_policy(env, Q, **kwargs):
     return policy
 
 
+def get_goal_conditioned_gaussian_policy(env, Q, **kwargs):
+    from .gaussian_policy import FeedforwardGaussianPolicy
+    # Assume the goals are in the same shape as observations.
+    policy = FeedforwardGaussianPolicy(
+        input_shapes=(env.active_observation_shape,
+                      env.active_observation_shape),
+        output_shape=env.action_space.shape,
+        **kwargs)
+
+    return policy
+
+
 def get_uniform_policy(env, *args, **kwargs):
     from .uniform_policy import UniformPolicy
     policy = UniformPolicy(
@@ -22,9 +34,21 @@ def get_uniform_policy(env, *args, **kwargs):
     return policy
 
 
+def get_goal_conditioned_uniform_policy(env, *args, **kwargs):
+    from .uniform_policy import UniformPolicy
+    policy = UniformPolicy(
+        input_shapes=(env.active_observation_shape,
+                      env.active_observation_shape),
+        output_shape=env.action_space.shape)
+
+    return policy
+
+
 POLICY_FUNCTIONS = {
     'GaussianPolicy': get_gaussian_policy,
+    'GoalConditionedGaussianPolicy': get_goal_conditioned_gaussian_policy,
     'UniformPolicy': get_uniform_policy,
+    'GoalConditionedUniformPolicy': get_goal_conditioned_uniform_policy,
 }
 
 

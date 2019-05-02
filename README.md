@@ -12,7 +12,7 @@ The environment can be run either locally using conda or inside a docker contain
 
 ## Conda Installation
 
-1. [Download](https://www.roboti.us/index.html) and install MuJoCo 1.50 from the MuJoCo website. We assume that the MuJoCo files are extracted to the default location (`~/.mujoco/mjpro150`).
+1. [Download](https://www.roboti.us/index.html) and install MuJoCo 1.50 and 2.00 from the MuJoCo website. We assume that the MuJoCo files are extracted to the default location (`~/.mujoco/mjpro150` and `~/.mujoco/mujoco200_{platform}`). Unfortunately, `gym` and `dm_control` expect different paths for MuJoCo 2.00 installation, which is why you will need to have it installed both in `~/.mujoco/mujoco200_{platform}` and `~/.mujoco/mujoco200`. The easiest way is to create a symlink from `~/.mujoco/mujoco200_{plaftorm}` -> `~/.mujoco/mujoco200` with: `ln -s ~/.mujoco/mujoco200_{platform} ~/.mujoco/mujoco200`.
 
 2. Copy your MuJoCo license key (mjkey.txt) to ~/.mujoco/mjkey.txt:
 
@@ -21,11 +21,12 @@ The environment can be run either locally using conda or inside a docker contain
 git clone https://github.com/rail-berkeley/softlearning.git ${SOFTLEARNING_PATH}
 ```
 
-4. Create and activate conda environment
+4. Create and activate conda environment, install softlearning to enable command line interface.
 ```
 cd ${SOFTLEARNING_PATH}
 conda env create -f environment.yml
 conda activate softlearning
+pip install -e ${SOFTLEARNING_PATH}
 ```
 
 The environment should be ready to run. See examples section for examples of how to train and simulate the agents.
@@ -70,17 +71,16 @@ docker-compose \
 ### Training and simulating an agent
 1. To train the agent
 ```
-python -m examples.development.main \
-    --mode=local \
+softlearning run_example_local examples.development \
     --universe=gym \
     --domain=HalfCheetah \
-    --task=v2 \
+    --task=v3 \
     --exp-name=my-sac-experiment-1 \
     --checkpoint-frequency=1000  # Save the checkpoint to resume training later
 ```
 
 2. To simulate the resulting policy:
-First, find the path that the checkpoint is saved to. By default (i.e. without specifying the `log-dir` argument to the previous script), the data is saved under `~/ray_results/<universe>/<domain>/<task>/<datatimestamp>-<exp-name>/<trial-id>/<checkpoint-id>`. For example: `~/ray_results/gym/HalfCheetah/v2/2018-12-12T16-48-37-my-sac-experiment-1-0/mujoco-runner_0_seed=7585_2018-12-12_16-48-37xuadh9vd/checkpoint_1000/`. The next command assumes that this path is found from `${SAC_CHECKPOINT_DIR}` environment variable.
+First, find the path that the checkpoint is saved to. By default (i.e. without specifying the `log-dir` argument to the previous script), the data is saved under `~/ray_results/<universe>/<domain>/<task>/<datatimestamp>-<exp-name>/<trial-id>/<checkpoint-id>`. For example: `~/ray_results/gym/HalfCheetah/v3/2018-12-12T16-48-37-my-sac-experiment-1-0/mujoco-runner_0_seed=7585_2018-12-12_16-48-37xuadh9vd/checkpoint_1000/`. The next command assumes that this path is found from `${SAC_CHECKPOINT_DIR}` environment variable.
 
 ```
 python -m examples.development.simulate_policy \
@@ -105,13 +105,13 @@ optional arguments:
   --gpus GPUS           Gpus to allocate to ray process. Passed to `ray.init`.
   --trial-resources TRIAL_RESOURCES
                         Resources to allocate for each trial. Passed to
-                        `tune.run_experiments`.
+                        `tune.run`.
   --trial-cpus TRIAL_CPUS
                         Resources to allocate for each trial. Passed to
-                        `tune.run_experiments`.
+                        `tune.run`.
   --trial-gpus TRIAL_GPUS
                         Resources to allocate for each trial. Passed to
-                        `tune.run_experiments`.
+                        `tune.run`.
   --trial-extra-cpus TRIAL_EXTRA_CPUS
                         Extra CPUs to reserve in case the trials need to
                         launch additional Ray actors that use CPUs.
@@ -131,7 +131,6 @@ optional arguments:
   --policy {gaussian}
   --env ENV
   --exp-name EXP_NAME
-  --mode MODE
   --log-dir LOG_DIR
   --upload-dir UPLOAD_DIR
                         Optional URI to sync training results to (e.g.
@@ -144,11 +143,10 @@ optional arguments:
 In order to resume training from previous checkpoint, run the original example main-script, with an additional `--restore` flag. For example, the previous example can be resumed as follows:
 
 ```
-python -m examples.development.main \
-    --mode=local \
+softlearning run_example_local examples.development \
     --universe=gym \
     --domain=HalfCheetah \
-    --task=v2 \
+    --task=v3 \
     --exp-name=my-sac-experiment-1 \
     --checkpoint-frequency=1000 \
     --restore=${SAC_CHECKPOINT_PATH}
@@ -186,7 +184,7 @@ If Softlearning helps you in your academic research, you are encouraged to cite 
 ```
 @techreport{haarnoja2018sacapps,
   title={Soft Actor-Critic Algorithms and Applications},
-  author={Tuomas Haarnoja, Aurick Zhou, Kristian Hartikainen, George Tucker, Sehoon Ha, Jie Tan, Vikash Kumar, Henry Zhu, Abhishek Gupta, Pieter Abbeel, and Sergey Levine},
+  author={Tuomas Haarnoja and Aurick Zhou and Kristian Hartikainen and George Tucker and Sehoon Ha and Jie Tan, Vikash Kumar and Henry Zhu and Abhishek Gupta and Pieter Abbeel and Sergey Levine},
   journal={arXiv preprint arXiv:1812.05905},
   year={2018}
 }

@@ -83,26 +83,20 @@ def _make_dir(filename):
         os.makedirs(folder)
 
 
-def _save_video(paths, filename):
+def save_video(video_frames, filename):
     import cv2
-    assert all(['ims' in path for path in paths])
-    ims = [im for path in paths for im in path['ims']]
     _make_dir(filename)
+
+    video_frames = np.flip(video_frames, axis=-1)
 
     # Define the codec and create VideoWriter object
     fourcc = cv2.VideoWriter_fourcc(*'MJPG')
     fps = 30.0
-    (height, width, _) = ims[0].shape
+    (height, width, _) = video_frames[0].shape
     writer = cv2.VideoWriter(filename, fourcc, fps, (width, height))
-    for im in ims:
-        writer.write(im)
+    for video_frame in video_frames:
+        writer.write(video_frame)
     writer.release()
-
-
-def _softmax(x):
-    max_x = np.max(x)
-    exp_x = np.exp(x - max_x)
-    return exp_x / np.sum(exp_x)
 
 
 def deep_update(d, *us):
@@ -119,7 +113,7 @@ def deep_update(d, *us):
     return d
 
 
-def get_git_rev():
+def get_git_rev(path=PROJECT_PATH, search_parent_directories=True):
     try:
         import git
     except ImportError:
@@ -130,7 +124,8 @@ def get_git_rev():
         return None
 
     try:
-        repo = git.Repo(os.getcwd())
+        repo = git.Repo(
+            path, search_parent_directories=search_parent_directories)
         git_rev = repo.active_branch.commit.name_rev
     except TypeError:
         git_rev = repo.head.object.name_rev
