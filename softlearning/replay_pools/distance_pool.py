@@ -102,7 +102,7 @@ class DistancePool(SimpleReplayPool):
         pairs_observations = np.array(pairs_observations)
         pairs_goals = np.array(pairs_goals)
         pairs_actions = np.array(pairs_actions)
-        pairs_distances = np.array(pairs_distances)
+        pairs_distances = np.array(pairs_distances)[:, None]
 
         triples_idx = np.random.randint(0, self._size, (batch_size, 3))
         assert np.all(triples_idx < self._size)

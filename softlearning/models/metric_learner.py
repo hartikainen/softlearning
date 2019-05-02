@@ -74,7 +74,7 @@ class MetricLearner(object):
 
         self.distance_pairs_distances_ph = tf.placeholder(
             tf.float32,
-            shape=(None, ),
+            shape=(None, 1),
             name='distance_pairs_distances')
 
     def _distance_estimator_inputs(self,
