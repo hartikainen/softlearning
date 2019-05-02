@@ -548,11 +548,11 @@ class OnPolicyMetricLearner(MetricLearner):
             self.distance_pairs_observations_ph, 2, axis=1)
         actions = tf.unstack(self.distance_pairs_actions_ph, 2, axis=1)[0]
         inputs = self._distance_estimator_inputs(*observations, actions)
-        distance_predictions = self.distance_estimator(inputs)[:, 0]
+        distance_predictions = self.distance_estimator(inputs)
 
         distance_loss = self.distance_loss = tf.losses.mean_squared_error(
-            labels=self.distance_pairs_distances_ph[:, None],
-            predictions=distance_predictions[:, None],
+            labels=self.distance_pairs_distances_ph,
+            predictions=distance_predictions,
             weights=0.5)
 
         distance_optimizer = self._distance_optimizer = tf.train.AdamOptimizer(
@@ -659,35 +659,46 @@ class TemporalDifferenceMetricLearner(MetricLearner):
 
         distance_targets = td_target(
             reward=1.0,
-            discount=0.99,
+            discount=1.0,
             next_value=next_values)
+
+        # raise ValueError(
+        #     "TODO(hartikainen): This should work as well as the above."
+        #     " For some reason it doesn't. Probably max_pair_distance.")
 
         # observations = tf.unstack(
         #     self.distance_pairs_observations_ph, 2, axis=1)
         # goals = self.distance_pairs_goals_ph
 
+        # # actions_1, actions_2 = tf.unstack(
+        # #     self.distance_pairs_actions_ph, 2, axis=1)
         # actions_1 = tf.unstack(self.distance_pairs_actions_ph, 2, axis=1)[0]
         # inputs_1 = self._distance_estimator_inputs(
         #     observations[0], goals, actions_1)
-        # distance_predictions_1 = self.distance_estimator(inputs_1)[:, 0]
+        # distance_predictions_1 = self.distance_estimator(inputs_1)
 
         # actions_2 = self._policy.actions([observations[1], goals])
         # inputs_2 = self._distance_estimator_inputs(
         #     observations[1], goals, actions_2)
-        # distance_predictions_2 = self.distance_estimator_target(inputs_2)[:, 0]
+        # distance_predictions_2 = self.distance_estimator_target(inputs_2)
 
+        # # tf.to_float(tf.reduce_all(tf.equal(observations[1], goals), axis=1, keepdims=True))
         # terminals = tf.to_float(tf.norm(
         #     observations[1] - goals,
         #     ord=2,
         #     axis=1,
+        #     keepdims=True,
         # ) < 0.1)
 
-        # with tf.control_dependencies([
-        #         tf.assert_equal(self.distance_pairs_distances_ph, 1.0)]):
-        #     distance_targets = tf.stop_gradient(td_target(
-        #         reward=self.distance_pairs_distances_ph,
-        #         discount=0.99 ** self.distance_pairs_distances_ph,
-        #         next_value=(1.0 - terminals) * distance_predictions_2))
+        # next_values = (
+        #     (1 - terminals) * distance_predictions_2
+        #     if self._ground_truth_terminals
+        #     else distance_predictions_2)
+
+        # distance_targets = td_target(
+        #     reward=self.distance_pairs_distances_ph,
+        #     discount=1.0 ** self.distance_pairs_distances_ph,
+        #     next_value=next_values)
 
         distance_loss = self.distance_loss = tf.losses.mean_squared_error(
             labels=tf.stop_gradient(distance_targets),
