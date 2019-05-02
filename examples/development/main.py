@@ -103,9 +103,9 @@ class ExperimentRunner(tune.Trainable):
             'variant': self._variant,
             'training_environment': self.training_environment,
             'evaluation_environment': self.evaluation_environment,
-            'sampler': self.sampler,
-            'algorithm': self.algorithm,
-            'Qs': self.Qs,
+            # 'sampler': self.sampler,
+            # 'algorithm': self.algorithm,
+            # 'Qs': self.Qs,
             'policy_weights': self.policy.get_weights(),
         }
 
