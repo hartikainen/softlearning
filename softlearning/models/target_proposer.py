@@ -191,6 +191,7 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
         self._supervision_labels_used = 0
         self._last_supervision_epoch = -1
         self._current_target = None
+        self._best_observation_value = -float('inf')
 
         self._epoch_length = epoch_length
         self._max_path_length = max_path_length
@@ -238,7 +239,13 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
                     path_last_observations, goals))
 
             min_distance_idx = np.argmin(last_observations_distances)
-            best_observation = path_last_observations[min_distance_idx]
+            if (-last_observations_distances[min_distance_idx]
+                > self._best_observation_value):
+                best_observation = path_last_observations[min_distance_idx]
+                self._best_observation_value = -last_observations_distances[
+                    min_distance_idx]
+            else:
+                best_observation = self._current_target
 
         elif isinstance(env, (GymAntEnv, GymHalfCheetahEnv, GymHumanoidEnv)):
             raise NotImplementedError(env)
@@ -254,7 +261,11 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
             new_velocities = np.linalg.norm(new_velocities, ord=2, axis=1)
 
             max_velocity_idx = np.argmax(new_velocities)
-            best_observation = new_observations[max_velocity_idx]
+            if new_velocities[max_velocity_idx] > self._best_observation_value:
+                best_observation = new_observations[max_velocity_idx]
+                self._best_observation_value = new_velocities[max_velocity_idx]
+            else:
+                best_observation = self._current_target
 
         elif isinstance(
                 env,
@@ -284,7 +295,14 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
             #     last_observations_positions, ord=2, axis=1)
 
             max_distance_idx = np.argmax(last_observations_distances)
-            best_observation = path_last_observations[max_distance_idx]
+            if (last_observations_distances[max_distance_idx]
+                > self._best_observation_value):
+                best_observation = path_last_observations[max_distance_idx]
+                self._best_observation_value = last_observations_distances[
+                    max_distance_idx]
+            else:
+                best_observation = self._current_target
+
 
         else:
             raise NotImplementedError
