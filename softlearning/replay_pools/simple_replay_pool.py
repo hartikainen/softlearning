@@ -70,7 +70,8 @@ class SimpleReplayPool(FlexibleReplayPool):
             *args, fields_attrs=fields, **kwargs)
 
     def add_samples(self, samples):
-        if not isinstance(self._observation_space, Dict):
+        if (not isinstance(self._observation_space, Dict) or
+            'observations.observation' in samples):
             return super(SimpleReplayPool, self).add_samples(samples)
 
         dict_observations = defaultdict(list)

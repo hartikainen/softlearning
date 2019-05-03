@@ -19,18 +19,19 @@ CONFIG = {
             'eval_deterministic': True,
             'eval_n_episodes': 1,
             'eval_render_mode': None,
+            'final_exploration_proportion': 0.25,
             'lr': 0.0003,
             'n_epochs': 3001,
             'n_initial_exploration_steps': 10,
             'n_train_repeat': 1,
-            'plot_distances': True,
+            'plot_distances': False,
             'reparameterize': True,
             'reward_scale': 1.0,
             'save_full_state': False,
             'target_entropy': 'auto',
             'target_update_interval': 1,
             'tau': 0.005,
-            'temporary_goal_update_rule': 'farthest_estimate_from_first_observation',
+            # 'temporary_goal_update_rule': 'farthest_estimate_from_first_observation',
             'train_every_n_steps': 1,
             'use_distance_for': 'reward'},
         'type': 'MetricLearningAlgorithm'
@@ -45,15 +46,17 @@ CONFIG = {
     },
     'environment_params': {
         'training': {
-            'universe': 'gym',
-            'domain': 'Swimmer',
-            'task': 'v3',
+            'domain': 'GoalHalfCheetah',
             'kwargs': {
+                'observation_keys': ('observation', ),
                 'exclude_current_positions_from_observation': False,
-                'reset_noise_scale': 0
+                'reset_noise_scale': 0,
             },
+            'task': 'v0',
+            'universe': 'gym',
         },
     },
+    'exploration_policy_params': {'kwargs': {}, 'type': 'UniformPolicy'},
     'git_sha':
     'fb03db4b0ffafc61d8ea6d550e7fdebeecb34d15 '
     'refactor/pick-utils-changes',
@@ -70,16 +73,11 @@ CONFIG = {
     'metric_learner_params': {
         'kwargs': {
             'condition_with_action': False,
-            'constraint_exp_multiplier': 0.0,
             'distance_input_type': 'full',
             'distance_learning_rate': 0.0003,
-            'lambda_learning_rate': 0.0003,
-            'max_distance': 1010,
             'n_train_repeat': 1,
-            'objective_type': 'linear',
-            'step_constraint_coeff': 0.1,
-            'train_every_n_steps': 128,
-            'zero_constraint_threshold': 0.0},
+            'train_every_n_steps': 1,
+        },
         'type': 'OnPolicyMetricLearner'
     },
 
@@ -90,27 +88,44 @@ CONFIG = {
         },
         'type': 'GaussianPolicy'
     },
+    'preprocessor_params': {},
     'replay_pool_params': {
         'kwargs': {
             'max_pair_distance': None,
             'max_size': 1000,
             'on_policy_window': 100,
             'path_length': 10,
+            'terminal_epsilon': 0.0,
         },
         'type': 'DistancePool'
     },
     'run_params': {
         'checkpoint_at_end': True,
         'checkpoint_frequency': 60,
+        'checkpoint_replay_pool': True,
         'seed': 5666
     },
     'sampler_params': {
         'kwargs': {
             'batch_size': 256,
             'max_path_length': 10,
-            'min_pool_size': 15
+            'min_pool_size': 15,
+            'store_last_n_paths': 1,
         },
         'type': 'SimpleSampler'
+    },
+    'target_proposer_params': {
+        'kwargs': {
+            'supervision_schedule_params': {
+                'kwargs': {
+                    'decay_steps': 20,
+                    'end_labels': 20.0,
+                    'start_labels': 1
+                },
+                'type': 'linear'
+            },
+        },
+        'type': 'SemiSupervisedTargetProposer'
     },
 }
 
@@ -229,6 +244,8 @@ class TestMetricExperimentRunner(tf.test.TestCase):
         self.assertFalse(experiment_runner_2._built)
 
         experiment_runner_2.restore(checkpoint)
+
+        self.assertEqual(experiment_runner_2.replay_pool.size, 210)
 
         trainable_variables_2 = {
             'policy': experiment_runner_2.policy.trainable_variables,
