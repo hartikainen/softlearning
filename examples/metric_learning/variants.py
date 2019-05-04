@@ -269,6 +269,7 @@ def get_variant_spec(args):
                             'GoalHalfCheetah': 64,
                             'GoalAnt': 64,
                             'GoalHopper': 64,
+                            'Point2DEnv': 1,
                         }[domain]
                     ),
                 },
@@ -371,25 +372,25 @@ def get_variant_spec(args):
                     # 'value',
                     # 'telescope_reward',
                 ]),
-                'final_exploration_proportion': 0.25,
+                'final_exploration_proportion': 0.1,
             }
         },
-        # 'target_proposer_params': {
-        #     'type': 'UnsupervisedTargetProposer',
-        #     'kwargs': {
-        #         'target_proposal_rule': tune.grid_search([
-        #             # 'closest_l2_from_goal',
-        #             # 'farthest_l2_from_first_observation',
-        #             'farthest_estimate_from_first_observation',
-        #             'random_weighted_estimate_from_first_observation',
-        #             'random',
-        #         ]),
-        #         'random_weighted_scale': 1.0,
-        #         'target_candidate_strategy': tune.grid_search([
-        #             'all_steps', 'last_steps'
-        #         ]),
-        #     },
-        # },
+        'target_proposer_params': {
+            'type': 'UnsupervisedTargetProposer',
+            'kwargs': {
+                'target_proposal_rule': tune.grid_search([
+                    # 'closest_l2_from_goal',
+                    # 'farthest_l2_from_first_observation',
+                    'farthest_estimate_from_first_observation',
+                    'random_weighted_estimate_from_first_observation',
+                    'random',
+                ]),
+                'random_weighted_scale': 1.0,
+                'target_candidate_strategy': tune.grid_search([
+                    'all_steps', 'last_steps'
+                ]),
+            },
+        },
         # 'target_proposer_params': {
         #     'type': 'RandomTargetProposer',
         #     'kwargs': {
@@ -399,13 +400,13 @@ def get_variant_spec(args):
         #         ]),
         #     }
         # },
-        'target_proposer_params': {
-            'type': 'SemiSupervisedTargetProposer',
-            'kwargs': {
-                'supervision_schedule_params': get_supervision_schedule_params(
-                    domain),
-            },
-        },
+        # 'target_proposer_params': {
+        #     'type': 'SemiSupervisedTargetProposer',
+        #     'kwargs': {
+        #         'supervision_schedule_params': get_supervision_schedule_params(
+        #             domain),
+        #     },
+        # },
         'replay_pool_params': {
             'type': 'DistancePool',
             'kwargs': {
@@ -439,8 +440,8 @@ def get_variant_spec(args):
         },
         'metric_learner_params': {
             'type': tune.grid_search([
-                # 'TemporalDifferenceMetricLearner',
-                'OnPolicyMetricLearner',
+                'TemporalDifferenceMetricLearner',
+                # 'OnPolicyMetricLearner',
                 # 'HingeMetricLearner',
             ]),
             'kwargs': tune.sample_from(metric_learner_kwargs),
