@@ -95,6 +95,8 @@ ENVIRONMENT_PARAMS = {
         'v0': {
             'exclude_current_positions_from_observation': False,
             'observation_keys': ('observation', ),
+            'terminate_when_unhealthy': False,
+            'reset_noise_scale': tune.grid_search([0.0, 0.1])
         },
     },
     'GoalHalfCheetah': {
@@ -103,12 +105,15 @@ ENVIRONMENT_PARAMS = {
             'forward_reward_weight': 0,
             'ctrl_cost_weight': 0,
             'exclude_current_positions_from_observation': False,
+            'reset_noise_scale': tune.grid_search([0.0, 0.1])
         }
     },
     'GoalHopper': {
         'v0': {
             'exclude_current_positions_from_observation': False,
             'observation_keys': ('observation', ),
+            'terminate_when_unhealthy': tune.grid_search([True, False]),
+            'reset_noise_scale': tune.grid_search([0.0, 0.1])
         }
     },
     'GoalWalker': {
@@ -139,7 +144,7 @@ DEFAULT_NUM_EPOCHS = 200
 NUM_EPOCHS_PER_DOMAIN = {
     'Swimmer': int(3e3 + 1),
     'GoalSwimmer': int(3e3 + 1),
-    'Hopper': int(3e3 + 1),
+    'Hopper': int(5e3 + 1),
     'HalfCheetah': int(1e4 + 1),
     'Walker': int(1e4 + 1),
     'Ant': int(1e4 + 1),
@@ -167,39 +172,18 @@ NUM_CHECKPOINTS = 10
 def get_supervision_schedule_params(domain):
     DECAY_STEPS_AND_LABELS_EVERY_N_STEPS = {
         'GoalHalfCheetah': (
-            (100.0, 1),
-            (100.0, 2),
-            (100.0, 4),
-
-            (300.0, 2),
-            (300.0, 4),
-            (300.0, 8),
-            (300.0, 16),
-
-            (1000.0, 4),
-            (1000.0, 8),
-            (1000.0, 16),
+            (1000.0, 10),
         ),
         'GoalAnt': (
-            (300.0, 1),
-
-            (1000.0, 2),
-            (1000.0, 4),
-            (1000.0, 8),
-            (1000.0, 16),
-
-            (3000.0, 4),
-            (3000.0, 8),
-            (3000.0, 16),
+            (3000.0, 15),
         ),
-        'Point2DEnv': ((20, 1), )
+        'GoalHopper': (
+            (2000.0, 20),
+        ),
+        'Point2DEnv': ((50, 1), )
     }[domain]
-    SCHEDULER_TYPES = ('linear', 'logarithmic')
-    # DECAY_STEPS = {
-    #     'HalfCheetah': (300.0, 1000.0),
-    #     'Ant': (1000.0, 3000.0),
-    # }[domain]
-    # LABEL_EVERY_N_STEPS = (2, 4, 8, 16, 32)
+    # SCHEDULER_TYPES = ('linear', 'logarithmic')
+    SCHEDULER_TYPES = ('linear', )
     return tune.grid_search([
         {
             'type': scheduler_type,
@@ -280,7 +264,13 @@ def get_variant_spec(args):
             kwargs = {
                 **shared_kwargs,
                 **{
-                    'train_every_n_steps': 1,
+                    'train_every_n_steps': (
+                        {
+                            'GoalHalfCheetah': 64,
+                            'GoalAnt': 64,
+                            'GoalHopper': 64,
+                        }[domain]
+                    ),
                 },
             }
         elif spec['metric_learner_params']['type'] == 'HingeMetricLearner':
@@ -328,7 +318,7 @@ def get_variant_spec(args):
                     ['environment_params']
                     ['training']
                     ['kwargs'],
-                    'fixed_goal': (5.0, 4.0),
+                    # 'fixed_goal': (5.0, 4.0),
                     # 'terminate_on_success': True,
                 }))
             },
@@ -360,7 +350,7 @@ def get_variant_spec(args):
                     domain, DEFAULT_NUM_EPOCHS),
                 'train_every_n_steps': 1,
                 'n_train_repeat': 1,
-                'n_initial_exploration_steps': int(1e3),
+                'n_initial_exploration_steps': int(1e4),
                 'reparameterize': True,
                 'eval_render_mode': None,
                 'eval_n_episodes': 1,
@@ -375,7 +365,7 @@ def get_variant_spec(args):
                 'action_prior': 'uniform',
                 'save_full_state': False,
 
-                'plot_distances': True,
+                'plot_distances': False,
                 'use_distance_for': tune.grid_search([
                     'reward',
                     # 'value',
