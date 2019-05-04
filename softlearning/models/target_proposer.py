@@ -213,7 +213,7 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
         num_epochs_since_last_supervision = (
             epoch - self._last_supervision_epoch)
 
-        if not should_supervise or num_epochs_since_last_supervision > 0:
+        if (not should_supervise) or num_epochs_since_last_supervision < 1:
             return self._current_target
 
         self._last_supervision_epoch = epoch
