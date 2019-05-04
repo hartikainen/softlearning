@@ -213,7 +213,7 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
         num_epochs_since_last_supervision = (
             epoch - self._last_supervision_epoch)
 
-        if not should_supervise and num_epochs_since_last_supervision > 0:
+        if not should_supervise or num_epochs_since_last_supervision > 0:
             return self._current_target
 
         self._last_supervision_epoch = epoch
@@ -226,6 +226,7 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
             path.get('observations.observation', path.get('observations'))
             for path in paths[:use_last_n_paths]
         ], axis=0)
+
         path_last_observations = np.concatenate([
             path.get('observations.observation', path.get('observations'))[-1:]
             for path in paths[:use_last_n_paths]
