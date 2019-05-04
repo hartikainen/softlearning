@@ -210,14 +210,15 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
                 .get('observations.observation', paths[0].get('observations'))
                 [-1])
 
-        if not should_supervise:
-            return self._current_target
-
-        self._supervision_labels_used += 1
-
         num_epochs_since_last_supervision = (
             epoch - self._last_supervision_epoch)
+
+        if not should_supervise and num_epochs_since_last_supervision > 0:
+            return self._current_target
+
         self._last_supervision_epoch = epoch
+        self._supervision_labels_used += 1
+
         use_last_n_paths = num_epochs_since_last_supervision * (
             self._epoch_length // self._max_path_length)
 
