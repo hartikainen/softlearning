@@ -255,8 +255,25 @@ class GoalHumanoidEnv(GoalEnvironment):
 class GoalHopperEnv(GoalEnvironment):
     ENVIRONMENT_CLASS = HopperEnv
 
+    def _goal_reached(self):
+        assert not self.unwrapped._exclude_current_positions_from_observation
+        goal_observation = self._get_obs()
+        goal_reached = np.linalg.norm(
+            goal_observation['observation'][:1]
+            - goal_observation['desired_goal'][:1],
+            ord=2
+        ) < 0.1
+
+        return goal_reached
+
     def _get_goal_info(self, observation, reward, done, base_info):
         return one_dimensional_goal_info(observation, reward, done, base_info)
+
+    def sample_metric_goal(self):
+        random_x = np.random.uniform(-10, 10)
+        reset_position = np.array([
+            random_x, 1.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        return reset_position
 
 
 class GoalWalker2dEnv(GoalEnvironment):
