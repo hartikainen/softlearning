@@ -196,6 +196,15 @@ class MetricLearner(object):
     def tf_saveables(self):
         raise NotImplementedError
 
+    def get_diagnostics(self,
+                        iteration,
+                        batch,
+                        training_paths,
+                        evaluation_paths,
+                        *args,
+                        **kwargs):
+        pass
+
 
 class HingeMetricLearner(MetricLearner):
     """MetricLearner."""
@@ -483,7 +492,8 @@ class HingeMetricLearner(MetricLearner):
                         batch,
                         training_paths,
                         evaluation_paths,
-                        *args, **kwargs):
+                        *args,
+                        **kwargs):
         feed_dict = self._get_feed_dict(iteration, batch)
 
         (objectives,
@@ -543,7 +553,6 @@ class HingeMetricLearner(MetricLearner):
 class OnPolicyMetricLearner(MetricLearner):
     def _init_distance_update(self):
         """Create minimization operations for distance estimator."""
-
         observations = tf.unstack(
             self.distance_pairs_observations_ph, 2, axis=1)
         actions = tf.unstack(self.distance_pairs_actions_ph, 2, axis=1)[0]
@@ -566,7 +575,13 @@ class OnPolicyMetricLearner(MetricLearner):
 
         self._distance_train_ops = (distance_train_op, )
 
-    def get_diagnostics(self, iteration, batch, paths, *args, **kwargs):
+    def get_diagnostics(self,
+                        iteration,
+                        batch,
+                        training_paths,
+                        evaluation_paths,
+                        *args,
+                        **kwargs):
         feed_dict = self._get_feed_dict(iteration, batch)
         distance_loss = self._session.run(self.distance_loss, feed_dict)
         return OrderedDict((
@@ -732,7 +747,13 @@ class TemporalDifferenceMetricLearner(MetricLearner):
 
         return feed_dict
 
-    def get_diagnostics(self, iteration, batch, paths, *args, **kwargs):
+    def get_diagnostics(self,
+                        iteration,
+                        batch,
+                        training_paths,
+                        evaluation_paths,
+                        *args,
+                        **kwargs):
         feed_dict = self._get_feed_dict(iteration, batch)
         distance_loss = self._session.run(self.distance_loss, feed_dict)
         return OrderedDict((
