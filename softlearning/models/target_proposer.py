@@ -20,6 +20,7 @@ class BaseTargetProposer(object):
     def __init__(self, env, pool):
         self._env = env
         self._pool = pool
+        self._current_target = None
 
     def set_distance_fn(self, distance_fn):
         self.distance_fn = distance_fn
@@ -104,6 +105,8 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
                 np.random.randint(new_observations.shape[0])]
         else:
             raise NotImplementedError(self._target_proposal_rule)
+
+        self._current_target = best_observation
 
         return best_observation
 
@@ -190,7 +193,6 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
                 **supervision_schedule_params['kwargs'])
         self._supervision_labels_used = 0
         self._last_supervision_epoch = -1
-        self._current_target = None
         self._best_observation_value = -float('inf')
 
         self._epoch_length = epoch_length
@@ -338,5 +340,7 @@ class RandomTargetProposer(BaseTargetProposer):
                 np.random.randint(new_observations.shape[0])]
         else:
             raise NotImplementedError
+
+        self._current_target = target
 
         return target
