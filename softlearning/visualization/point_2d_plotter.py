@@ -10,9 +10,11 @@ from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
 import matplotlib as mpl
 mpl.use('Agg')
+mpl.rcParams.update({'font.size': 24})
 
 
 RESOLUTION_MULTIPLIER = 2.0
+RESOLUTION = RESOLUTION_MULTIPLIER * 8.4
 
 
 def plot_walls(ax, walls):
@@ -544,6 +546,109 @@ def plot_distance_quiver(figure,
         bbox_transform=ax.transData)
 
 
+def plot_big_distance(algorithm,
+                      get_distances_fn,
+                      observations_xy,
+                      goals_xy,
+                      num_heatmaps=16,
+                      heatmap_dir=None,
+                      iteration=None):
+    figure_size = (RESOLUTION, RESOLUTION)
+    figure, ax = plt.subplots(figsize=figure_size, frameon=False)
+
+    min_x, max_x = (
+        algorithm._training_environment.unwrapped.observation_x_bounds)
+    min_y, max_y = (
+        algorithm._training_environment.unwrapped.observation_y_bounds)
+
+    nx = ny = int(np.sqrt(observations_xy.shape[0]))
+
+    ax.set_xlim([min_x, max_x])
+    ax.set_ylim([min_y, max_y])
+
+    goal_position = np.array([0.0, 0.0])
+    observations_1 = get_observations(
+        observations_xy,
+        observations_xy,
+        nx,
+        ny,
+        velocities=None,
+        observation_type=None)
+    observations_2 = get_observations(
+        goal_position,
+        observations_xy,
+        nx,
+        ny,
+        velocities=None,
+        observation_type=None)
+
+    distances = get_distances_fn(observations_1, observations_2)
+    X = np.reshape(observations_xy[:, 0], (nx, ny))
+    Y = np.reshape(observations_xy[:, 1], (nx, ny))
+    Z = distances.reshape(nx, ny)
+
+    filled_contour = ax.contourf(
+        X, Y, Z,
+        levels=np.arange(15),
+        extend='both',
+        cmap='PuBuGn')
+
+    contour = ax.contour(
+        filled_contour,
+        levels=filled_contour.levels,
+        linewidths=0.2,
+        linestyles='dotted',
+        colors='black')
+
+    ax.clabel(contour, contour.levels[2::2],
+              inline=1, fmt='%d', fontsize=22)
+
+    wall_collection, wall_rectangles = plot_walls(
+        ax, algorithm._training_environment.unwrapped.walls)
+
+    ax.scatter(*goal_position,
+               s=(15 * RESOLUTION_MULTIPLIER) ** 2,
+               color='blue',
+               marker='*',
+               label='s1')
+
+    # from pprint import pprint; import ipdb; ipdb.set_trace(context=30)
+
+    # cb.ax.tick_params(labelsize=font_size)
+
+    colorbar_ax, kw = mpl.colorbar.make_axes(
+        ax,
+        location='bottom',
+        pad=0.05)
+
+    figure.colorbar(filled_contour, cax=colorbar_ax, **kw)
+
+    # rightmost_rectangle = max(
+    #     wall_rectangles, key=lambda x: x.xy[0] + x.get_width())
+    # handles, labels = ax.get_legend_handles_labels()
+    # ax.legend(
+    #     handles=handles,
+    #     labels=labels,
+    #     loc='center',
+    #     bbox_to_anchor=rightmost_rectangle.get_bbox(),
+    #     bbox_transform=ax.transData)
+
+    max_iteration_len = int(math.ceil(math.log10(
+        algorithm._epoch_length * algorithm._n_epochs)))
+    vf_heatmap_path = os.path.join(
+        heatmap_dir,
+        f'iteration-{iteration:0{max_iteration_len}}-distances.pdf')
+
+    # for item in (ax.get_xticklabels() + ax.get_yticklabels() + ):
+    #     item.set_fontsize(20)
+
+    # figure.tight_layout()
+
+    plt.savefig(vf_heatmap_path)
+    figure.clf()
+    plt.close(figure)
+
+
 def point_2d_plotter(algorithm,
                      iteration,
                      training_paths,
@@ -586,7 +691,6 @@ def point_2d_plotter(algorithm,
 
     goals_xy[-1, :] = reset_position
 
-    RESOLUTION = RESOLUTION_MULTIPLIER * 8.4
     num_plots = sum(
         (fn is not None)
         for fn in
@@ -689,3 +793,13 @@ def point_2d_plotter(algorithm,
     plt.savefig(vf_heatmap_path)
     fig.clf()
     plt.close(fig)
+
+    if False:
+        plot_big_distance(
+            algorithm,
+            get_distances_fn,
+            observations_xy,
+            goals_xy,
+            num_heatmaps=num_heatmaps,
+            heatmap_dir=heatmap_dir,
+            iteration=iteration)
