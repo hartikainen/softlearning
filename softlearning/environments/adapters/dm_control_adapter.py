@@ -121,7 +121,9 @@ class DmControlAdapter(SoftlearningEnv):
 
     def convert_to_active_observation(self, observation):
         flattened_observation = np.concatenate([
-            observation[key] for key in self.observation_keys], axis=-1)
+            observation[key].reshape(-1)
+            for key in self.observation_keys
+        ], axis=-1)
         return flattened_observation
 
     @property

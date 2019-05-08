@@ -116,12 +116,14 @@ class SimpleReplayPool(FlexibleReplayPool):
             observation_keys = tuple(self._observation_space.spaces.keys())
 
         observations = np.concatenate([
-            batch['observations.{}'.format(key)]
+            batch['observations.{}'.format(key)].reshape((
+                batch['observations.{}'.format(key)].shape[0], -1))
             for key in observation_keys
         ], axis=-1)
 
         next_observations = np.concatenate([
-            batch['next_observations.{}'.format(key)]
+            batch['next_observations.{}'.format(key)].reshape((
+                batch['next_observations.{}'.format(key)].shape[0], -1))
             for key in observation_keys
         ], axis=-1)
 
