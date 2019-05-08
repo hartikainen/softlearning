@@ -33,7 +33,11 @@ def parse_args():
                         type=float,
                         nargs='+',
                         # default=(0.0, 0.003, 0.01, 0.03, 0.1, 0.3, 1.0))
-                        default=(0.075, 0.12, 0.165, 0.21, 0.255))
+                        default=(
+                            (0.0, 0.003, 0.01)
+                            + tuple(np.round(np.linspace(0.03, 0.3, 10), 2))
+                            + (1.0, )
+                        ))
 
     args = parser.parse_args()
 
@@ -113,6 +117,7 @@ def simulate_perturbations(args):
                 picklable, variant)
 
             for perturbation_probability in perturbation_probabilities:
+                assert environment._env._perturbation_probability is not None
                 environment._env._perturbation_probability = (
                     perturbation_probability)
 
