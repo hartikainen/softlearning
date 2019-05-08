@@ -47,6 +47,13 @@ MUJOCO_ENVIRONMENT_SPECS = (
         'entry_point': (f'gym.envs.mujoco.humanoid_v3:HumanoidEnv'),
     },
     {
+        'id': 'Humanoid-Stand-v3',
+        'entry_point': (f'gym.envs.mujoco.humanoid_v3:HumanoidEnv'),
+        'kwargs': {
+            'forward_reward_weight': 0.0,
+        },
+    },
+    {
         'id': 'Pusher2d-Default-v0',
         'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
                         '.pusher_2d:Pusher2dEnv'),
