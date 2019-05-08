@@ -66,7 +66,6 @@ ALGORITHM_PARAMS_ADDITIONAL = {
             'lr': 3e-4,
             'target_update_interval': 1,
             'tau': 5e-3,
-            'target_entropy': 'auto',
             'store_extra_policy_info': False,
             'action_prior': 'uniform',
             'n_initial_exploration_steps': int(1e3),
@@ -231,7 +230,17 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
     )
     algorithm_params = deep_update(
         algorithm_params,
-        ALGORITHM_PARAMS_ADDITIONAL.get(algorithm, {})
+        ALGORITHM_PARAMS_ADDITIONAL.get(algorithm, {}),
+        {
+            'target_entropy': {
+                'Walker2d': tune.grid_search(
+                    np.round(np.linspace(-1, 4, 11), 2).tolist()),
+                'Hopper': tune.grid_search(
+                    np.round(np.linspace(-1, 2, 7), 2).tolist()),
+                'humanoid': tune.grid_search(
+                    np.round(np.linspace(-1, 4, 11), 2).tolist())
+            }[domain],
+        }
     )
     variant_spec = {
         'git_sha': get_git_rev(__file__),
