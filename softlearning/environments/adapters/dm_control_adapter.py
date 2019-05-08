@@ -8,6 +8,8 @@ from dm_control.rl.specs import ArraySpec, BoundedArraySpec
 from gym import spaces
 
 from .softlearning_env import SoftlearningEnv
+from softlearning.environments.dm_control.suite.wrappers import (
+    action_perturbation)
 
 
 DM_CONTROL_ENVIRONMENTS = {}
@@ -69,6 +71,7 @@ class DmControlAdapter(SoftlearningEnv):
                  normalize=True,
                  observation_keys=None,
                  unwrap_time_limit=True,
+                 perturb_action_kwargs=None,
                  **kwargs):
         assert not args, (
             "Gym environments don't support args. Use kwargs instead.")
@@ -100,6 +103,9 @@ class DmControlAdapter(SoftlearningEnv):
         if normalize:
             np.testing.assert_equal(env.action_spec().minimum, -1)
             np.testing.assert_equal(env.action_spec().maximum, 1)
+
+        if perturb_action_kwargs is not None:
+            env = action_perturbation.Wrapper(env, **perturb_action_kwargs)
 
         self._env = env
 
