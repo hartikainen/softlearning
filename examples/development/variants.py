@@ -232,21 +232,23 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
         algorithm_params,
         ALGORITHM_PARAMS_ADDITIONAL.get(algorithm, {}),
         {
-            'target_entropy': {
-                'Walker2d': tune.grid_search(
-                    np.round(np.linspace(-1, 4, 11), 2).tolist()),
-                'Hopper': tune.grid_search(
-                    np.round(np.linspace(-1, 2, 7), 2).tolist()),
-                'humanoid': tune.grid_search(
-                    # np.round(np.linspace(1, 5, 11), 2).tolist()
-                    np.arange(1, 7).astype(np.float32).tolist()
-                ),
-                'Humanoid': tune.grid_search(
-                    # np.round(np.linspace(1, 5, 11), 2).tolist()
-                    np.arange(1, 7).astype(np.float32).tolist()
-                )
-            }[domain],
-        }
+            'kwargs': {
+                'target_entropy': {
+                    'Walker2d': tune.grid_search(
+                        np.round(np.linspace(-1, 4, 11), 2).tolist()),
+                    'Hopper': tune.grid_search(
+                        np.round(np.linspace(-1, 2, 7), 2).tolist()),
+                    'humanoid': tune.grid_search(
+                        # np.round(np.linspace(1, 5, 11), 2).tolist()
+                        np.arange(5, 10).astype(np.float32).tolist()
+                    ),
+                    'Humanoid': tune.grid_search(
+                        # np.round(np.linspace(1, 5, 11), 2).tolist()
+                        np.arange(5, 10).astype(np.float32).tolist()
+                    ),
+                }.get(domain, 'auto'),
+            },
+        },
     )
     variant_spec = {
         'git_sha': get_git_rev(__file__),
