@@ -5,6 +5,7 @@ from distutils.util import strtobool
 import json
 import os
 import pickle
+import re
 
 import tensorflow as tf
 import numpy as np
@@ -92,21 +93,46 @@ def simulate_perturbations(args):
 
     output_dir = os.path.join(
         '/tmp',
-        'perturbation-test',
-        experiment_path.split('ray_results/gs/gym/')[-1])
+        'perturbations',
+        experiment_path.split('ray_results/gs/')[-1])
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    result_data = defaultdict(list)
-    variant_data = defaultdict(dict)
-
     trial_dirnames = tuple(os.walk(experiment_path))[0][1]
     for trial_dirname in trial_dirnames:
+        print(f"trial_dirname: {trial_dirname}")
         trial_dir = os.path.join(experiment_path, trial_dirname)
+
+        perturbation_dataframes = {}
+        for perturbation_probability in perturbation_probabilities:
+            new_trial_dir = os.path.join(
+                output_dir,
+                f'{trial_dirname}-{str(perturbation_probability)}')
+
+            if not os.path.exists(new_trial_dir):
+                os.makedirs(new_trial_dir)
+
+            progress_path = os.path.join(new_trial_dir, 'progress.csv')
+            variant_path = os.path.join(new_trial_dir, 'params.json')
+
+            if os.path.exists(progress_path):
+                print(f"Progress for {trial_dir} already exist. Loading.")
+                perturbation_dataframes[
+                    perturbation_probability] = pd.read_csv(progress_path)
+            else:
+                perturbation_dataframes[
+                    perturbation_probability] = pd.DataFrame()
 
         checkpoint_dirs = glob.iglob(os.path.join(trial_dir, 'checkpoint_*'))
         for checkpoint_dir in checkpoint_dirs:
+            print(f"checkpoint_dir: {checkpoint_dir}")
+
+            checkpoint_id = int(re.match(
+                'checkpoint_(\d+)',
+                os.path.split(checkpoint_dir)[-1]
+            ).groups()[0])
+
             tf.keras.backend.clear_session()
             session = tf.keras.backend.get_session()
             picklable, variant, progress, metadata = load_checkpoint(
@@ -117,6 +143,22 @@ def simulate_perturbations(args):
                 picklable, variant)
 
             for perturbation_probability in perturbation_probabilities:
+                print(f"perturbation_probability: {perturbation_probability}")
+
+                if not os.path.exists(variant_path):
+                    variant[
+                        'perturbation_probability'] = perturbation_probability
+                    with open(variant_path, 'w') as f:
+                        json.dump(variant, f)
+
+                if ('iteration' in perturbation_dataframes[
+                        perturbation_probability].columns
+                    and checkpoint_id in perturbation_dataframes[
+                        perturbation_probability]['iteration'].values):
+                    print(f"Checkpoint {checkpoint_id} already exists in"
+                          " dataframe. Skipping")
+                    continue
+
                 assert environment._env._perturbation_probability is not None
                 environment._env._perturbation_probability = (
                     perturbation_probability)
@@ -129,38 +171,27 @@ def simulate_perturbations(args):
                         path_length=max_path_length,
                         render_mode=None)
 
-                path_data = evaluate_rollouts(paths, environment)
-                path_data['iteration'] = metadata['iteration']
-                result_data[(trial_dirname, perturbation_probability)].append(
-                    path_data)
-                variant_data[(trial_dirname, perturbation_probability)] = {
-                    **variant,
-                    'perturbation_probability': perturbation_probability
-                }
+                checkpoint_data = evaluate_rollouts(paths, environment)
+                checkpoint_data['iteration'] = metadata['iteration']
 
-    result_dataframes = {
-        key: (pd.DataFrame(value)
-              .sort_values('iteration')
-              .reset_index(drop=True))
-        for key, value in result_data.items()
-    }
+                perturbation_dataframes[perturbation_probability] = (
+                    perturbation_dataframes[perturbation_probability]
+                    .append(checkpoint_data, ignore_index=True))
 
-    for key in result_dataframes:
-        trial_dirname, perturbation_probability = key
-        trial_dir = os.path.join(
-            output_dir,
-            f'{trial_dirname}-{str(perturbation_probability)}')
-        if not os.path.exists(trial_dir):
-            os.makedirs(trial_dir)
+        for perturbation_probability, dataframe in perturbation_dataframes.items():
+            new_trial_dir = os.path.join(
+                output_dir,
+                f'{trial_dirname}-{str(perturbation_probability)}')
 
-        dataframe  = result_dataframes[key]
-        progress_path = os.path.join(trial_dir, 'progress.csv')
-        dataframe.to_csv(progress_path, index=False)
+            if not os.path.exists(new_trial_dir):
+                os.makedirs(new_trial_dir)
 
-        variant = variant_data[key]
-        variant_path = os.path.join(trial_dir, 'params.json')
-        with open(variant_path, 'w') as f:
-            json.dump(variant, f)
+            progress_path = os.path.join(new_trial_dir, 'progress.csv')
+
+            dataframe = (dataframe
+                         .sort_values('iteration')
+                         .reset_index(drop=True))
+            dataframe.to_csv(progress_path, index=False)
 
 
 if __name__ == '__main__':
