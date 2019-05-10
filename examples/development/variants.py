@@ -237,7 +237,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                     'Walker2d': tune.grid_search(
                         np.round(np.linspace(-1, 4, 11), 2).tolist()),
                     'Hopper': tune.grid_search(
-                        np.round(np.linspace(-1, 2, 7), 2).tolist()),
+                        np.round(np.linspace(-2, 2, 9), 2).tolist()),
                     'humanoid': tune.grid_search(
                         # np.round(np.linspace(1, 5, 11), 2).tolist()
                         np.arange(5, 10).astype(np.float32).tolist()
@@ -292,7 +292,10 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             'kwargs': {
                 'max_size': tune.sample_from(lambda spec: (
                     {
-                        'SimpleReplayPool': int(1e6),
+                        'SimpleReplayPool': {
+                            'Walker2d': int(5e5),
+                            'Hopper': int(2.5e5),
+                        }[domain],
                         'TrajectoryReplayPool': int(1e4),
                     }.get(
                         spec.get('config', spec)
