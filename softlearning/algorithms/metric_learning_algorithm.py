@@ -43,11 +43,10 @@ class MetricLearningAlgorithm(SAC):
 
     def _get_Q_target(self):
         if self._use_distance_for == 'reward':
-            action_inputs = self._action_inputs(
+            policy_inputs = self._action_inputs(
                 observations=self._next_observations_ph)
-            next_actions = self._policy.actions(action_inputs)
-            next_log_pis = self._policy.log_pis([self._next_observations_ph],
-                                                next_actions)
+            next_actions = self._policy.actions(policy_inputs)
+            next_log_pis = self._policy.log_pis(policy_inputs, next_actions)
 
             Q_inputs = self._Q_inputs(
                 observations=self._next_observations_ph, actions=next_actions)
@@ -64,9 +63,9 @@ class MetricLearningAlgorithm(SAC):
 
         elif self._use_distance_for == 'value':
             if self._metric_learner._condition_with_action:
-                action_inputs = self._action_inputs(
+                policy_inputs = self._action_inputs(
                     observations=self._next_observations_ph)
-                next_actions = self._policy.actions(action_inputs)
+                next_actions = self._policy.actions(policy_inputs)
 
                 inputs = self._metric_learner._distance_estimator_inputs(
                     self._next_observations_ph, self._goals_ph, next_actions)
@@ -83,8 +82,9 @@ class MetricLearningAlgorithm(SAC):
                 self._observations_ph, self._goals_ph, self._actions_ph)
             distances1 = self._metric_learner.distance_estimator(inputs1)
 
-            next_actions = self._policy.actions(self._action_inputs(
-                observations=self._next_observations_ph))
+            policy_inputs = self._action_inputs(
+                observations=self._next_observations_ph)
+            next_actions = self._policy.actions(policy_inputs)
             inputs2 = self._metric_learner._distance_estimator_inputs(
                 self._next_observations_ph, self._goals_ph, next_actions)
             distances2 = self._metric_learner.distance_estimator(inputs2)
@@ -97,8 +97,7 @@ class MetricLearningAlgorithm(SAC):
 
             min_next_Q = tf.reduce_min(next_Qs_values, axis=0)
 
-            next_log_pis = self._policy.log_pis([self._next_observations_ph],
-                                                next_actions)
+            next_log_pis = self._policy.log_pis(policy_inputs, next_actions)
             next_value = min_next_Q - self._alpha * next_log_pis
 
             values = next_value
