@@ -42,6 +42,10 @@ class MetricLearningAlgorithm(SAC):
             name='goals')
 
     def _get_Q_target(self):
+        goal_successes = tf.cast(tf.reduce_all(tf.equal(
+            self._next_observations_ph, self._goals_ph
+        ), axis=1, keepdims=True), tf.float32)
+
         if self._use_distance_for == 'reward':
             policy_inputs = self._action_inputs(
                 observations=self._next_observations_ph)
@@ -58,7 +62,13 @@ class MetricLearningAlgorithm(SAC):
             inputs = self._metric_learner._distance_estimator_inputs(
                 self._observations_ph, self._goals_ph, self._actions_ph)
             distances = self._metric_learner.distance_estimator(inputs)
-            rewards = -1.0 * distances
+
+            # Add constant reward to prevent the agent of intentionally
+            # terminating the episodes. Only give this bonus when alive.
+            constant_reward = 0.0 * (
+                self.sampler._max_path_length * (1 - goal_successes))
+
+            rewards = -1.0 * distances + constant_reward
             values = next_value
 
         elif self._use_distance_for == 'value':
@@ -105,8 +115,7 @@ class MetricLearningAlgorithm(SAC):
         else:
             raise NotImplementedError(self._use_distance_for)
 
-        if getattr(self._metric_learner, '_ground_truth_terminals', False):
-            values = (1 - self._terminals_ph) * values
+        values = (1 - goal_successes) * values
 
         Q_target = td_target(
             reward=rewards,

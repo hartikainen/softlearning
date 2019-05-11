@@ -221,12 +221,8 @@ class DistancePool(SimpleReplayPool):
             batch_next_observations.append(
                 path_next_observations[random_start_index])
             batch_actions.append(path['actions'][random_start_index])
-            terminal = np.linalg.norm(
-                path_next_observations[random_start_index] - goal,
-                ord=2,
-                keepdims=True,
-            ) <= self._terminal_epsilon
-            # terminal = path['terminals'][random_start_index]
+
+            terminal = path['terminals'][random_start_index]
             batch_terminals.append(terminal)
             batch_rewards.append(path['rewards'][random_start_index])
             batch_goals.append(goal)

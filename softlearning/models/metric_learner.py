@@ -635,12 +635,6 @@ class TemporalDifferenceMetricLearner(MetricLearner):
             name='actions',
         )
 
-        self._terminals_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, 1),
-            name='terminals',
-        )
-
         self._goals_ph = tf.placeholder(
             tf.float32,
             shape=(None, *self._observation_shape),
@@ -664,13 +658,13 @@ class TemporalDifferenceMetricLearner(MetricLearner):
             next_observations, goals, next_actions)
         distance_predictions_2 = self.distance_estimator_target(inputs_2)
 
-        assert (self._terminals_ph.shape.as_list()
-                == distance_predictions_2.shape.as_list())
+        goal_successes = tf.cast(tf.reduce_all(tf.equal(
+            self._next_observations_ph, self._goals_ph
+        ), axis=1, keepdims=True), tf.float32)
 
-        next_values = (
-            (1 - self._terminals_ph) * distance_predictions_2
-            if self._ground_truth_terminals
-            else distance_predictions_2)
+        assert (goal_successes.shape.as_list()
+                == distance_predictions_2.shape.as_list())
+        next_values = (1 - goal_successes) * distance_predictions_2
 
         distance_targets = td_target(
             reward=1.0,
@@ -741,7 +735,6 @@ class TemporalDifferenceMetricLearner(MetricLearner):
             self._observations_ph: batch['observations'],
             self._actions_ph: batch['actions'],
             self._next_observations_ph: batch['next_observations'],
-            self._terminals_ph: batch['terminals'],
             self._goals_ph: batch['goals'],
         })
 
