@@ -38,7 +38,7 @@ CONFIG = {
     },
     'distance_estimator_params': {
         'kwargs': {
-            'hidden_activation': 'relu',
+            'activation': 'relu',
             'hidden_layer_sizes': (256, 256),
             'output_activation': 'linear'
         },
@@ -64,7 +64,7 @@ CONFIG = {
     'local',
     'lambda_estimator_params': {
         'kwargs': {
-            'hidden_activation': 'relu',
+            'activation': 'relu',
             'hidden_layer_sizes': (256, 256),
             'output_activation': 'softplus'
         },

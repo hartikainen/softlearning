@@ -450,7 +450,7 @@ def get_variant_spec(args):
             'type': 'FeedforwardDistanceEstimator',
             'kwargs': {
                 'hidden_layer_sizes': (256, 256),
-                'hidden_activation': 'relu',
+                'activation': 'relu',
                 'output_activation': 'linear',
             }
         },
@@ -462,7 +462,7 @@ def get_variant_spec(args):
                     'kwargs',
                     'hidden_layer_sizes'
                 ),
-                'hidden_activation': 'relu',
+                'activation': 'relu',
                 'output_activation': 'softplus',
             }
         },

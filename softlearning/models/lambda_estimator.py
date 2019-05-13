@@ -41,7 +41,7 @@ class ConstantLambdaEstimator(LambdaEstimatorBase):
 
 class FeedforwardLambdaEstimator(LambdaEstimatorBase):
     def __init__(self,
-                 hidden_activation,
+                 activation,
                  output_activation,
                  hidden_layer_sizes):
         super(FeedforwardLambdaEstimator, self).__init__(
@@ -54,10 +54,10 @@ class FeedforwardLambdaEstimator(LambdaEstimatorBase):
         for layer_size in hidden_layer_sizes:
             layers += [
                 tf.keras.layers.Dense(
-                    layer_size, activation=hidden_activation),
+                    layer_size, activation=activation),
                 # tf.keras.layers.Dense(layer_size),
                 # tf.keras.layers.BatchNormalization(),
-                # tf.keras.layers.Activation(activation=hidden_activation),
+                # tf.keras.layers.Activation(activation=activation),
             ]
 
         self.lambda_estimator = tf.keras.Sequential((

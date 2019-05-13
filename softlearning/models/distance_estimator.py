@@ -1,19 +1,17 @@
 import numpy as np
-import tensorflow as tf
+
+from softlearning.models.feedforward import feedforward_model
 
 
-def feedforward_distance_estimator(input_shape,
-                                   hidden_layer_sizes,
-                                   hidden_activation='relu',
-                                   output_activation='linear'):
-    model = tf.keras.Sequential([
-        tf.keras.layers.InputLayer(input_shape=input_shape)
-    ] + [
-        tf.keras.layers.Dense(layer_size, activation=hidden_activation)
-        for layer_size in hidden_layer_sizes
-    ] + [
-        tf.keras.layers.Dense(1, activation=output_activation)
-    ])
+def feedforward_distance_estimator(*args,
+                                   name='feedforward_distance_estimator',
+                                   **kwargs):
+    model = feedforward_model(
+        *args,
+        output_size=1,
+        name=name,
+        **kwargs)
+
     return model
 
 
@@ -46,7 +44,7 @@ def get_distance_estimator_from_variant(variant, env, *args, **kwargs):
     distance_estimator_kwargs = distance_estimator_params.get('kwargs', {})
 
     return DISTANCE_ESTIMATORS[distance_estimator_type](
-        input_shape,
+        input_shapes=(input_shape, ),
         *args,
         **distance_estimator_kwargs,
         **kwargs)
