@@ -474,4 +474,41 @@ def get_variant_spec(args):
         },
     }
 
+    if 'image' in task.lower() or 'image' in domain.lower():
+        preprocessor_params = {
+            'type': 'convnet_preprocessor',
+            'kwargs': {
+                'image_shape': (
+                    variant_spec
+                    ['environment_params']
+                    ['training']
+                    ['kwargs']
+                    ['image_shape']),
+                'output_size': None,
+                'conv_filters': (4, 4),
+                'conv_kernel_sizes': ((3, 3), (3, 3)),
+                'pool_type': 'MaxPool2D',
+                'pool_sizes': ((2, 2), (2, 2)),
+                'pool_strides': (2, 2),
+                'dense_hidden_layer_sizes': (),
+            },
+        }
+        variant_spec['policy_params']['kwargs']['preprocessor_params'] = (
+            preprocessor_params.copy())
+        variant_spec['Q_params']['kwargs']['preprocessor_params'] = (
+            tune.sample_from(lambda spec: (
+                spec.get('config', spec)
+                ['policy_params']
+                ['kwargs']
+                ['preprocessor_params']
+            )))
+        variant_spec['distance_estimator_params']['kwargs'][
+            'preprocessor_params'] = (
+            tune.sample_from(lambda spec: (
+                spec.get('config', spec)
+                ['policy_params']
+                ['kwargs']
+                ['preprocessor_params']
+            )))
+
     return variant_spec
