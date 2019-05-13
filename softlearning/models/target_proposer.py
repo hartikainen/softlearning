@@ -64,23 +64,7 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
 
         new_observations = np.concatenate(paths_observations, axis=0)
 
-        if self._target_proposal_rule == 'closest_l2_from_goal':
-            ultimate_goal = getattr(self._env.unwrapped, 'ultimate_goal', None)
-            new_distances = np.linalg.norm(
-                new_observations - ultimate_goal, axis=1)
-
-            min_distance_idx = np.argmin(new_distances)
-            best_observation = new_observations[min_distance_idx]
-
-        elif (self._target_proposal_rule ==
-              'farthest_l2_from_first_observation'):
-            new_distances = np.linalg.norm(
-                new_observations - self._first_observation, axis=1)
-
-            max_distance_idx = np.argmax(new_distances)
-            best_observation = new_observations[max_distance_idx]
-
-        elif (self._target_proposal_rule in
+        if (self._target_proposal_rule in
               ('farthest_estimate_from_first_observation',
                'random_weighted_estimate_from_first_observation')):
             new_distances = self.distance_fn(

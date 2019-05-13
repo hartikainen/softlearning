@@ -379,8 +379,6 @@ def get_variant_spec(args):
             'type': 'UnsupervisedTargetProposer',
             'kwargs': {
                 'target_proposal_rule': tune.grid_search([
-                    # 'closest_l2_from_goal',
-                    # 'farthest_l2_from_first_observation',
                     'farthest_estimate_from_first_observation',
                     'random_weighted_estimate_from_first_observation',
                     'random',
