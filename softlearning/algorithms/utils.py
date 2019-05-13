@@ -17,9 +17,18 @@ def create_SQL_algorithm(variant, *args, **kwargs):
     return algorithm
 
 
+def create_DDPG_algorithm(variant, *args, **kwargs):
+    from .ddpg import DDPG
+
+    algorithm = DDPG(*args, **kwargs)
+
+    return algorithm
+
+
 ALGORITHM_CLASSES = {
     'SAC': create_SAC_algorithm,
     'SQL': create_SQL_algorithm,
+    'DDPG': create_DDPG_algorithm,
 }
 
 

@@ -95,7 +95,17 @@ ALGORITHM_PARAMS_ADDITIONAL = {
                 ),
             )),
         }
-    }
+    },
+    'DDPG': {
+        'type': 'DDPG',
+        'kwargs': {
+            'lr': 3e-4,
+            'target_update_interval': 1,
+            'tau': 5e-3,
+            'store_extra_policy_info': False,
+            'n_initial_exploration_steps': int(1e3),
+        }
+    },
 }
 
 DEFAULT_NUM_EPOCHS = 200
