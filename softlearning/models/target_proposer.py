@@ -1,14 +1,15 @@
 import numpy as np
 
 
-from multiworld.envs.pygame.point2d import Point2DEnv, Point2DWallEnv
-
 from gym.envs.mujoco.swimmer_v3 import SwimmerEnv
 from gym.envs.mujoco.ant_v3 import AntEnv
 from gym.envs.mujoco.humanoid_v3 import HumanoidEnv
 from gym.envs.mujoco.half_cheetah_v3 import HalfCheetahEnv
 from gym.envs.mujoco.hopper_v3 import HopperEnv
 from gym.envs.mujoco.walker2d_v3 import Walker2dEnv
+
+from multiworld.envs.pygame.point2d import Point2DEnv, Point2DWallEnv
+from multiworld.core.image_env import ImageEnv
 
 from softlearning.utils.numpy import softmax
 
@@ -35,6 +36,7 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
                  **kwargs):
         super(UnsupervisedTargetProposer, self).__init__(*args, **kwargs)
         self._first_observation = None
+        self._first_state_observation = None
         self._target_proposal_rule = target_proposal_rule
         self._random_weighted_scale = random_weighted_scale
         self._target_candidate_strategy = target_candidate_strategy
@@ -43,6 +45,8 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
         if self._first_observation is None:
             self._first_observation = paths[0].get(
                 'observations.observation', paths[0].get('observations'))[0]
+            self._first_state_observation = paths[0].get(
+                'observations.state_observation', paths[0].get('observations'))[0]
 
         if self._target_candidate_strategy == 'last_steps':
             paths_observations = [
@@ -51,15 +55,26 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
                 )[-1:]
                 for path in paths
             ]
+            paths_state_observations = [
+                path.get(
+                    'observations.state_observation', path.get('observations')
+                )[-1:]
+                for path in paths
+            ]
         elif self._target_candidate_strategy == 'all_steps':
             paths_observations = [
                 path.get('observations.observation', path.get('observations'))
+                for path in paths
+            ]
+            paths_state_observations = [
+                path.get('observations.state_observation', path.get('observations'))
                 for path in paths
             ]
         else:
             raise NotImplementedError(self._target_candidate_strategy)
 
         new_observations = np.concatenate(paths_observations, axis=0)
+        new_state_observations = np.concatenate(paths_state_observations, axis=0)
 
         if (self._target_proposal_rule in
               ('farthest_estimate_from_first_observation',
@@ -71,25 +86,36 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
 
             if (self._target_proposal_rule
                 == 'farthest_estimate_from_first_observation'):
-                max_distance_idx = np.argmax(new_distances)
-                best_observation = new_observations[max_distance_idx]
+                best_observation_index = np.argmax(new_distances)
+                best_observation = new_observations[best_observation_index]
+                best_state_observation = new_state_observations[
+                    best_observation_index]
+
             elif (self._target_proposal_rule
                   == 'random_weighted_estimate_from_first_observation'):
-                best_observation = new_observations[np.random.choice(
+                best_observation_index = np.random.choice(
                     new_distances.size,
                     p=softmax(
                         new_distances * self._random_weighted_scale
                     ).ravel()
-                )]
+                )
+                best_observation = new_observations[best_observation_index]
+                best_state_observation = new_state_observations[
+                    best_observation_index]
+
         elif self._target_proposal_rule == 'random':
-            best_observation = new_observations[
-                np.random.randint(new_observations.shape[0])]
+            best_observation_index = np.random.randint(
+                new_observations.shape[0])
+            best_observation = new_observations[best_observation_index]
+            best_state_observation = new_state_observations[
+                best_observation_index]
         else:
             raise NotImplementedError(self._target_proposal_rule)
 
         self._current_target = best_observation
+        self._current_state_target = best_state_observation
 
-        return best_observation
+        return best_state_observation
 
 
 class LogarithmicLabelScheduler(object):
@@ -192,12 +218,16 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
                 paths[0]
                 .get('observations.observation', paths[0].get('observations'))
                 [-1])
+            self._current_state_target = (
+                paths[0]
+                .get('observations.state_observation', paths[0].get('observations'))
+                [-1])
 
         num_epochs_since_last_supervision = (
             epoch - self._last_supervision_epoch)
 
         if (not should_supervise) or num_epochs_since_last_supervision < 1:
-            return self._current_target
+            return self._current_state_target
 
         self._last_supervision_epoch = epoch
         self._supervision_labels_used += 1
@@ -205,32 +235,45 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
         use_last_n_paths = num_epochs_since_last_supervision * (
             self._epoch_length // self._max_path_length)
 
-        new_observations = np.concatenate([
-            path.get('observations.observation', path.get('observations'))
+        paths_observations = [
+            path.get(
+                'observations.observation', path.get('observations')
+            )[-1:]
             for path in paths[:use_last_n_paths]
-        ], axis=0)
-
-        path_last_observations = np.concatenate([
-            path.get('observations.observation', path.get('observations'))[-1:]
+        ]
+        paths_state_observations = [
+            path.get(
+                'observations.state_observation', path.get('observations')
+            )[-1:]
             for path in paths[:use_last_n_paths]
-        ], axis=0)
+        ]
 
-        if isinstance(env, (Point2DEnv, Point2DWallEnv)):
+        new_observations = np.concatenate(paths_observations, axis=0)
+        new_state_observations = np.concatenate(paths_state_observations, axis=0)
+
+        is_point_2d_env = (
+            isinstance(env, (Point2DEnv, Point2DWallEnv))
+            or (isinstance(env, ImageEnv)
+                and isinstance(env.unwrapped.wrapped_env,
+                               (Point2DEnv, Point2DWallEnv))))
+        if is_point_2d_env:
             ultimate_goal = self._env.unwrapped.ultimate_goal
             goals = np.tile(
-                ultimate_goal, (path_last_observations.shape[0], 1))
-            last_observations_distances = (
-                env.get_optimal_paths(
-                    path_last_observations, goals))
+                ultimate_goal, (new_state_observations.shape[0], 1))
+            last_observations_distances = env.get_optimal_paths(
+                new_state_observations, goals)
 
-            min_distance_idx = np.argmin(last_observations_distances)
-            if (-last_observations_distances[min_distance_idx]
+            best_observation_index = np.argmin(last_observations_distances)
+            if (-last_observations_distances[best_observation_index]
                 > self._best_observation_value):
-                best_observation = path_last_observations[min_distance_idx]
+                best_observation = new_observations[best_observation_index]
+                best_state_observation = new_state_observations[
+                    best_observation_index]
                 self._best_observation_value = -last_observations_distances[
-                    min_distance_idx]
+                    best_observation_index]
             else:
                 best_observation = self._current_target
+                best_state_observation = self._current_state_target
 
         elif isinstance(
                 env,
@@ -252,29 +295,28 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
                 Walker2dEnv: slice(0, 1),
             }[type(env)]
 
-            last_observations_x_positions = path_last_observations[:, 0:1]
+            last_observations_x_positions = new_state_observations[:, 0:1]
             last_observations_distances = last_observations_x_positions
-            # last_observations_positions = path_last_observations[
-            #     :, position_slice]
-            # last_observations_distances = np.linalg.norm(
-            #     last_observations_positions, ord=2, axis=1)
 
-            max_distance_idx = np.argmax(last_observations_distances)
-            if (last_observations_distances[max_distance_idx]
+            best_observation_index = np.argmax(last_observations_distances)
+            if (last_observations_distances[best_observation_index]
                 > self._best_observation_value):
-                best_observation = path_last_observations[max_distance_idx]
+                best_observation = new_observations[best_observation_index]
+                best_state_observation = new_state_observations[
+                    best_observation_index]
                 self._best_observation_value = last_observations_distances[
-                    max_distance_idx]
+                    best_observation_index]
             else:
                 best_observation = self._current_target
-
+                best_state_observation = self._current_state_target
 
         else:
             raise NotImplementedError
 
         self._current_target = best_observation
+        self._current_state_target = best_state_observation
 
-        return best_observation
+        return best_state_observation
 
 
 class RandomTargetProposer(BaseTargetProposer):
