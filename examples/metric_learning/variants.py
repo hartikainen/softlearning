@@ -82,7 +82,16 @@ ENVIRONMENT_PARAMS = {
             'discretize': False,
             'target_radius': 0.1,
             'reward_type': 'sparse',
-        }
+        },
+        'ImageWall-v0': {
+            'observation_keys': ('image_observation', ),
+
+            'image_shape': (64, 64, 3),
+            'render_size': 64,
+            'wall_shape': 'zigzag',
+            'images_are_rgb': True,
+            'render_onscreen': False,
+        },
     },
 
     'GoalSwimmer': {
