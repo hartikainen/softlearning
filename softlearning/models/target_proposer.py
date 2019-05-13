@@ -1,9 +1,6 @@
 import numpy as np
 
 
-from gym.envs.mujoco.half_cheetah import HalfCheetahEnv as GymHalfCheetahEnv
-from gym.envs.mujoco.ant import AntEnv as GymAntEnv
-from gym.envs.mujoco.humanoid import HumanoidEnv as GymHumanoidEnv
 from multiworld.envs.pygame.point2d import Point2DEnv, Point2DWallEnv
 
 from gym.envs.mujoco.swimmer_v3 import SwimmerEnv
@@ -232,26 +229,6 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
                 best_observation = path_last_observations[min_distance_idx]
                 self._best_observation_value = -last_observations_distances[
                     min_distance_idx]
-            else:
-                best_observation = self._current_target
-
-        elif isinstance(env, (GymAntEnv, GymHalfCheetahEnv, GymHumanoidEnv)):
-            raise NotImplementedError(env)
-            velocity_indices = {
-                GymAntEnv:
-                slice(env.sim.data.qpos.size - 2, env.sim.data.qpos.size),
-                GymHalfCheetahEnv:
-                slice(env.sim.data.qpos.size - 1, env.sim.data.qpos.size),
-                GymHumanoidEnv:
-                slice(env.sim.data.qpos.size - 2, env.sim.data.qpos.size),
-            }[type(env)]
-            new_velocities = new_observations[:, velocity_indices]
-            new_velocities = np.linalg.norm(new_velocities, ord=2, axis=1)
-
-            max_velocity_idx = np.argmax(new_velocities)
-            if new_velocities[max_velocity_idx] > self._best_observation_value:
-                best_observation = new_observations[max_velocity_idx]
-                self._best_observation_value = new_velocities[max_velocity_idx]
             else:
                 best_observation = self._current_target
 
