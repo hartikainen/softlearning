@@ -13,6 +13,16 @@ def get_gaussian_policy(env, Q, **kwargs):
     return policy
 
 
+def get_constant_scale_gaussian_policy(env, Q, **kwargs):
+    from .gaussian_policy import ConstantScaleGaussianPolicy
+    policy = ConstantScaleGaussianPolicy(
+        input_shapes=(env.active_observation_shape, ),
+        output_shape=env.action_space.shape,
+        **kwargs)
+
+    return policy
+
+
 def get_uniform_policy(env, *args, **kwargs):
     from .uniform_policy import UniformPolicy
     policy = UniformPolicy(
@@ -25,6 +35,7 @@ def get_uniform_policy(env, *args, **kwargs):
 POLICY_FUNCTIONS = {
     'GaussianPolicy': get_gaussian_policy,
     'UniformPolicy': get_uniform_policy,
+    'ConstantScaleGaussianPolicy': get_constant_scale_gaussian_policy,
 }
 
 
