@@ -7,12 +7,9 @@ from gym.envs.mujoco.humanoid_v3 import HumanoidEnv
 from gym.envs.mujoco.half_cheetah_v3 import HalfCheetahEnv
 from gym.envs.mujoco.hopper_v3 import HopperEnv
 from gym.envs.mujoco.walker2d_v3 import Walker2dEnv
-from softlearning.environments.gym.mujoco.goal_environment import (
-    GoalEnvironment)
 
-from softlearning.utils.numpy import softmax
+from softlearning.environments.utils import is_point_2d_env
 from .sac import SAC, td_target
-from multiworld.envs.pygame.point2d import Point2DEnv, Point2DWallEnv
 
 
 class GoalConditionedSAC(SAC):
@@ -51,7 +48,7 @@ class GoalConditionedSAC(SAC):
         except Exception as e:
             self._training_environment.unwrapped.set_goal(new_goal)
 
-        if isinstance(self._training_environment.unwrapped, (Point2DEnv, Point2DWallEnv)):
+        if is_point_2d_env(self._training_environment.unwrapped):
             self._training_environment.unwrapped.optimal_policy.set_goal(new_goal)
 
     def _epoch_after_hook(self, training_paths):
@@ -93,7 +90,7 @@ class GoalConditionedSAC(SAC):
             # self.sampler.initialize(
             #     self._training_environment, self._training_environment.unwrapped.optimal_policy, self._pool)
             if self.sampler.policy is not self._policy:
-                assert isinstance(self._training_environment.unwrapped, Point2DEnv)
+                assert is_point_2d_env(self._training_environment.unwrapped)
 
     def _get_feed_dict(self, iteration, batch):
         """Construct TensorFlow feed_dict from sample batch."""
@@ -135,7 +132,7 @@ class GoalConditionedSAC(SAC):
             goal = self._evaluation_environment.unwrapped.sample_metric_goal()
             evaluation_env.unwrapped.set_goal(goal)
 
-        if isinstance(evaluation_env.unwrapped, (Point2DEnv, Point2DWallEnv)):
+        if is_point_2d_env(evaluation_env.unwrapped):
             evaluation_env.unwrapped.optimal_policy.set_goal(goal)
 
         return super(GoalConditionedSAC, self)._evaluation_paths(
@@ -150,7 +147,7 @@ class GoalConditionedSAC(SAC):
             iteration, batch, training_paths, evaluation_paths)
 
         if self._plot_distances:
-            if isinstance(self._training_environment.unwrapped, (Point2DEnv, Point2DWallEnv)):
+            if is_point_2d_env(self._training_environment.unwrapped):
                 from softlearning.visualization import point_2d_plotter
                 point_2d_plotter.point_2d_plotter(
                     self,

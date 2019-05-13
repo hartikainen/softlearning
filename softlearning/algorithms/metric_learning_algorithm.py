@@ -1,18 +1,17 @@
 import numpy as np
 import tensorflow as tf
 
-from multiworld.envs.pygame.point2d import Point2DEnv, Point2DWallEnv
-
-from softlearning.algorithms.sac import SAC, td_target
-
 from gym.envs.mujoco.swimmer_v3 import SwimmerEnv
 from gym.envs.mujoco.ant_v3 import AntEnv
 from gym.envs.mujoco.humanoid_v3 import HumanoidEnv
 from gym.envs.mujoco.half_cheetah_v3 import HalfCheetahEnv
 from gym.envs.mujoco.hopper_v3 import HopperEnv
 from gym.envs.mujoco.walker2d_v3 import Walker2dEnv
+
+from softlearning.algorithms.sac import SAC, td_target
 from softlearning.environments.gym.mujoco.goal_environment import (
     GoalEnvironment)
+from softlearning.environments.utils import is_point_2d_env
 
 
 class MetricLearningAlgorithm(SAC):
@@ -133,8 +132,7 @@ class MetricLearningAlgorithm(SAC):
         except Exception as e:
             self._training_environment.unwrapped.set_goal(new_goal)
 
-        if isinstance(self._training_environment.unwrapped,
-                      (Point2DEnv, Point2DWallEnv)):
+        if is_point_2d_env(self._training_environment.unwrapped):
             self._training_environment.unwrapped.optimal_policy.set_goal(
                 new_goal)
 
@@ -188,8 +186,7 @@ class MetricLearningAlgorithm(SAC):
             #     self._training_environment.unwrapped.optimal_policy,
             #     self._pool)
             if self.sampler.policy is not self._policy:
-                assert isinstance(self._training_environment.unwrapped,
-                                  Point2DEnv)
+                assert is_point_2d_env(self._training_environment.unwrapped)
 
     def _timestep_after_hook(self, *args, **kwargs):
         if hasattr(self._metric_learner, '_update_target'):
@@ -243,8 +240,7 @@ class MetricLearningAlgorithm(SAC):
         result = super(MetricLearningAlgorithm, self)._evaluate_rollouts(
             paths, env)
 
-        if isinstance(self._training_environment.unwrapped,
-                      (Point2DEnv, Point2DWallEnv)):
+        if is_point_2d_env(self._training_environment.unwrapped):
             observations = (
                 self._training_environment.unwrapped.all_pairs_observations)
             distances = (
@@ -375,7 +371,7 @@ class MetricLearningAlgorithm(SAC):
             goal = self._evaluation_environment.unwrapped.sample_metric_goal()
             evaluation_env.unwrapped.set_goal(goal)
 
-        if isinstance(evaluation_env.unwrapped, (Point2DEnv, Point2DWallEnv)):
+        if is_point_2d_env(evaluation_env.unwrapped):
             evaluation_env.unwrapped.optimal_policy.set_goal(goal)
 
         return super(MetricLearningAlgorithm, self)._evaluation_paths(
@@ -402,8 +398,8 @@ class MetricLearningAlgorithm(SAC):
                 self._target_proposer._supervision_labels_used)
 
         if self._plot_distances:
-            if isinstance(self._training_environment.unwrapped,
-                          (Point2DEnv, Point2DWallEnv)):
+            env = self._training_environment.unwrapped
+            if is_point_2d_env(self._training_environment.unwrapped):
                 from softlearning.visualization import point_2d_plotter
                 point_2d_plotter.point_2d_plotter(
                     self,

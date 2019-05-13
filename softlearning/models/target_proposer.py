@@ -8,10 +8,8 @@ from gym.envs.mujoco.half_cheetah_v3 import HalfCheetahEnv
 from gym.envs.mujoco.hopper_v3 import HopperEnv
 from gym.envs.mujoco.walker2d_v3 import Walker2dEnv
 
-from multiworld.envs.pygame.point2d import Point2DEnv, Point2DWallEnv
-from multiworld.core.image_env import ImageEnv
-
 from softlearning.utils.numpy import softmax
+from softlearning.environments.utils import is_point_2d_env
 
 
 class BaseTargetProposer(object):
@@ -251,12 +249,7 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
         new_observations = np.concatenate(paths_observations, axis=0)
         new_state_observations = np.concatenate(paths_state_observations, axis=0)
 
-        is_point_2d_env = (
-            isinstance(env, (Point2DEnv, Point2DWallEnv))
-            or (isinstance(env, ImageEnv)
-                and isinstance(env.unwrapped.wrapped_env,
-                               (Point2DEnv, Point2DWallEnv))))
-        if is_point_2d_env:
+        if is_point_2d_env(env):
             ultimate_goal = self._env.unwrapped.ultimate_goal
             goals = np.tile(
                 ultimate_goal, (new_state_observations.shape[0], 1))
