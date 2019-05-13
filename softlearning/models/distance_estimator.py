@@ -47,12 +47,10 @@ def get_distance_estimator_from_variant(variant, env, *args, **kwargs):
 
     if variant['metric_learner_params']['kwargs']['condition_with_action']:
         input_shapes = (input_shapes[0], action_shape, input_shapes[1])
-    input_shape = tuple(
-        sum(np.prod(shape, keepdims=True) for shape in input_shapes))
         preprocessors = (preprocessors[0], None, preprocessors[1])
 
     return DISTANCE_ESTIMATORS[distance_estimator_type](
-        input_shapes=(input_shape, ),
+        input_shapes,
         *args,
         preprocessors=preprocessors,
         **distance_estimator_kwargs,

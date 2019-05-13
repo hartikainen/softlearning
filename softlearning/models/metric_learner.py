@@ -80,18 +80,13 @@ class MetricLearner(object):
                                    observations1,
                                    observations2,
                                    actions):
-        concat_fn = (
-            tf.concat
-            if isinstance(observations1, tf.Tensor)
-            else np.concatenate)
-
-        to_concat = [observations1]
+        inputs = [observations1]
 
         if self._condition_with_action:
-            to_concat.append(actions)
+            inputs.append(actions)
 
         if self._distance_input_type == 'full':
-            to_concat.append(observations2)
+            inputs.append(observations2)
 
         elif self._distance_input_type == 'xy_coordinates':
             if isinstance(self._env.unwrapped,
@@ -104,7 +99,7 @@ class MetricLearner(object):
                 if (self._env.unwrapped
                     ._exclude_current_positions_from_observation):
                     raise NotImplementedError
-                to_concat.append(observations2[:, :2])
+                inputs.append(observations2[:, :2])
             else:
                 raise NotImplementedError(self._env.unwrapped)
 
@@ -128,7 +123,7 @@ class MetricLearner(object):
                     qvel_end_idx -= 2
 
                 xy_velocities = observations2[:, qvel_start_idx:qvel_end_idx]
-                to_concat.append(xy_velocities)
+                inputs.append(xy_velocities)
             else:
                 raise NotImplementedError(self._env.unwrapped)
 
@@ -138,7 +133,6 @@ class MetricLearner(object):
         else:
             raise NotImplementedError(self._distance_input_type)
 
-        inputs = concat_fn(to_concat, axis=-1)
         return inputs
 
     def _get_feed_dict(self, iteration, batch):
