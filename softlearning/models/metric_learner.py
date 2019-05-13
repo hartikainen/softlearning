@@ -53,7 +53,6 @@ class MetricLearner(object):
     def _build(self, *args, **kwargs):
         self._init_placeholders()
         self._init_distance_update()
-        self._init_quiver_ops()
 
     def _init_placeholders(self):
         """Create input placeholders for the MetricLearner algorithm."""
@@ -141,22 +140,6 @@ class MetricLearner(object):
 
         inputs = concat_fn(to_concat, axis=-1)
         return inputs
-
-    def _init_quiver_ops(self):
-        input_shape = self._distance_estimator_inputs(
-            self.distance_pairs_observations_ph[:, 0, ...],
-            self.distance_pairs_observations_ph[:, 1, ...],
-            self.distance_pairs_actions_ph[:, 0, ...],).shape
-
-        inputs = tf.keras.layers.Input(shape=input_shape[1:].as_list())
-
-        distance_predictions = self.distance_estimator(inputs)[:, 0]
-        quiver_gradients = tf.keras.backend.gradients(
-            distance_predictions, [inputs])
-        gradients_fn = tf.keras.backend.function(
-            [inputs], quiver_gradients)
-
-        self.quiver_gradients = gradients_fn
 
     def _get_feed_dict(self, iteration, batch):
         """Construct TensorFlow feed_dict from sample batch."""

@@ -367,14 +367,6 @@ class MetricLearningAlgorithm(SAC):
         V_values = self.diagnostics_Q_values_fn(observations, goals, actions)
         return V_values
 
-    def diagnostics_quiver_gradients_fn(self, observations, goals):
-        with self._policy.set_deterministic(True):
-            actions = self._policy.actions_np([observations, goals])
-        inputs = (
-            self._metric_learner._distance_estimator_inputs(
-                observations, goals, actions))
-        return self._metric_learner.quiver_gradients([inputs])
-
     def _evaluation_paths(self, policy, evaluation_env):
         try:
             goal = self._evaluation_environment._env.env.sample_metric_goal()
