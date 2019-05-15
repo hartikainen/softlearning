@@ -54,6 +54,14 @@ MUJOCO_ENVIRONMENT_SPECS = (
         },
     },
     {
+        'id': 'Humanoid-Pothole-v0',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.humanoid_pothole:HumanoidPotholeEnv'),
+        'kwargs': {
+            'forward_reward_weight': 0.0,
+        },
+    },
+    {
         'id': 'Pusher2d-Default-v0',
         'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
                         '.pusher_2d:Pusher2dEnv'),
