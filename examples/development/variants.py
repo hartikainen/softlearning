@@ -253,8 +253,9 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                         np.arange(5, 10).astype(np.float32).tolist()
                     ),
                     'Humanoid': tune.grid_search(
+                        ['auto', -9, -3, 3, 9]
                         # np.round(np.linspace(1, 5, 11), 2).tolist()
-                        np.arange(5, 10).astype(np.float32).tolist()
+                        # np.arange(5, 10).astype(np.float32).tolist()
                     ),
                 }.get(domain, 'auto'),
             },
