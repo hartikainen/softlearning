@@ -8,6 +8,7 @@ import os
 import tensorflow as tf
 from tensorflow.python.training import training_util
 import numpy as np
+from ray.tune.logger import CSVLogger
 
 from softlearning.samplers import rollouts
 from softlearning.misc.utils import save_video
@@ -261,34 +262,40 @@ class RLAlgorithm(tf.contrib.checkpoint.Checkpointable):
 
         yield {'done': True, **diagnostics}
 
-    def _evaluation_paths(self, policy, evaluation_env):
+    def _evaluation_paths(self, policy, evaluation_envs):
         if self._eval_n_episodes < 1: return ()
 
-        with policy.set_deterministic(self._eval_deterministic):
-            paths = rollouts(
-                self._eval_n_episodes,
-                evaluation_env,
-                policy,
-                self.sampler._max_path_length,
-                render_mode=self._eval_render_mode)
+        if not isinstance(evaluation_envs, (list, tuple)):
+            evaluation_envs = [evaluation_envs]
 
-        should_save_video = (
-            self._video_save_frequency > 0
-            and self._epoch % self._video_save_frequency == 0)
+        all_paths = []
 
-        if should_save_video:
-            for i, path in enumerate(paths):
-                video_frames = path.pop('images')
-                video_file_name = f'evaluation_path_{self._epoch}_{i}.avi'
-                video_file_path = os.path.join(
-                    os.getcwd(), 'videos', video_file_name)
-                save_video(video_frames, video_file_path)
+        for env_id, evaluation_env in enumerate(evaluation_envs):
+            with policy.set_deterministic(self._eval_deterministic):
+                paths = rollouts(
+                    self._eval_n_episodes,
+                    evaluation_env,
+                    policy,
+                    self.sampler._max_path_length,
+                    render_mode=self._eval_render_mode)
 
-        return paths
+            should_save_video = (
+                self._video_save_frequency > 0
+                and self._epoch % self._video_save_frequency == 0)
 
-    def _evaluate_rollouts(self, paths, env):
-        """Compute evaluation metrics for the given rollouts."""
+            if should_save_video:
+                for i, path in enumerate(paths):
+                    video_frames = path.pop('images')
+                    video_file_name = f'evaluation_path_{env_id}_{self._epoch}_{i}.avi'
+                    video_file_path = os.path.join(
+                        os.getcwd(), 'videos', video_file_name)
+                    save_video(video_frames, video_file_path)
 
+            all_paths.append(paths)
+
+        return all_paths
+
+    def _evaluate_rollouts_2(self, paths, env):
         total_returns = [path['rewards'].sum() for path in paths]
         episode_lengths = [len(p['rewards']) for p in paths]
 
@@ -308,6 +315,40 @@ class RLAlgorithm(tf.contrib.checkpoint.Checkpointable):
             diagnostics[f'env_infos/{key}'] = value
 
         return diagnostics
+
+    def _evaluate_rollouts(self, paths, envs):
+        """Compute evaluation metrics for the given rollouts."""
+
+        if not isinstance(envs, (tuple, list)):
+            paths, envs = [paths], [envs]
+
+        diagnostics = [
+            self._evaluate_rollouts_2(path, env)
+            for path, env in zip(paths, envs)
+        ]
+
+        if len(diagnostics) > 1:
+            if not getattr(self, '_env_csv_loggers', None):
+                env_logdirs = [
+                    os.path.join(os.getcwd(), f'env_{i}')
+                    for i in range(len(envs))
+                ]
+                for env_logdir in env_logdirs:
+                    if not os.path.exists(env_logdir):
+                        os.makedirs(env_logdir)
+                self._env_csv_loggers = tuple(
+                    CSVLogger(
+                        config=None,
+                        logdir=logdir,
+                    )
+                    for logdir in env_logdirs
+                )
+
+            for result, logger in zip(diagnostics, self._env_csv_loggers):
+                logger.on_result(result)
+                logger.flush()
+
+        return diagnostics[0]
 
     @abc.abstractmethod
     def get_diagnostics(self,

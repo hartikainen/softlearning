@@ -1,3 +1,4 @@
+import json
 import os
 import copy
 import glob
@@ -16,6 +17,8 @@ from softlearning.value_functions.utils import get_Q_function_from_variant
 
 from softlearning.misc.utils import set_seed, initialize_tf_variables
 from examples.instrument import run_example_local
+
+from ray.tune.logger import _SafeFallbackEncoder
 
 
 class ExperimentRunner(tune.Trainable):
@@ -42,10 +45,30 @@ class ExperimentRunner(tune.Trainable):
         environment_params = variant['environment_params']
         training_environment = self.training_environment = (
             get_environment_from_params(environment_params['training']))
-        evaluation_environment = self.evaluation_environment = (
-            get_environment_from_params(environment_params['evaluation'])
-            if 'evaluation' in environment_params
-            else training_environment)
+
+        if 'evaluation' in environment_params:
+            evaluation_environment_params = environment_params['evaluation']
+            if not isinstance(evaluation_environment_params, (list, tuple)):
+                evaluation_environment_params = [evaluation_environment_params]
+
+            evaluation_environments = self.evaluation_environments = tuple(map(
+                get_environment_from_params, evaluation_environment_params
+            ))
+            env_logdirs = [
+                os.path.join(os.getcwd(), f'env_{i}')
+                for i in range(len(evaluation_environments))
+            ]
+            for env_logdir, env_variant in zip(env_logdirs,
+                                               evaluation_environment_params):
+                if not os.path.exists(env_logdir):
+                    os.makedirs(env_logdir)
+
+                env_variant_path = os.path.join(env_logdir, 'params.json')
+                with open(env_variant_path, "w") as f:
+                    json.dump(env_variant, f, cls=_SafeFallbackEncoder)
+
+        else:
+            evaluation_environments = [training_environment]
 
         replay_pool = self.replay_pool = (
             get_replay_pool_from_variant(variant, training_environment))
@@ -60,7 +83,7 @@ class ExperimentRunner(tune.Trainable):
         self.algorithm = get_algorithm_from_variant(
             variant=self._variant,
             training_environment=training_environment,
-            evaluation_environment=evaluation_environment,
+            evaluation_environment=evaluation_environments,
             policy=policy,
             initial_exploration_policy=initial_exploration_policy,
             Qs=Qs,
@@ -102,7 +125,7 @@ class ExperimentRunner(tune.Trainable):
         return {
             'variant': self._variant,
             'training_environment': self.training_environment,
-            'evaluation_environment': self.evaluation_environment,
+            'evaluation_environments': self.evaluation_environments,
             # 'sampler': self.sampler,
             # 'algorithm': self.algorithm,
             # 'Qs': self.Qs,
@@ -166,8 +189,8 @@ class ExperimentRunner(tune.Trainable):
 
         training_environment = self.training_environment = picklable[
             'training_environment']
-        evaluation_environment = self.evaluation_environment = picklable[
-            'evaluation_environment']
+        evaluation_environments = self.evaluation_environments = picklable[
+            'evaluation_environments']
 
         replay_pool = self.replay_pool = (
             get_replay_pool_from_variant(self._variant, training_environment))
@@ -187,7 +210,7 @@ class ExperimentRunner(tune.Trainable):
         self.algorithm = get_algorithm_from_variant(
             variant=self._variant,
             training_environment=training_environment,
-            evaluation_environment=evaluation_environment,
+            evaluation_environment=evaluation_environments,
             policy=policy,
             initial_exploration_policy=initial_exploration_policy,
             Qs=Qs,
