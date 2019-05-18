@@ -271,20 +271,89 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                 'kwargs': (
                     ENVIRONMENT_PARAMS.get(domain, {}).get(task, {})),
             },
-            'evaluation': {
-                'domain': domain,
-                'task': task,
-                'universe': universe,
-                'kwargs': tune.sample_from(lambda spec: ({
-                    **spec.get('config', spec)
-                    ['environment_params']
-                    ['training']
-                    ['kwargs'],
-                    'perturb_action_kwargs': {
-                        'perturbation_probability': 0.0,
-                    },
-                })),
-            },
+            'evaluation': [
+                {
+                    'domain': domain,
+                    'task': 'Pothole-v0',
+                    'universe': universe,
+                    'kwargs': tune.sample_from(lambda spec: ({
+                        **spec.get('config', spec)
+                        ['environment_params']
+                        ['training']
+                        ['kwargs'],
+                        'pothole_depth': 0.25,
+                        'healthy_z_range': (1.0 - 0.25, 2.0 + 0.25),
+                    })),
+                },
+                {
+                    'domain': domain,
+                    'task': 'Pothole-v0',
+                    'universe': universe,
+                    'kwargs': tune.sample_from(lambda spec: ({
+                        **spec.get('config', spec)
+                        ['environment_params']
+                        ['training']
+                        ['kwargs'],
+                        'pothole_depth': 0.5,
+                        'healthy_z_range': (1.0 - 0.5, 2.0 + 0.5),
+                    })),
+                },
+                {
+                    'domain': domain,
+                    'task': 'Pothole-v0',
+                    'universe': universe,
+                    'kwargs': tune.sample_from(lambda spec: ({
+                        **spec.get('config', spec)
+                        ['environment_params']
+                        ['training']
+                        ['kwargs'],
+                        'pothole_depth': 1.0,
+                        'healthy_z_range': (1.0 - 1.0, 2.0 + 1.0),
+                    })),
+                },
+                {
+                    'domain': domain,
+                    'task': task,
+                    'universe': universe,
+                    'kwargs': tune.sample_from(lambda spec: ({
+                        **spec.get('config', spec)
+                        ['environment_params']
+                        ['training']
+                        ['kwargs'],
+                        'perturb_action_kwargs': {
+                            'perturbation_probability': 0.1,
+                        },
+                    })),
+                },
+                {
+                    'domain': domain,
+                    'task': task,
+                    'universe': universe,
+                    'kwargs': tune.sample_from(lambda spec: ({
+                        **spec.get('config', spec)
+                        ['environment_params']
+                        ['training']
+                        ['kwargs'],
+                        'perturb_action_kwargs': {
+                            'perturbation_probability': 0.03,
+                        },
+                    })),
+                },
+                {
+                    'domain': domain,
+                    'task': task,
+                    'universe': universe,
+                    'kwargs': tune.sample_from(lambda spec: ({
+                        **spec.get('config', spec)
+                        ['environment_params']
+                        ['training']
+                        ['kwargs'],
+                        'perturb_action_kwargs': {
+                            'perturbation_probability': 0.3,
+                        },
+                    })),
+                },
+            ],
         },
         'policy_params': deep_update(
             POLICY_PARAMS_BASE[policy],
