@@ -245,9 +245,9 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             'kwargs': {
                 'target_entropy': {
                     'Walker2d': tune.grid_search(
-                        np.round(np.linspace(-1, 4, 11), 2).tolist()),
+                        np.round(np.linspace(-6, 4, 6), 2).tolist()),
                     'Hopper': tune.grid_search(
-                        np.round(np.linspace(-2, 2, 9), 2).tolist()),
+                        np.round(np.linspace(-3, 2, 6), 2).tolist()),
                     'humanoid': tune.grid_search(
                         # np.round(np.linspace(1, 5, 11), 2).tolist()
                         np.arange(5, 10).astype(np.float32).tolist()
