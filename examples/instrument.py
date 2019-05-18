@@ -111,6 +111,7 @@ def generate_experiment_kwargs(variant_spec, command_line_args):
         'local_dir': local_dir,
         'num_samples': command_line_args.num_samples,
         'upload_dir': command_line_args.upload_dir,
+        'max_failures': command_line_args.max_failures,
         'checkpoint_freq': (
             variant_spec['run_params']['checkpoint_frequency']),
         'checkpoint_at_end': (
