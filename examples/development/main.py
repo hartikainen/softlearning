@@ -63,9 +63,15 @@ class ExperimentRunner(tune.Trainable):
                 if not os.path.exists(env_logdir):
                     os.makedirs(env_logdir)
 
-                env_variant_path = os.path.join(env_logdir, 'params.json')
+                full_environment_variant = copy.deepcopy(variant)
+                full_environment_variant[
+                    'environment_params']['evaluation'] = (
+                        evaluation_environment_params)
+
+                env_variant_path = os.path.join(env_logdir,
+                                                'evaluation_params.json')
                 with open(env_variant_path, "w") as f:
-                    json.dump(env_variant, f, cls=_SafeFallbackEncoder)
+                    json.dump(full_environment_variant, f, cls=_SafeFallbackEncoder)
 
         else:
             evaluation_environments = [training_environment]

@@ -288,7 +288,7 @@ class RLAlgorithm(tf.contrib.checkpoint.Checkpointable):
                     video_frames = path.pop('images')
                     video_file_name = f'evaluation_path_{env_id}_{self._epoch}_{i}.avi'
                     video_file_path = os.path.join(
-                        os.getcwd(), 'videos', video_file_name)
+                        os.getcwd(), 'videos', 'env_{env_id}', video_file_name)
                     save_video(video_frames, video_file_path)
 
             all_paths.append(paths)
