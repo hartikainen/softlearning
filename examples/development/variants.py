@@ -245,15 +245,19 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             'kwargs': {
                 'target_entropy': {
                     'Walker2d': tune.grid_search(
-                        np.round(np.linspace(-6, 4, 6), 2).tolist()),
+                        ['auto', 0, 2, 3],
+                        # np.round(np.linspace(-6, 4, 6), 2).tolist()
+                    ),
                     'Hopper': tune.grid_search(
-                        np.round(np.linspace(-3, 2, 6), 2).tolist()),
+                        # np.round(np.linspace(-3, 2, 6), 2).tolist()
+                        ['auto', 0, 1, 2],
+                    ),
                     'humanoid': tune.grid_search(
                         # np.round(np.linspace(1, 5, 11), 2).tolist()
                         np.arange(5, 10).astype(np.float32).tolist()
                     ),
                     'Humanoid': tune.grid_search(
-                        ['auto', -9, -3, 3, 9]
+                        ['auto', 0, 3, 6, 9]
                         # np.round(np.linspace(1, 5, 11), 2).tolist()
                         # np.arange(5, 10).astype(np.float32).tolist()
                     ),
@@ -336,7 +340,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                         ['training']
                         ['kwargs'],
                         'perturb_action_kwargs': {
-                            'perturbation_probability': 0.03,
+                            'perturbation_probability': 0.2,
                         },
                     })),
                 },
@@ -371,7 +375,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             'type': 'SimpleReplayPool',
             'kwargs': {
                 'max_size': tune.grid_search([
-                    int(1e5), int(2.5e5), int(5e5), int(1e6)
+                    int(1e5), int(1.5e5), int(5e5), int(1e6)
                 ]),
             }
         },
