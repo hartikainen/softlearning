@@ -25,6 +25,10 @@ class HopperPotholeEnv(HopperEnv):
                  pothole_distance=5.0,
                  *args,
                  **kwargs):
+        self._pothole_depth = pothole_depth
+        self._pothole_length = pothole_length
+        self._pothole_distance = pothole_distance
+
         hopper_xml_path = os.path.join(
             os.path.dirname(inspect.getfile(HopperEnv)),
             "assets",
@@ -93,3 +97,36 @@ class HopperPotholeEnv(HopperEnv):
 
         super(HopperPotholeEnv, self).__init__(
             xml_file=xml_path, *args, **kwargs)
+
+    @property
+    def is_healthy(self):
+        x, z, angle = self.sim.data.qpos[0:3]
+        state = self.state_vector()[2:]
+
+        min_state, max_state = self._healthy_state_range
+        min_z, max_z = self._healthy_z_range
+        min_angle, max_angle = self._healthy_angle_range
+
+        fall_length = 4
+        should_be_falling = (
+            self._pothole_distance
+            < x
+            < self._pothole_distance + fall_length)
+        # Adjust z to match drop
+        if should_be_falling:
+            min_z -= self._pothole_depth
+
+        after_fall = self._pothole_distance + fall_length < x
+
+        if after_fall:
+            min_z -= self._pothole_depth
+            max_z -= self._pothole_depth
+
+        healthy_state = np.all(
+            np.logical_and(min_state < state, state < max_state))
+        healthy_z = min_z < z < max_z
+        healthy_angle = min_angle < angle < max_angle
+
+        is_healthy = all((healthy_state, healthy_z, healthy_angle))
+
+        return is_healthy

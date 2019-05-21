@@ -25,6 +25,10 @@ class HumanoidPotholeEnv(HumanoidEnv):
                  pothole_distance=5.0,
                  *args,
                  **kwargs):
+        self._pothole_depth = pothole_depth
+        self._pothole_length = pothole_length
+        self._pothole_distance = pothole_distance
+
         humanoid_xml_path = os.path.join(
             os.path.dirname(inspect.getfile(HumanoidEnv)),
             "assets",
@@ -92,3 +96,27 @@ class HumanoidPotholeEnv(HumanoidEnv):
 
         super(HumanoidPotholeEnv, self).__init__(
             xml_file=xml_path, *args, **kwargs)
+
+    @property
+    def is_healthy(self):
+        x, z = self.sim.data.qpos[[0, 2]]
+
+        min_z, max_z = self._healthy_z_range
+
+        fall_length = 2
+        should_be_falling = (
+            self._pothole_distance
+            < x
+            < self._pothole_distance + fall_length)
+        # Adjust z to match drop
+        if should_be_falling:
+            min_z -= self._pothole_depth
+
+        after_fall = self._pothole_distance + fall_length < x
+        if after_fall:
+            min_z -= self._pothole_depth
+            max_z -= self._pothole_depth
+
+        is_healthy = min_z < z < max_z
+
+        return is_healthy

@@ -287,7 +287,6 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                         ['training']
                         ['kwargs'],
                         'pothole_depth': 0.25,
-                        'healthy_z_range': (1.0 - 0.25, 2.0 + 0.25),
                     })),
                 },
                 {
@@ -300,7 +299,6 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                         ['training']
                         ['kwargs'],
                         'pothole_depth': 0.5,
-                        'healthy_z_range': (1.0 - 0.5, 2.0 + 0.5),
                     })),
                 },
                 {
@@ -313,7 +311,6 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                         ['training']
                         ['kwargs'],
                         'pothole_depth': 1.0,
-                        'healthy_z_range': (1.0 - 1.0, 2.0 + 1.0),
                     })),
                 },
                 {
