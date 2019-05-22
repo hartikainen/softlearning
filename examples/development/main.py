@@ -65,8 +65,7 @@ class ExperimentRunner(tune.Trainable):
 
                 full_environment_variant = copy.deepcopy(variant)
                 full_environment_variant[
-                    'environment_params']['evaluation'] = (
-                        evaluation_environment_params)
+                    'environment_params']['evaluation'] = env_variant
 
                 env_variant_path = os.path.join(env_logdir,
                                                 'evaluation_params.json')
