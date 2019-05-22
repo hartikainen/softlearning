@@ -203,11 +203,11 @@ class RLAlgorithm(tf.contrib.checkpoint.Checkpointable):
             gt.stamp('evaluation_paths')
 
             training_metrics = self._evaluate_rollouts(
-                training_paths, training_environment)
+                training_paths, training_environment, self._total_timestep)
             gt.stamp('training_metrics')
             if evaluation_paths:
                 evaluation_metrics = self._evaluate_rollouts(
-                    evaluation_paths, evaluation_environment)
+                    evaluation_paths, evaluation_environment, self._total_timestep)
                 gt.stamp('evaluation_metrics')
             else:
                 evaluation_metrics = {}
@@ -295,7 +295,7 @@ class RLAlgorithm(tf.contrib.checkpoint.Checkpointable):
 
         return all_paths
 
-    def _evaluate_rollouts_2(self, paths, env):
+    def _evaluate_rollouts_2(self, paths, env, timestep):
         total_returns = [path['rewards'].sum() for path in paths]
         episode_lengths = [len(p['rewards']) for p in paths]
 
@@ -308,6 +308,8 @@ class RLAlgorithm(tf.contrib.checkpoint.Checkpointable):
             ('episode-length-min', np.min(episode_lengths)),
             ('episode-length-max', np.max(episode_lengths)),
             ('episode-length-std', np.std(episode_lengths)),
+
+            ('total_timestep', timestep),
         ))
 
         env_infos = env.get_path_infos(paths)
@@ -316,14 +318,14 @@ class RLAlgorithm(tf.contrib.checkpoint.Checkpointable):
 
         return diagnostics
 
-    def _evaluate_rollouts(self, paths, envs):
+    def _evaluate_rollouts(self, paths, envs, timestep):
         """Compute evaluation metrics for the given rollouts."""
 
         if not isinstance(envs, (tuple, list)):
             paths, envs = [paths], [envs]
 
         diagnostics = [
-            self._evaluate_rollouts_2(path, env)
+            self._evaluate_rollouts_2(path, env, timestep)
             for path, env in zip(paths, envs)
         ]
 
