@@ -22,7 +22,7 @@ class HopperPotholeEnv(HopperEnv):
     def __init__(self,
                  pothole_depth=0.025,
                  pothole_length=0.25,
-                 pothole_distance=5.0,
+                 pothole_distance=7.0,
                  *args,
                  **kwargs):
         self._pothole_depth = pothole_depth
@@ -125,7 +125,9 @@ class HopperPotholeEnv(HopperEnv):
         healthy_state = np.all(
             np.logical_and(min_state < state, state < max_state))
         healthy_z = min_z < z < max_z
-        healthy_angle = min_angle < angle < max_angle
+        healthy_angle = (
+            (min_angle < angle < max_angle)
+            or should_be_falling)
 
         is_healthy = all((healthy_state, healthy_z, healthy_angle))
 

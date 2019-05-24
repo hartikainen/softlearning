@@ -372,7 +372,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             'type': 'SimpleReplayPool',
             'kwargs': {
                 'max_size': tune.grid_search([
-                    int(1e5), int(1.5e5), int(5e5), int(1e6)
+                    int(1e5), int(3e5), int(1e6)
                 ]),
             }
         },

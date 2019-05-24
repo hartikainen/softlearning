@@ -121,7 +121,9 @@ class Walker2dPotholeEnv(Walker2dEnv):
             max_z -= self._pothole_depth
 
         healthy_z = min_z < z < max_z
-        healthy_angle = min_angle < angle < max_angle
+        healthy_angle = (
+            (min_angle < angle < max_angle)
+            or should_be_falling)
 
         is_healthy = healthy_z and healthy_angle
 
