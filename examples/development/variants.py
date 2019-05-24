@@ -323,35 +323,35 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                         ['training']
                         ['kwargs'],
                         'perturb_action_kwargs': {
+                            'perturbation_probability': 0.01,
+                        },
+                    })),
+                },
+                {
+                    'domain': domain,
+                    'task': task,
+                    'universe': universe,
+                    'kwargs': tune.sample_from(lambda spec: ({
+                        **spec.get('config', spec)
+                        ['environment_params']
+                        ['training']
+                        ['kwargs'],
+                        'perturb_action_kwargs': {
+                            'perturbation_probability': 0.03,
+                        },
+                    })),
+                },
+                {
+                    'domain': domain,
+                    'task': task,
+                    'universe': universe,
+                    'kwargs': tune.sample_from(lambda spec: ({
+                        **spec.get('config', spec)
+                        ['environment_params']
+                        ['training']
+                        ['kwargs'],
+                        'perturb_action_kwargs': {
                             'perturbation_probability': 0.1,
-                        },
-                    })),
-                },
-                {
-                    'domain': domain,
-                    'task': task,
-                    'universe': universe,
-                    'kwargs': tune.sample_from(lambda spec: ({
-                        **spec.get('config', spec)
-                        ['environment_params']
-                        ['training']
-                        ['kwargs'],
-                        'perturb_action_kwargs': {
-                            'perturbation_probability': 0.2,
-                        },
-                    })),
-                },
-                {
-                    'domain': domain,
-                    'task': task,
-                    'universe': universe,
-                    'kwargs': tune.sample_from(lambda spec: ({
-                        **spec.get('config', spec)
-                        ['environment_params']
-                        ['training']
-                        ['kwargs'],
-                        'perturb_action_kwargs': {
-                            'perturbation_probability': 0.3,
                         },
                     })),
                 },
