@@ -15,6 +15,8 @@ from softlearning.replay_pools.utils import get_replay_pool_from_variant
 from softlearning.samplers.utils import get_sampler_from_variant
 from softlearning.value_functions.utils import get_Q_function_from_variant
 
+from softlearning.preprocessors.utils import get_preprocessor_from_params
+from softlearning.models.utils import get_inputs_for_environment
 from softlearning.misc.utils import set_seed, initialize_tf_variables
 from examples.instrument import run_example_local
 
@@ -39,6 +41,22 @@ class ExperimentRunner(tune.Trainable):
         tf.compat.v1.reset_default_graph()
         tf.keras.backend.clear_session()
 
+    def _create_preprocessors(self, variant, inputs, env):
+        observation_preprocessors_params = variant.pop(
+            'preprocessors_params', {})
+        preprocessors = {key: None for key in inputs}
+
+        for name, observation_input in inputs.items():
+            preprocessor_params = observation_preprocessors_params.get(
+                name, None)
+            if not preprocessor_params:
+                continue
+            preprocessor_params['kwargs']['inputs'] = observation_input
+            preprocessor = get_preprocessor_from_params(env, preprocessor_params)
+            preprocessors[name] = preprocessor
+
+        return preprocessors
+
     def _build(self):
         variant = copy.deepcopy(self._variant)
 
@@ -50,17 +68,42 @@ class ExperimentRunner(tune.Trainable):
             if 'evaluation' in environment_params
             else training_environment)
 
+        observation_inputs, action_input = get_inputs_for_environment(
+            training_environment)
+
+        preprocessors = self._create_preprocessors(
+            variant, observation_inputs, training_environment)
+
         replay_pool = self.replay_pool = (
             get_replay_pool_from_variant(variant, training_environment))
         sampler = self.sampler = get_sampler_from_variant(variant)
+
+        Q_inputs = {**observation_inputs, 'actions': action_input}
+        Q_inputs = [Q_inputs[key] for key in sorted(Q_inputs.keys())]
+        Q_preprocessors = {**preprocessors, 'actions': None}
+        Q_preprocessors = [
+            Q_preprocessors[key] for key in sorted(Q_preprocessors.keys())]
         Qs = self.Qs = get_Q_function_from_variant(
-            variant, training_environment)
+            variant,
+            training_environment,
+            inputs=Q_inputs,
+            preprocessors=Q_preprocessors,
+        )
+
+        policy_inputs = [
+            observation_inputs[key] for key in sorted(observation_inputs)]
         policy = self.policy = get_policy_from_variant(
-            variant, training_environment)
+            variant,
+            training_environment,
+            inputs=policy_inputs,
+            preprocessors=[
+                preprocessors[key] for key in sorted(preprocessors)])
 
         initial_exploration_policy = self.initial_exploration_policy = (
             get_policy_from_params(
-                variant['exploration_policy_params'], training_environment))
+                variant['exploration_policy_params'],
+                training_environment,
+                inputs=policy_inputs))
 
         self.algorithm = get_algorithm_from_variant(
             variant=self._variant,
