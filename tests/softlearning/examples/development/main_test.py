@@ -2,6 +2,7 @@ import copy
 
 import numpy as np
 import tensorflow as tf
+import pytest
 
 from examples.development.main import ExperimentRunner
 
@@ -42,6 +43,22 @@ CONFIG = {
             'task': 'v3',
             'kwargs': {},
         },
+        'evaluation': [
+            {
+                'universe': 'gym',
+                'domain': 'Swimmer',
+                'task': 'v3',
+                'kwargs': {},
+            },
+            {
+                'universe': 'gym',
+                'domain': 'Swimmer',
+                'task': 'v3',
+                'kwargs': {
+                    'forward_reward_weight': 10.0
+                },
+            },
+        ]
     },
     'git_sha':
     'fb03db4b0ffafc61d8ea6d550e7fdebeecb34d15 '
@@ -339,8 +356,11 @@ class TestExperimentRunner(tf.test.TestCase):
         session = experiment_runner._session
         experiment_runner._build()
 
+        self.assertIsInstance(
+            experiment_runner.training_environment,
+            type(experiment_runner.evaluation_environments[0]))
         self.assertIsNot(experiment_runner.training_environment,
-                         experiment_runner.evaluation_environment)
+                         experiment_runner.evaluation_environments[0])
 
         self.assertEqual(experiment_runner.algorithm._epoch, 0)
         self.assertEqual(experiment_runner.algorithm._timestep, 0)
@@ -353,6 +373,7 @@ class TestExperimentRunner(tf.test.TestCase):
         for i in range(2):
             experiment_runner.train()
 
+    @pytest.mark.skip
     def test_uses_training_env_as_evaluation_env(self):
         tf.reset_default_graph()
         tf.keras.backend.clear_session()
