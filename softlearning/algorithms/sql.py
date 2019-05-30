@@ -3,10 +3,13 @@ from collections import OrderedDict
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
+from flatten_dict import flatten
 
+from softlearning.models.utils import flatten_input_structure
 from softlearning.misc.kernel import adaptive_isotropic_gaussian_kernel
 
 from .rl_algorithm import RLAlgorithm
+from .sac import td_target
 
 EPS = 1e-6
 
@@ -117,20 +120,12 @@ class SQL(RLAlgorithm):
         self._train_Q = train_Q
         self._train_policy = train_policy
 
-        observation_shape = training_environment.active_observation_shape
-        action_shape = training_environment.action_space.shape
-
-        assert len(observation_shape) == 1, observation_shape
-        self._observation_shape = observation_shape
-        assert len(action_shape) == 1, action_shape
-        self._action_shape = action_shape
-
         if use_saved_Q:
             saved_Q_weights = tuple(Q.get_weights() for Q in self._Qs)
         if use_saved_policy:
             saved_policy_weights = policy.get_weights()
 
-        self._session.run(tf.global_variables_initializer())
+        self._session.run(tf.compat.v1.global_variables_initializer())
 
         if use_saved_Q:
             for Q, Q_weights in zip(self._Qs, saved_Q_weights):
@@ -141,117 +136,97 @@ class SQL(RLAlgorithm):
         self._build()
 
     def _build(self):
-        self._training_ops = {}
+        super(SQL, self)._build()
 
-        self._init_global_step()
-        self._init_placeholders()
         self._init_td_update()
         self._init_svgd_update()
         self._init_diagnostics_ops()
 
-    def _init_placeholders(self):
-        """Create all necessary placeholders."""
+    def _get_Q_target(self):
+        next_Q_observations = {
+            name: tf.reshape(
+                tf.tile(
+                    self._placeholders['next_observations'][name][:, tf.newaxis, :],
+                    (1, self._value_n_particles, 1)),
+                (-1, *self._placeholders['next_observations'][name].shape[1:]))
+            for name in self._Qs[0].observation_keys
+        }
 
-        self._iteration_ph = tf.placeholder(
-            tf.int64, shape=None, name='iteration')
-
-        self._observations_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, *self._observation_shape),
-            name='observations')
-
-        self._next_observations_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, *self._observation_shape),
-            name='next_observations')
-
-        self._actions_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, *self._action_shape),
-            name='actions')
-
-        self._next_actions_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, *self._action_shape),
-            name='next_actions')
-
-        self._rewards_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, 1),
-            name='rewards')
-
-        self._terminals_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, 1),
-            name='terminals')
-
-    def _init_td_update(self):
-        """Create a minimization operation for Q-function update."""
-
-        next_observations = tf.tile(
-            self._next_observations_ph[:, tf.newaxis, :],
-            (1, self._value_n_particles, 1))
-        next_observations = tf.reshape(
-            next_observations, (-1, *self._observation_shape))
-
-        target_actions = tf.random_uniform(
-            (1, self._value_n_particles, *self._action_shape), -1, 1)
+        action_shape = self._placeholders['actions'].shape[1:].as_list()
+        target_actions = tf.random.uniform(
+            (1, self._value_n_particles, *action_shape), -1, 1)
         target_actions = tf.tile(
-            target_actions, (tf.shape(self._next_observations_ph)[0], 1, 1))
-        target_actions = tf.reshape(target_actions, (-1, *self._action_shape))
+            target_actions,
+            (tf.shape(self._placeholders['actions'])[0], 1, 1))
+        target_actions = tf.reshape(target_actions, (-1, *action_shape))
 
-        Q_next_targets = tuple(
-            Q([next_observations, target_actions])
-            for Q in self._Q_targets)
+        next_Q_inputs = flatten_input_structure(
+            {**next_Q_observations, 'actions': target_actions})
+        next_Qs_values = tuple(Q(next_Q_inputs) for Q in self._Q_targets)
 
-        min_Q_next_targets = tf.reduce_min(Q_next_targets, axis=0)
+        min_next_Q = tf.reduce_min(next_Qs_values, axis=0)
 
-        assert_shape(min_Q_next_targets, (None, 1))
+        assert_shape(min_next_Q, (None, 1))
 
-        min_Q_next_target = tf.reshape(
-            min_Q_next_targets, (-1, self._value_n_particles))
+        min_Q_next_target = tf.reshape(min_next_Q, (-1, self._value_n_particles))
 
         assert_shape(min_Q_next_target, (None, self._value_n_particles))
 
-        # Equation 10:
-        next_value = tf.reduce_logsumexp(
+        # Equation 10 in [1]:
+        next_values = tf.reduce_logsumexp(
             min_Q_next_target, keepdims=True, axis=1)
-        assert_shape(next_value, [None, 1])
+
+        assert_shape(next_values, [None, 1])
 
         # Importance weights add just a constant to the value.
-        next_value -= tf.log(tf.cast(self._value_n_particles, tf.float32))
-        next_value += np.prod(self._action_shape) * np.log(2)
+        next_values -= tf.math.log(
+            tf.cast(self._value_n_particles, tf.float32))
+        next_values += np.prod(action_shape) * np.log(2)
 
-        # \hat Q in Equation 11:
-        Q_target = tf.stop_gradient(
-            self._reward_scale
-            * self._rewards_ph
-            + (1 - self._terminals_ph)
-            * self._discount
-            * next_value)
+        assert_shape(next_values, [None, 1])
+
+        terminals = tf.cast(self._placeholders['terminals'], next_values.dtype)
+
+        # \hat Q in Equation 11 in [1]:
+        Q_target = td_target(
+            reward=self._reward_scale * self._placeholders['rewards'],
+            discount=self._discount,
+            next_value=(1 - terminals) * next_values)
+
+        return tf.stop_gradient(Q_target)
+
+    def _init_td_update(self):
+        """Create a minimization operation for Q-function update."""
+        Q_target = self._get_Q_target()
         assert_shape(Q_target, [None, 1])
 
-        Q_values = self._Q_values = tuple(
-            Q([self._observations_ph, self._actions_ph])
-            for Q in self._Qs)
+        Q_observations = {
+            name: self._placeholders['observations'][name]
+            for name in self._Qs[0].observation_keys
+        }
+        Q_actions = self._placeholders['actions']
+        Q_inputs = flatten_input_structure({
+            **Q_observations, 'actions': Q_actions})
+        Q_values = self._Q_values = tuple(Q(Q_inputs) for Q in self._Qs)
 
         for Q_value in self._Q_values:
             assert_shape(Q_value, [None, 1])
 
-        # Equation 11:
+        # Equation 11 in [1]:
         Q_losses = self._Q_losses = tuple(
-            tf.losses.mean_squared_error(
+            tf.compat.v1.losses.mean_squared_error(
                 labels=Q_target, predictions=Q_value, weights=0.5)
             for Q_value in Q_values)
 
         if self._train_Q:
             self._Q_optimizers = tuple(
-                tf.train.AdamOptimizer(
+                tf.compat.v1.train.AdamOptimizer(
                     learning_rate=self._Q_lr,
                     name='{}_{}_optimizer'.format(Q._name, i)
                 ) for i, Q in enumerate(self._Qs))
             Q_training_ops = tuple(
-                Q_optimizer.minimize(loss=Q_loss, var_list=Q.trainable_variables)
+                Q_optimizer.minimize(
+                    loss=Q_loss, var_list=Q.trainable_variables)
                 for i, (Q, Q_loss, Q_optimizer)
                 in enumerate(zip(self._Qs, Q_losses, self._Q_optimizers)))
 
@@ -260,19 +235,21 @@ class SQL(RLAlgorithm):
     def _init_svgd_update(self):
         """Create a minimization operation for policy update (SVGD)."""
 
-        actions = self._policy.actions([
-            tf.reshape(
+        policy_inputs = flatten_input_structure({
+            name: tf.reshape(
                 tf.tile(
-                    self._observations_ph[:, None, :],
+                    self._placeholders['observations'][name][:, None, :],
                     (1, self._kernel_n_particles, 1)),
-                (-1, *self._observation_shape))
-        ])
+                (-1, *self._placeholders['observations'][name].shape[1:]))
+            for name in self._policy.observation_keys
+        })
+        actions = self._policy.actions(policy_inputs)
+        action_shape = actions.shape[1:]
         actions = tf.reshape(
-            actions,
-            (-1, self._kernel_n_particles, *self._action_shape))
+            actions, (-1, self._kernel_n_particles, *action_shape))
 
         assert_shape(
-            actions, (None, self._kernel_n_particles, *self._action_shape))
+            actions, (None, self._kernel_n_particles, *action_shape))
 
         # SVGD requires computing two empirical expectations over actions
         # (see Appendix C1.1.). To that end, we first sample a single set of
@@ -287,36 +264,37 @@ class SQL(RLAlgorithm):
             actions, [n_fixed_actions, n_updated_actions], axis=1)
         fixed_actions = tf.stop_gradient(fixed_actions)
         assert_shape(fixed_actions,
-                     [None, n_fixed_actions, *self._action_shape])
+                     [None, n_fixed_actions, *action_shape])
         assert_shape(updated_actions,
-                     [None, n_updated_actions, *self._action_shape])
+                     [None, n_updated_actions, *action_shape])
 
-        Q_log_targets = tuple(
-            Q([
-                tf.reshape(
+        Q_observations = {
+            name: tf.reshape(
                     tf.tile(
-                        self._observations_ph[:, None, :],
+                        self._placeholders['observations'][name][:, None, :],
                         (1, n_fixed_actions, 1)),
-                    (-1, *self._observation_shape)),
-                tf.reshape(fixed_actions, (-1, *self._action_shape))
-            ])
-            for Q in self._Qs)
+                    (-1, *self._placeholders['observations'][name].shape[1:]))
+            for name in self._policy.observation_keys
+        }
+        Q_actions = tf.reshape(fixed_actions, (-1, *action_shape))
+        Q_inputs = flatten_input_structure({
+            **Q_observations, 'actions': Q_actions})
+        Q_log_targets = tuple(Q(Q_inputs) for Q in self._Qs)
         min_Q_log_target = tf.reduce_min(Q_log_targets, axis=0)
         svgd_target_values = tf.reshape(
-            min_Q_log_target,
-            (-1, n_fixed_actions, 1))
+            min_Q_log_target, (-1, n_fixed_actions, 1))
 
         # Target log-density. Q_soft in Equation 13:
         assert self._policy._squash
         squash_correction = tf.reduce_sum(
-            tf.log(1 - fixed_actions ** 2 + EPS), axis=-1, keepdims=True)
+            tf.math.log(1 - fixed_actions ** 2 + EPS), axis=-1, keepdims=True)
         log_probs = svgd_target_values + squash_correction
 
         grad_log_probs = tf.gradients(log_probs, fixed_actions)[0]
         grad_log_probs = tf.expand_dims(grad_log_probs, axis=2)
         grad_log_probs = tf.stop_gradient(grad_log_probs)
         assert_shape(grad_log_probs,
-                     [None, n_fixed_actions, 1, *self._action_shape])
+                     [None, n_fixed_actions, 1, *action_shape])
 
         kernel_dict = self._kernel_fn(xs=fixed_actions, ys=updated_actions)
 
@@ -328,7 +306,7 @@ class SQL(RLAlgorithm):
         action_gradients = tf.reduce_mean(
             kappa * grad_log_probs + kernel_dict["gradient"], axis=1)
         assert_shape(action_gradients,
-                     [None, n_updated_actions, *self._action_shape])
+                     [None, n_updated_actions, *action_shape])
 
         # Propagate the gradient through the policy network (Equation 14).
         gradients = tf.gradients(
@@ -341,7 +319,7 @@ class SQL(RLAlgorithm):
             for w, g in zip(self._policy.trainable_variables, gradients)
         ])
 
-        self._policy_optimizer = tf.train.AdamOptimizer(
+        self._policy_optimizer = tf.compat.v1.train.AdamOptimizer(
             learning_rate=self._policy_lr,
             name='policy_optimizer'
         )
@@ -397,16 +375,17 @@ class SQL(RLAlgorithm):
     def _get_feed_dict(self, iteration, batch):
         """Construct a TensorFlow feed dictionary from a sample batch."""
 
+        batch_flat = flatten(batch)
+        placeholders_flat = flatten(self._placeholders)
+
         feed_dict = {
-            self._observations_ph: batch['observations'],
-            self._actions_ph: batch['actions'],
-            self._next_observations_ph: batch['next_observations'],
-            self._rewards_ph: batch['rewards'],
-            self._terminals_ph: batch['terminals'],
+            placeholders_flat[key]: batch_flat[key]
+            for key in placeholders_flat.keys()
+            if key in batch_flat.keys()
         }
 
         if iteration is not None:
-            feed_dict[self._iteration_ph] = iteration
+            feed_dict[self._placeholders['iteration']] = iteration
 
         return feed_dict
 
@@ -415,22 +394,23 @@ class SQL(RLAlgorithm):
                         batch,
                         evaluation_paths,
                         training_paths):
-        """Record diagnostic information.
+        """Return diagnostic information as ordered dictionary.
 
-        Records the mean and standard deviation of Q-function and the
-        squared Bellman residual of the  s (mean squared Bellman error)
-        for a sample batch.
-
-        Also call the `draw` method of the plotter, if plotter is defined.
+        Also calls the `draw` method of the plotter, if plotter defined.
         """
 
         feed_dict = self._get_feed_dict(iteration, batch)
-        diagnostics = self._session.run(self._diagnostics_ops, feed_dict)
+        # TODO(hartikainen): We need to unwrap self._diagnostics_ops from its
+        # tensorflow `_DictWrapper`.
+        diagnostics = self._session.run({**self._diagnostics_ops}, feed_dict)
 
         diagnostics.update(OrderedDict([
             (f'policy/{key}', value)
             for key, value in
-            self._policy.get_diagnostics(batch['observations']).items()
+            self._policy.get_diagnostics(flatten_input_structure({
+                name: batch['observations'][name]
+                for name in self._policy.observation_keys
+            })).items()
         ]))
 
         if self._plotter:
