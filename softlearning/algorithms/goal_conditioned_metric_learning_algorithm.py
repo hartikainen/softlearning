@@ -17,7 +17,7 @@ class GoalConditionedMetricLearningAlgorithm(MetricLearningAlgorithm):
             name='goals',
         )
 
-    def _action_inputs(self, observations):
+    def _policy_inputs(self, observations):
         return [observations, self._goals_ph]
 
     def _Q_inputs(self, observations, actions):

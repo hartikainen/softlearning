@@ -107,7 +107,7 @@ class SAC(RLAlgorithm):
         self._init_critic_update()
         self._init_diagnostics_ops()
 
-    def _action_inputs(self, observations):
+    def _policy_inputs(self, observations):
         policy_inputs = flatten_input_structure({
             name: observations[name]
             for name in self._policy.observation_keys
@@ -124,7 +124,7 @@ class SAC(RLAlgorithm):
         return Q_inputs
 
     def _get_Q_target(self):
-        action_inputs = self._action_inputs(
+        action_inputs = self._policy_inputs(
             observations=self._placeholders['next_observations'])
         next_actions = self._policy.actions(action_inputs)
         next_log_pis = self._policy.log_pis(action_inputs, next_actions)
@@ -214,7 +214,7 @@ class SAC(RLAlgorithm):
         See Section 4.2 in [1], for further information of the policy update,
         and Section 5 in [1] for further information of the entropy update.
         """
-        action_inputs = self._action_inputs(
+        action_inputs = self._policy_inputs(
             observations=self._placeholders['observations'])
         actions = self._policy.actions(action_inputs)
         log_pis = self._policy.log_pis(action_inputs, actions)

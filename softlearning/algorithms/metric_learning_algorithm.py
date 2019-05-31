@@ -46,7 +46,7 @@ class MetricLearningAlgorithm(SAC):
         ), axis=1, keepdims=True), tf.float32)
 
         if self._use_distance_for == 'reward':
-            policy_inputs = self._action_inputs(
+            policy_inputs = self._policy_inputs(
                 observations=self._next_observations_ph)
             next_actions = self._policy.actions(policy_inputs)
             next_log_pis = self._policy.log_pis(policy_inputs, next_actions)
@@ -72,7 +72,7 @@ class MetricLearningAlgorithm(SAC):
 
         elif self._use_distance_for == 'value':
             if self._metric_learner.distance_estimator.condition_with_action:
-                policy_inputs = self._action_inputs(
+                policy_inputs = self._policy_inputs(
                     observations=self._next_observations_ph)
                 next_actions = self._policy.actions(policy_inputs)
 
@@ -91,7 +91,7 @@ class MetricLearningAlgorithm(SAC):
                 self._observations_ph, self._goals_ph, self._actions_ph)
             distances1 = self._metric_learner.distance_estimator(inputs1)
 
-            policy_inputs = self._action_inputs(
+            policy_inputs = self._policy_inputs(
                 observations=self._next_observations_ph)
             next_actions = self._policy.actions(policy_inputs)
             inputs2 = self._metric_learner._distance_estimator_inputs(

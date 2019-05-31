@@ -33,7 +33,7 @@ class GoalConditionedSAC(SAC):
             name='goals',
         )
 
-    def _action_inputs(self, observations):
+    def _policy_inputs(self, observations):
         return [observations, self._goals_ph]
 
     def _Q_inputs(self, observations, actions):
@@ -168,7 +168,7 @@ class HERSAC(GoalConditionedSAC):
         super(HERSAC, self).__init__(*args, **kwargs)
 
     def _get_Q_target(self):
-        action_inputs = self._action_inputs(
+        action_inputs = self._policy_inputs(
             observations=self._next_observations_ph)
         next_actions = self._policy.actions(action_inputs)
 
