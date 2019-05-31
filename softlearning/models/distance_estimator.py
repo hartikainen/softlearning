@@ -45,13 +45,17 @@ def get_distance_estimator_from_variant(variant, env, *args, **kwargs):
     else:
         raise NotImplementedError(distance_input_type)
 
-    if variant['metric_learner_params']['kwargs']['condition_with_action']:
+    condition_with_action = distance_estimator_kwargs.pop('condition_with_action')
+    if condition_with_action:
         input_shapes = (input_shapes[0], action_shape, input_shapes[1])
         preprocessors = (preprocessors[0], None, preprocessors[1])
 
-    return DISTANCE_ESTIMATORS[distance_estimator_type](
+    distance_estimator = DISTANCE_ESTIMATORS[distance_estimator_type](
         input_shapes,
         *args,
         preprocessors=preprocessors,
         **distance_estimator_kwargs,
         **kwargs)
+    distance_estimator.condition_with_action = condition_with_action
+
+    return distance_estimator

@@ -31,7 +31,6 @@ class MetricLearner(object):
                  train_every_n_steps=1,
                  n_train_repeat=1,
                  distance_estimator=None,
-                 condition_with_action=False,
                  distance_input_type='full'):
         self._env = env
         self._policy = policy
@@ -40,7 +39,6 @@ class MetricLearner(object):
         self._distance_learning_rate = distance_learning_rate
 
         self.distance_estimator = distance_estimator
-        self._condition_with_action = condition_with_action
         self._distance_input_type = distance_input_type
 
         self._train_every_n_steps = train_every_n_steps
@@ -82,7 +80,7 @@ class MetricLearner(object):
                                    actions):
         inputs = [observations1]
 
-        if self._condition_with_action:
+        if self.distance_estimator.condition_with_action:
             inputs.append(actions)
 
         if self._distance_input_type == 'full':
@@ -317,7 +315,7 @@ class HingeMetricLearner(MetricLearner):
         ), (1, 2, 1))
         observations = tf.unstack(zero_observations, 2, axis=1)
 
-        if self._condition_with_action:
+        if self.distance_estimator.condition_with_action:
             raise ValueError(self._distance_input_type)
 
         with tf.control_dependencies([tf.assert_equal(*observations)]):
@@ -369,7 +367,7 @@ class HingeMetricLearner(MetricLearner):
         step_constraints = self._get_step_constraints()
         zero_constraints = (
             self._get_zero_constraints()
-            if not self._condition_with_action
+            if not self.distance_estimator.condition_with_action
             else tf.constant(0.0))
         triangle_inequality_constraints = (
             self._get_triangle_inequality_constraints())
@@ -577,7 +575,6 @@ class TemporalDifferenceMetricLearner(MetricLearner):
     def __init__(self,
                  distance_estimator,
                  *args,
-                 condition_with_action=True,
                  ground_truth_terminals=False,
                  **kwargs):
         self._ground_truth_terminals = ground_truth_terminals
@@ -586,8 +583,8 @@ class TemporalDifferenceMetricLearner(MetricLearner):
         result = super(TemporalDifferenceMetricLearner, self).__init__(
             *args,
             distance_estimator=distance_estimator,
-            condition_with_action=condition_with_action,
             **kwargs)
+        assert self.distance_estimator.condition_with_action
         return result
 
     def _init_placeholders(self):

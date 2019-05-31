@@ -40,7 +40,8 @@ CONFIG = {
         'kwargs': {
             'activation': 'relu',
             'hidden_layer_sizes': (256, 256),
-            'output_activation': 'linear'
+            'output_activation': 'linear',
+            'condition_with_action': True,
         },
         'type': 'FeedforwardDistanceEstimator'
     },
@@ -72,7 +73,6 @@ CONFIG = {
     },
     'metric_learner_params': {
         'kwargs': {
-            'condition_with_action': False,
             'distance_input_type': 'full',
             'distance_learning_rate': 0.0003,
             'n_train_repeat': 1,

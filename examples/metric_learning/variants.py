@@ -249,9 +249,6 @@ def get_variant_spec(args):
             'distance_learning_rate': 3e-4,
             'n_train_repeat': 1,
 
-            'condition_with_action': (
-                spec['metric_learner_params']['type']
-                == 'TemporalDifferenceMetricLearner'),
             'distance_input_type': tune.grid_search([
                 'full',
                 # 'xy_coordinates',
@@ -459,6 +456,11 @@ def get_variant_spec(args):
                 'hidden_layer_sizes': (256, 256),
                 'activation': 'relu',
                 'output_activation': 'linear',
+                'condition_with_action': tune.sample_from(lambda spec: (
+                    spec.get('config', spec)
+                    ['metric_learner_params']
+                    ['type']
+                    == 'TemporalDifferenceMetricLearner')),
             }
         },
         'lambda_estimator_params': {

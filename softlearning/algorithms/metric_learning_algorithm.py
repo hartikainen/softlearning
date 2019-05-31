@@ -71,7 +71,7 @@ class MetricLearningAlgorithm(SAC):
             values = next_value
 
         elif self._use_distance_for == 'value':
-            if self._metric_learner._condition_with_action:
+            if self._metric_learner.distance_estimator.condition_with_action:
                 policy_inputs = self._action_inputs(
                     observations=self._next_observations_ph)
                 next_actions = self._policy.actions(policy_inputs)
