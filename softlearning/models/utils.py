@@ -11,7 +11,7 @@ from .distance_estimator import get_distance_estimator_from_variant
 def get_metric_learner_from_variant(variant, env, policy):
     from .metric_learner import (
         HingeMetricLearner,
-        OnPolicyMetricLearner,
+        SupervisedMetricLearner,
         TemporalDifferenceMetricLearner)
     distance_estimator = get_distance_estimator_from_variant(variant, env)
 
@@ -28,8 +28,8 @@ def get_metric_learner_from_variant(variant, env, policy):
     })
 
     metric_learner_type = metric_learner_params['type']
-    if metric_learner_type == 'OnPolicyMetricLearner':
-        metric_learner = OnPolicyMetricLearner(**metric_learner_kwargs)
+    if metric_learner_type == 'SupervisedMetricLearner':
+        metric_learner = SupervisedMetricLearner(**metric_learner_kwargs)
     if metric_learner_type == 'TemporalDifferenceMetricLearner':
         metric_learner = TemporalDifferenceMetricLearner(
             **metric_learner_kwargs)

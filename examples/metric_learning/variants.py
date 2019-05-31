@@ -269,7 +269,7 @@ def get_variant_spec(args):
                 },
             }
         elif (spec['metric_learner_params']['type']
-              == 'OnPolicyMetricLearner'):
+              == 'SupervisedMetricLearner'):
             kwargs = {
                 **shared_kwargs,
                 **{
@@ -420,7 +420,7 @@ def get_variant_spec(args):
                 'max_size': int(1e6),
                 'on_policy_window': tune.sample_from(lambda spec: (
                     {
-                        'OnPolicyMetricLearner': 1000,
+                        'SupervisedMetricLearner': 1000,
                     }.get(spec.get('config', spec)
                           ['metric_learner_params']
                           ['type'],
@@ -448,7 +448,7 @@ def get_variant_spec(args):
         'metric_learner_params': {
             'type': tune.grid_search([
                 'TemporalDifferenceMetricLearner',
-                # 'OnPolicyMetricLearner',
+                # 'SupervisedMetricLearner',
                 # 'HingeMetricLearner',
             ]),
             'kwargs': tune.sample_from(metric_learner_kwargs),

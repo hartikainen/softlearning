@@ -78,7 +78,7 @@ CONFIG = {
             'n_train_repeat': 1,
             'train_every_n_steps': 1,
         },
-        'type': 'OnPolicyMetricLearner'
+        'type': 'SupervisedMetricLearner'
     },
 
     'policy_params': {

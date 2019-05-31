@@ -527,7 +527,7 @@ class HingeMetricLearner(MetricLearner):
         }
 
 
-class OnPolicyMetricLearner(MetricLearner):
+class SupervisedMetricLearner(MetricLearner):
     def _init_distance_update(self):
         """Create minimization operations for distance estimator."""
         observations = tf.unstack(
