@@ -286,57 +286,6 @@ class MetricLearningAlgorithm(SAC):
             max_xy_distance = np.max(all_xy_distances)
             result['max_xy_distance'] = max_xy_distance
 
-        elif isinstance(self._training_environment.unwrapped,
-                        (SwimmerEnv,
-                         AntEnv,
-                         HumanoidEnv,
-                         HalfCheetahEnv,
-                         HopperEnv,
-                         Walker2dEnv)):
-            if self._training_environment.unwrapped._exclude_current_positions_from_observation:
-                raise NotImplementedError
-
-            if isinstance(self._training_environment._env.env, GoalEnvironment):
-                return result
-
-            all_observations = np.concatenate(
-                [path['observations'] for path in paths], axis=0)
-            all_actions = np.concatenate(
-                [path['actions'] for path in paths], axis=0)
-            all_xy_positions = all_observations[:, :2]
-            all_xy_distances = np.linalg.norm(all_xy_positions, ord=2, axis=1)
-            max_xy_distance = np.max(all_xy_distances)
-
-            temporary_goals = np.tile(self._temporary_goal[None, :],
-                                      (all_observations.shape[0], 1))
-            distances_from_goal = (
-                self._metric_learner.distance_estimator.predict(
-                    self._metric_learner._distance_estimator_inputs(
-                        all_observations, temporary_goals, all_actions))[:, 0])
-            l2_distances_from_goal = np.linalg.norm(
-                all_xy_positions - temporary_goals[:, :2], ord=2, axis=1)
-            goal_l2_distance_from_origin = np.linalg.norm(
-                self._temporary_goal[:2], ord=2)
-            goal_estimated_distance_from_origin = (
-                self._metric_learner.distance_estimator.predict(
-                    self._metric_learner._distance_estimator_inputs(
-                        self._first_observation[None, :],
-                        self._temporary_goal[None, :],
-                        np.zeros((1, *all_actions.shape[1:]))))[0, 0])
-
-            result['max_xy_distance'] = max_xy_distance
-            result['min_distance_from_goal'] = np.min(distances_from_goal)
-            result['min_l2_distance_from_goal'] = np.min(
-                l2_distances_from_goal)
-            result['goal_l2_distance_from_origin'] = (
-                goal_l2_distance_from_origin)
-            result['goal_estimated_distance_from_origin'] = (
-                goal_estimated_distance_from_origin)
-            result['goal_x'] = self._temporary_goal[0]
-            result['goal_y'] = self._temporary_goal[1]
-            result['full_goal'] = np.array2string(
-                self._temporary_goal, max_line_width=float('inf'))
-
         return result
 
     def diagnostics_distances_fn(self, observations, goals):
