@@ -244,7 +244,7 @@ class MetricLearningAlgorithm(SAC):
 
             boundaries = np.arange(0, np.max(distances) + 5, 5)
 
-            zero_distance_idx = np.where(distances == 0)
+            zero_distance_idx = np.flatnonzero(distances == 0)
 
             results = self._metric_learner._evaluate(
                 observations=observations[zero_distance_idx],
@@ -255,7 +255,7 @@ class MetricLearningAlgorithm(SAC):
                 result[f"d==0-{key}"] = value
 
             for low, high in list(zip(boundaries[:-1], boundaries[1:])):
-                within_boundary_idx = np.where(
+                within_boundary_idx = np.flatnonzero(
                     np.logical_and(low < distances, distances <= high))
 
                 results = self._metric_learner._evaluate(

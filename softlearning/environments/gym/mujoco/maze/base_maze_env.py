@@ -49,9 +49,9 @@ class BaseMazeEnv(object):
         maze_scale = 4
 
         start_positions = np.stack(
-            np.where(self.maze_blueprint == 's'), axis=-1)
+            np.flatnonzero(self.maze_blueprint == 's'), axis=-1)
         goal_positions = np.stack(
-            np.where(self.maze_blueprint == 'g'), axis=-1)
+            np.flatnonzero(self.maze_blueprint == 'g'), axis=-1)
 
         assert start_positions.shape[0] == 1, start_positions
         assert goal_positions.shape[0] == 1, goal_positions
