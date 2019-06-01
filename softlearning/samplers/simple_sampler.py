@@ -76,11 +76,17 @@ class SimpleSampler(BaseSampler):
                 for field_name, values in self._current_path.items()
             })
 
-            self.pool.add_path({
+            path_for_pool = {
                 key: value
                 for key, value in last_path.items()
                 if key != 'infos'
-            })
+            }
+
+            self.pool.add_path(path_for_pool)
+
+            if self._extra_pools:
+                for pool in self._extra_pools:
+                    pool.add_path(path_for_pool)
 
             self._last_n_paths.appendleft(last_path)
 

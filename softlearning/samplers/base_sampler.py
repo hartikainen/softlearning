@@ -7,7 +7,8 @@ class BaseSampler(object):
                  max_path_length,
                  min_pool_size,
                  batch_size,
-                 store_last_n_paths=10):
+                 store_last_n_paths=10,
+                 extra_pools=None):
         self._max_path_length = max_path_length
         self._min_pool_size = min_pool_size
         self._batch_size = batch_size
@@ -17,6 +18,7 @@ class BaseSampler(object):
         self.env = None
         self.policy = None
         self.pool = None
+        self._extra_pools = extra_pools
 
     def initialize(self, env, policy, pool):
         self.env = env

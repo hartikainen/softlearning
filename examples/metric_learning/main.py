@@ -9,7 +9,7 @@ from softlearning.environments.utils import get_environment_from_params
 from softlearning.algorithms.utils import get_algorithm_from_variant
 from softlearning.policies.utils import (
     get_policy_from_variant, get_policy_from_params)
-from softlearning.replay_pools.utils import get_replay_pool_from_variant
+from softlearning.replay_pools.utils import get_replay_pool_from_params
 from softlearning.samplers.utils import get_sampler_from_variant
 from softlearning.value_functions.utils import get_Q_function_from_variant
 from softlearning.models.utils import get_metric_learner_from_variant
@@ -31,8 +31,11 @@ class MetricExperimentRunner(ExperimentRunner):
             if 'evaluation' in environment_params
             else training_environment)
 
-        replay_pool = self.replay_pool = (
-            get_replay_pool_from_variant(variant, training_environment))
+        replay_pool = self.replay_pool = get_replay_pool_from_params(
+            variant['replay_pool_params'], training_environment)
+        distance_pool = self.replay_pool = get_replay_pool_from_params(
+            variant['distance_pool_params'], training_environment)
+        variant['sampler_params']['kwargs']['extra_pools'] = (distance_pool, )
         sampler = self.sampler = get_sampler_from_variant(variant)
         Qs = self.Qs = get_Q_function_from_variant(variant, training_environment)
         policy = self.policy = get_policy_from_variant(variant, training_environment)
@@ -41,7 +44,7 @@ class MetricExperimentRunner(ExperimentRunner):
                 variant['exploration_policy_params'], training_environment))
 
         metric_learner = get_metric_learner_from_variant(
-            variant, training_environment, policy)
+            variant, training_environment, policy, pool=distance_pool)
 
         self.algorithm = get_algorithm_from_variant(
             variant=variant,
