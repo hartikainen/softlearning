@@ -54,18 +54,28 @@ def get_distance_estimator_from_variant(variant, env, *args, **kwargs):
     observation_keys = distance_estimator_kwargs.pop(
         'observation_keys', None) or env.observation_keys
 
-    observation_shapes = OrderedDict((
-        (key, value)
-        for key, value in env.observation_shape.items()
-        if key in observation_keys
+    # These shapes need to match with
+    # `MetrciLearner._distance_estimator_inputs`
+    observation1_shapes = OrderedDict((
+        (name, shape)
+        for name, shape in env.observation_shape.items()
+        if name in observation_keys
+    ))
+    # TODO(hartikainen): This needs to change if we use only partial
+    # states as the "goal".
+    observation2_shapes = OrderedDict((
+        (name, shape)
+        for name, shape in env.observation_shape.items()
+        if name in observation_keys
     ))
     action_shape = env.action_shape
     input_shapes = {
-        'observations': observation_shapes,
+        'observations1': observation1_shapes,
+        'observations2': observation2_shapes
     }
 
     observation_preprocessors = OrderedDict()
-    for name, observation_shape in observation_shapes.items():
+    for name, observation_shape in observation1_shapes.items():
         preprocessor_params = observation_preprocessors_params.get(name, None)
         if not preprocessor_params:
             observation_preprocessors[name] = None
@@ -73,7 +83,10 @@ def get_distance_estimator_from_variant(variant, env, *args, **kwargs):
         observation_preprocessors[name] = get_preprocessor_from_params(
             env, preprocessor_params)
 
-    preprocessors = {'observations': observation_preprocessors}
+    preprocessors = {
+        'observations1': observation_preprocessors,
+        'observations2': observation_preprocessors,
+    }
 
     condition_with_action = distance_estimator_kwargs.pop('condition_with_action')
     if condition_with_action:

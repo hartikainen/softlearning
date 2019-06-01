@@ -4,14 +4,15 @@ import numpy as np
 import tensorflow as tf
 from flatten_dict import flatten
 
-from softlearning.algorithms.sac import td_target
-
 from gym.envs.mujoco.swimmer_v3 import SwimmerEnv
 from gym.envs.mujoco.ant_v3 import AntEnv
 from gym.envs.mujoco.humanoid_v3 import HumanoidEnv
 from gym.envs.mujoco.half_cheetah_v3 import HalfCheetahEnv
 from gym.envs.mujoco.hopper_v3 import HopperEnv
 from gym.envs.mujoco.walker2d_v3 import Walker2dEnv
+
+from softlearning.algorithms.sac import td_target
+from softlearning.models.utils import flatten_input_structure
 
 
 class MetricLearner(object):
@@ -97,17 +98,16 @@ class MetricLearner(object):
                                    observations1,
                                    observations2,
                                    actions):
-        raise NotImplementedError("TODO(hartikainen)")
-        inputs = {
+        inputs1 = {
             name: observations1[name]
             for name in self.distance_estimator.observation_keys
         }
-        if self.distance_estimator.condition_with_action:
-            assert actions is not None
-            inputs['actions'] = actions
 
         if self._distance_input_type == 'full':
-            pass
+            inputs2 = {
+                name: observations2[name]
+                for name in self.distance_estimator.observation_keys
+            }
 
         elif self._distance_input_type == 'xy_coordinates':
             raise NotImplementedError("TODO(hartikainen)")
@@ -121,7 +121,14 @@ class MetricLearner(object):
         else:
             raise NotImplementedError(self._distance_input_type)
 
-        return inputs
+        inputs = {'observations1': inputs1, 'observations2': inputs2}
+
+        if self.distance_estimator.condition_with_action:
+            assert actions is not None
+            inputs['actions'] = actions
+
+        inputs_flat = flatten_input_structure(inputs)
+        return inputs_flat
 
     def _training_batch(self, batch_size=256):
         batch = self._pool.random_batch(batch_size)

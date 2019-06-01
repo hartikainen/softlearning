@@ -63,15 +63,15 @@ ENVIRONMENT_PARAMS = {
     },
     'Point2DEnv': {
         'Default-v0': {
-            'observation_keys': ('observation', ),
+            'observation_keys': ('observation', 'desired_goal'),
             'terminate_on_success': True,
             'fixed_goal': (5.0, 5.0),
             'reset_positions': ((-5.0, -5.0), ),
         },
         'Wall-v0': {
-            'observation_keys': None,
+            'observation_keys': ('observation', 'desired_goal'),
             'terminate_on_success': False,
-            # 'fixed_goal': (5.0, 4.0),
+            'fixed_goal': (5.0, 4.0),
             # 'fixed_goal': (0.0, 0.0),
             # 'fixed_goal': (4.0, 0.0),
             'reset_positions': (
@@ -353,7 +353,7 @@ def get_variant_spec(args):
             'kwargs': {
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
                 'squash': True,
-                'observation_keys': None,
+                'observation_keys': ('observation', ),
                 'observation_preprocessors_params': {},
             },
         },
@@ -372,7 +372,7 @@ def get_variant_spec(args):
             'type': 'double_feedforward_Q_function',
             'kwargs': {
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
-                'observation_keys': None,
+                'observation_keys': ('observation', ),
                 'observation_preprocessors_params': {}
             }
         },
@@ -400,7 +400,7 @@ def get_variant_spec(args):
                 'action_prior': 'uniform',
                 'save_full_state': False,
 
-                'plot_distances': False,
+                'plot_distances': True,
                 'use_distance_for': tune.grid_search([
                     'reward',
                     # 'value',
@@ -469,8 +469,8 @@ def get_variant_spec(args):
         },
         'metric_learner_params': {
             'type': tune.grid_search([
-                'TemporalDifferenceMetricLearner',
-                # 'SupervisedMetricLearner',
+                # 'TemporalDifferenceMetricLearner',
+                'SupervisedMetricLearner',
                 # 'HingeMetricLearner',
             ]),
             'kwargs': tune.sample_from(metric_learner_kwargs),
@@ -478,7 +478,7 @@ def get_variant_spec(args):
         'distance_estimator_params': {
             'type': 'FeedforwardDistanceEstimator',
             'kwargs': {
-                'observation_keys': None,
+                'observation_keys': ('observation', ),
                 'observation_preprocessors_params': {},
                 'hidden_layer_sizes': (256, 256),
                 'activation': 'relu',
