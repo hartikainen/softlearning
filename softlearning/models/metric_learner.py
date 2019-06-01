@@ -2,7 +2,7 @@ from collections import OrderedDict
 
 import numpy as np
 import tensorflow as tf
-
+from flatten_dict import flatten
 
 from softlearning.algorithms.sac import td_target
 
@@ -56,76 +56,64 @@ class MetricLearner(object):
 
     def _init_placeholders(self):
         """Create input placeholders for the MetricLearner algorithm."""
-        self.distance_pairs_observations_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, 2, *self._observation_shape),
-            name='distance_pairs_observations')
-
-        self.distance_pairs_goals_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, *self._observation_shape),
-            name='distance_pairs_goals')
-
-        self.distance_pairs_actions_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, 2, *self._action_shape),
-            name='distance_pairs_actions')
-
-        self.distance_pairs_distances_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, 1),
-            name='distance_pairs_distances')
+        self._placeholders = {
+            'observations1': {
+                name: tf.compat.v1.placeholder(
+                    dtype=(
+                        np.float32
+                        if np.issubdtype(observation_space.dtype, np.floating)
+                        else observation_space.dtype
+                    ),
+                    shape=(None, *observation_space.shape),
+                    name=f'observations1/{name}')
+                for name, observation_space
+                in self._env.observation_space.spaces.items()
+            },
+            'observations2': {
+                name: tf.compat.v1.placeholder(
+                    dtype=(
+                        np.float32
+                        if np.issubdtype(observation_space.dtype, np.floating)
+                        else observation_space.dtype
+                    ),
+                    shape=(None, *observation_space.shape),
+                    name=f'observations2/{name}')
+                for name, observation_space
+                in self._env.observation_space.spaces.items()
+            },
+            'actions1': tf.compat.v1.placeholder(
+                dtype=tf.float32,
+                shape=(None, *self._env.action_space.shape),
+                name='actions',
+            ),
+            'distances': tf.compat.v1.placeholder(
+                tf.float32,
+                shape=(None, 1),
+                name='distances'
+            ),
+        }
 
     def _distance_estimator_inputs(self,
                                    observations1,
                                    observations2,
                                    actions):
-        inputs = [observations1]
-
+        raise NotImplementedError("TODO(hartikainen)")
+        inputs = {
+            name: observations1[name]
+            for name in self.distance_estimator.observation_keys
+        }
         if self.distance_estimator.condition_with_action:
-            inputs.append(actions)
+            assert actions is not None
+            inputs['actions'] = actions
 
         if self._distance_input_type == 'full':
-            inputs.append(observations2)
+            pass
 
         elif self._distance_input_type == 'xy_coordinates':
-            if isinstance(self._env.unwrapped,
-                          (SwimmerEnv,
-                           AntEnv,
-                           HumanoidEnv,
-                           HalfCheetahEnv,
-                           HopperEnv,
-                           Walker2dEnv)):
-                if (self._env.unwrapped
-                    ._exclude_current_positions_from_observation):
-                    raise NotImplementedError
-                inputs.append(observations2[:, :2])
-            else:
-                raise NotImplementedError(self._env.unwrapped)
+            raise NotImplementedError("TODO(hartikainen)")
 
         elif self._distance_input_type == 'xy_velocities':
-            if isinstance(self._env.unwrapped,
-                          (SwimmerEnv,
-                           AntEnv,
-                           HumanoidEnv,
-                           HalfCheetahEnv,
-                           HopperEnv,
-                           Walker2dEnv)):
-                if (self._env.unwrapped
-                    ._exclude_current_positions_from_observation):
-                    raise NotImplementedError
-
-                qvel_start_idx = self._env.unwrapped.sim.data.qpos.size
-                qvel_end_idx = qvel_start_idx + 2
-
-                if self._env.unwrapped._exclude_current_positions_from_observation:
-                    qvel_start_idx -= 2
-                    qvel_end_idx -= 2
-
-                xy_velocities = observations2[:, qvel_start_idx:qvel_end_idx]
-                inputs.append(xy_velocities)
-            else:
-                raise NotImplementedError(self._env.unwrapped)
+            raise NotImplementedError("TODO(hartikainen)")
 
         elif self._distance_input_type == 'reward_sum':
             raise NotImplementedError(self._distance_input_type)
@@ -135,28 +123,40 @@ class MetricLearner(object):
 
         return inputs
 
+    def _training_batch(self, batch_size=256):
+        batch = self._pool.random_batch(batch_size)
+        return batch
+
+    def _evaluation_batch(self, *args, **kwargs):
+        return self._training_batch(*args, **kwargs)
+
+    def _do_training_repeats(self, timestep):
+        if timestep % self._train_every_n_steps > 0: return
+        for i in range(self._n_train_repeat):
+            self._do_training(
+                iteration=timestep,
+                batch=self._training_batch())
+
+    def _do_training(self, iteration, batch):
+        """Runs the operations for updating training and target ops."""
+        feed_dict = self._get_feed_dict(iteration, batch)
+        self._session.run(self._distance_train_ops, feed_dict)
+
     def _get_feed_dict(self, iteration, batch):
         """Construct TensorFlow feed_dict from sample batch."""
+        batch_flat = flatten(batch)
+        placeholders_flat = flatten(self._placeholders)
+
         feed_dict = {
-            self.distance_pairs_observations_ph: (
-                batch['distance_pairs_observations']),
-            self.distance_pairs_actions_ph: (
-                batch['distance_pairs_actions']),
-            self.distance_pairs_distances_ph: (
-                batch['distance_pairs_distances']),
-            self.distance_pairs_goals_ph: (
-                batch['distance_pairs_goals']),
+            placeholders_flat[key]: batch_flat[key]
+            for key in placeholders_flat.keys()
+            if key in batch_flat.keys()
         }
 
         return feed_dict
 
-    def _do_training(self, iteration, batch):
-        """Runs the operations for updating training and target ops."""
-        if iteration % self._train_every_n_steps > 0: return
-        feed_dict = self._get_feed_dict(iteration, batch)
-        self._session.run(self._distance_train_ops, feed_dict)
-
     def _evaluate(self, observations, actions, y):
+        raise NotImplementedError("TODO(hartikainen)")
         inputs = self._distance_estimator_inputs(
             observations[:, 0], observations[:, 1], actions)
         distance_predictions = self.distance_estimator.predict(inputs)[:, 0]
@@ -530,16 +530,22 @@ class HingeMetricLearner(MetricLearner):
 class SupervisedMetricLearner(MetricLearner):
     def _init_distance_update(self):
         """Create minimization operations for distance estimator."""
-        observations = tf.unstack(
-            self.distance_pairs_observations_ph, 2, axis=1)
-        actions = tf.unstack(self.distance_pairs_actions_ph, 2, axis=1)[0]
-        inputs = self._distance_estimator_inputs(*observations, actions)
+        distances = tf.cast(self._placeholders['distances'], tf.float32)
+        inputs = self._distance_estimator_inputs(
+            self._placeholders['observations1'],
+            self._placeholders['observations2'],
+            self._placeholders['actions1'])
         distance_predictions = self.distance_estimator(inputs)
 
-        distance_loss = self.distance_loss = tf.losses.mean_squared_error(
-            labels=self.distance_pairs_distances_ph,
+        distance_loss = tf.losses.mean_squared_error(
+            labels=distances,
             predictions=distance_predictions,
             weights=0.5)
+
+        self.distance_mean_squared_error = distance_loss
+        self.distance_absolute_error = tf.losses.absolute_difference(
+            labels=distances,
+            predictions=distance_predictions)
 
         distance_optimizer = self._distance_optimizer = tf.train.AdamOptimizer(
             learning_rate=self._distance_learning_rate)
@@ -554,15 +560,22 @@ class SupervisedMetricLearner(MetricLearner):
 
     def get_diagnostics(self,
                         iteration,
-                        batch,
                         training_paths,
                         evaluation_paths,
                         *args,
                         **kwargs):
+        batch = self._evaluation_batch()
         feed_dict = self._get_feed_dict(iteration, batch)
-        distance_loss = self._session.run(self.distance_loss, feed_dict)
+        (distance_mean_squared_error,
+         distance_absolute_error) = self._session.run((
+             self.distance_mean_squared_error,
+             self.distance_absolute_error
+         ), feed_dict)
         return OrderedDict((
-            ('distance_loss-mean', np.mean(distance_loss)),
+            ('distance_mean_squared_error-mean',
+             np.mean(distance_mean_squared_error)),
+            ('distance_absolute_error-mean',
+             np.mean(distance_absolute_error)),
         ))
 
     @property
@@ -579,6 +592,8 @@ class TemporalDifferenceMetricLearner(MetricLearner):
                  *args,
                  ground_truth_terminals=False,
                  **kwargs):
+        if ground_truth_terminals:
+            raise NotImplementedError("TODO(hartikainen)")
         self._ground_truth_terminals = ground_truth_terminals
         self.distance_estimator_target = tf.keras.models.clone_model(
             distance_estimator)
