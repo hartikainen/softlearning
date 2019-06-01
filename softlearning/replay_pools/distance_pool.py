@@ -22,7 +22,7 @@ class DistancePool(ResamplingReplayPool):
         assert np.all(resampled_distances >= 0), resampled_distances
 
         batch2 = super(DistancePool, self).batch_by_indices(
-            indices, *args, **kwargs)
+            resampled_indices, *args, **kwargs)
 
         batch = {
             'observations1': batch1['observations'],
