@@ -73,6 +73,8 @@ LAMBDA_ESTIMATORS = {
 
 
 def get_lambda_estimator_from_variant(variant):
+    raise NotImplementedError(
+        "TODO(hartikainen): Figure out action conditioning")
     lambda_estimator_params = variant['lambda_estimator_params']
     lambda_estimator_type = lambda_estimator_params['type']
     lambda_estimator_kwargs = lambda_estimator_params.get('kwargs', {})
