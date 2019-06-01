@@ -3,7 +3,8 @@ from . import (
     union_pool,
     trajectory_replay_pool,
     goal_replay_pool,
-    distance_pool)
+    distance_pool,
+    hindsight_experience_replay_pool)
 
 
 POOL_CLASSES = {
@@ -12,6 +13,8 @@ POOL_CLASSES = {
     'TrajectoryReplayPool': trajectory_replay_pool.TrajectoryReplayPool,
     'UnionPool': union_pool.UnionPool,
     'DistancePool': distance_pool.DistancePool,
+    'HindsightExperienceReplayPool': (
+        hindsight_experience_replay_pool.HindsightExperienceReplayPool),
 }
 
 DEFAULT_REPLAY_POOL = 'SimpleReplayPool'
