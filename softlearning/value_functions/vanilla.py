@@ -1,5 +1,3 @@
-from collections import OrderedDict
-
 from softlearning.models.feedforward import feedforward_model
 from softlearning.models.utils import flatten_input_structure, create_inputs
 from softlearning.utils.keras import PicklableModel
