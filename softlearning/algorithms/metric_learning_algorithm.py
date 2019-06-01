@@ -245,58 +245,6 @@ class MetricLearningAlgorithm(SAC):
 
         return feed_dict
 
-    def _evaluate_rollouts(self, paths, env):
-        result = super(MetricLearningAlgorithm, self)._evaluate_rollouts(
-            paths, env)
-
-        if is_point_2d_env(self._training_environment.unwrapped):
-            observations = (
-                self._training_environment.unwrapped.all_pairs_observations)
-            distances = (
-                self._training_environment.unwrapped.all_pairs_shortest_distances)
-
-            boundaries = np.arange(0, np.max(distances) + 5, 5)
-
-            zero_distance_idx = np.flatnonzero(distances == 0)
-
-            results = self._metric_learner._evaluate(
-                observations=observations[zero_distance_idx],
-                actions=np.zeros((observations[zero_distance_idx].shape[0], 2)),
-                y=distances[zero_distance_idx])
-
-            for key, value in results.items():
-                result[f"d==0-{key}"] = value
-
-            for low, high in list(zip(boundaries[:-1], boundaries[1:])):
-                within_boundary_idx = np.flatnonzero(
-                    np.logical_and(low < distances, distances <= high))
-
-                results = self._metric_learner._evaluate(
-                    observations=observations[within_boundary_idx],
-                    actions=np.zeros(
-                        (observations[within_boundary_idx].shape[0], 2)),
-                    y=distances[within_boundary_idx])
-
-                for key, value in results.items():
-                    result[f"{low}<d<={high}-{key}"] = value
-
-            full_results = self._metric_learner._evaluate(
-                observations=observations,
-                actions=np.zeros((observations.shape[0], 2)),
-                y=distances)
-
-            for key, value in full_results.items():
-                result[key] = value
-
-            all_observations = np.concatenate(
-                [path['observations.observation'] for path in paths], axis=0)
-            all_xy_positions = all_observations[:, :2]
-            all_xy_distances = np.linalg.norm(all_xy_positions, ord=2, axis=1)
-            max_xy_distance = np.max(all_xy_distances)
-            result['max_xy_distance'] = max_xy_distance
-
-        return result
-
     def diagnostics_distances_fn(self, observations, goals):
         with self._policy.set_deterministic(True):
             policy_inputs = self._policy_inputs(observations)
