@@ -129,12 +129,8 @@ class MetricLearningAlgorithm(SAC):
 
         try:
             self._training_environment._env.env.set_goal(new_goal)
-        except Exception as e:
+        except AttributeError:
             self._training_environment.unwrapped.set_goal(new_goal)
-
-        if is_point_2d_env(self._training_environment.unwrapped):
-            self._training_environment.unwrapped.optimal_policy.set_goal(
-                new_goal)
 
     def _epoch_after_hook(self, training_paths):
         self._previous_training_paths = training_paths
