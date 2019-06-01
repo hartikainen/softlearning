@@ -209,7 +209,16 @@ def plot_distances(figure,
             if i - goals_xy.shape[0] == -1:
                 observations_2, observations_1 = observations_1, observations_2
 
-            distances = get_distances_fn(observations_1, observations_2)
+            distances = get_distances_fn(
+                {
+                    'observation': observations_1,
+                    'desired_goal': observations_2,
+                },
+                {
+                    'observation': observations_2,
+                    'desired_goal': observations_2,
+                },
+            )
             X = np.reshape(observations_xy[:, 0], (nx, ny))
             Y = np.reshape(observations_xy[:, 1], (nx, ny))
             Z = distances.reshape(nx, ny)
@@ -300,7 +309,15 @@ def plot_Q(figure,
                 observation_type=None)
             actions = actions_xy
             Z = get_Q_values_fn(
-                observations_1, observations_2, actions
+                {
+                    'observation': observations_1,
+                    'desired_goal': observations_2,
+                },
+                {
+                    'observation': observations_2,
+                    'desired_goal': observations_2,
+                },
+                actions
             ).reshape(nx, ny)
 
             contour = ax.contourf(
@@ -358,7 +375,16 @@ def plot_V(figure,
     X = np.reshape(observations_xy[:, 0], (nx, ny))
     Y = np.reshape(observations_xy[:, 1], (nx, ny))
 
-    Z = get_V_values_fn(observations, goals).reshape(nx, ny)
+    Z = get_V_values_fn(
+        {
+            'observation': observations,
+            'desired_goal': goals
+        },
+        {
+            'observation': goals,
+            'desired_goal': goals
+        }
+    ).reshape(nx, ny)
 
     contour = ax.contourf(
         X,
@@ -383,8 +409,8 @@ def plot_V(figure,
 
     training_cmap = plt.cm.get_cmap('Set1', len(training_paths))
     for i, training_path in enumerate(training_paths):
-        positions = training_path['observations.observation']
-        target_positions = training_path['observations.desired_goal']
+        positions = training_path['observations']['observation']
+        target_positions = training_path['observations']['desired_goal']
 
         assert np.allclose(target_positions[0], target_positions)
         assert observations.shape[1] == 2, observations.shape
@@ -407,8 +433,8 @@ def plot_V(figure,
 
     evaluation_cmap = plt.cm.get_cmap('Set2', len(evaluation_paths))
     for i, evaluation_path in enumerate(evaluation_paths):
-        positions = evaluation_path['observations.observation']
-        target_positions = evaluation_path['observations.desired_goal']
+        positions = evaluation_path['observations']['observation']
+        target_positions = evaluation_path['observations']['desired_goal']
 
         assert np.allclose(target_positions[0], target_positions)
         assert observations.shape[1] == 2, observations.shape
@@ -515,7 +541,16 @@ def plot_distance_quiver(figure,
 
             X = np.reshape(observations_xy[:, 0], (nx, ny))
             Y = np.reshape(observations_xy[:, 1], (nx, ny))
-            UV = -get_quiver_gradients_fn(observations_1, observations_2)[0]
+            UV = -get_quiver_gradients_fn(
+                {
+                    'observation': observations_1,
+                    'desired_goal': observations_2,
+                },
+                {
+                    'observation': observations_2,
+                    'desired_goal': observations_2,
+                },
+            )[0]
 
             GRADIENT_SCALE = RESOLUTION_MULTIPLIER
             U = np.reshape(UV[..., 0], (nx, ny)) * GRADIENT_SCALE
@@ -582,7 +617,16 @@ def plot_big_distance(algorithm,
         velocities=None,
         observation_type=None)
 
-    distances = get_distances_fn(observations_1, observations_2)
+    distances = get_distances_fn(
+        {
+            'observation': observations_1,
+            'desired_goal': observations_2,
+        },
+        {
+            'observation': observations_2,
+            'desired_goal': observations_2,
+        }
+    )
     X = np.reshape(observations_xy[:, 0], (nx, ny))
     Y = np.reshape(observations_xy[:, 1], (nx, ny))
     Z = distances.reshape(nx, ny)
