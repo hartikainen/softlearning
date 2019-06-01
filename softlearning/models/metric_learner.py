@@ -25,6 +25,7 @@ class MetricLearner(object):
     def __init__(self,
                  env,
                  policy,
+                 pool,
                  observation_shape,
                  action_shape,
                  distance_learning_rate=3e-4,
@@ -34,6 +35,7 @@ class MetricLearner(object):
                  distance_input_type='full'):
         self._env = env
         self._policy = policy
+        self._pool = pool
         self._observation_shape = observation_shape
         self._action_shape = action_shape
         self._distance_learning_rate = distance_learning_rate

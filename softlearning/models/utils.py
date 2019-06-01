@@ -4,11 +4,9 @@ import tensorflow as tf
 from flatten_dict import flatten
 
 
-from .lambda_estimator import get_lambda_estimator_from_variant
-from .distance_estimator import get_distance_estimator_from_variant
-
-
-def get_metric_learner_from_variant(variant, env, policy):
+def get_metric_learner_from_variant(variant, env, policy, pool):
+    from .lambda_estimator import get_lambda_estimator_from_variant
+    from .distance_estimator import get_distance_estimator_from_variant
     from .metric_learner import (
         HingeMetricLearner,
         SupervisedMetricLearner,
@@ -22,7 +20,8 @@ def get_metric_learner_from_variant(variant, env, policy):
     metric_learner_kwargs.update({
         'env': env,
         'policy': policy,
-        'observation_shape': env.active_observation_shape,
+        'pool': pool,
+        'observation_shape': env.observation_shape,
         'action_shape': env.action_space.shape,
         'distance_estimator': distance_estimator,
     })

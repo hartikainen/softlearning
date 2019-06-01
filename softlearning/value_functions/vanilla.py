@@ -1,12 +1,12 @@
-import tensorflow as tf
-from tensorflow.python.keras.engine import training_utils
+from collections import OrderedDict
 
 from softlearning.models.feedforward import feedforward_model
 from softlearning.models.utils import flatten_input_structure, create_inputs
 from softlearning.utils.keras import PicklableModel
 
 
-def create_feedforward_Q_function(input_shapes,
+def create_feedforward_Q_function(env,
+                                  input_shapes,
                                   *args,
                                   preprocessors=None,
                                   observation_keys=None,

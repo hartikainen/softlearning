@@ -449,7 +449,7 @@ def get_variant_spec(args):
                     }.get(spec.get('config', spec)
                           ['metric_learner_params']
                           ['type'],
-                          None)
+                          int(1e6))
                 )),
                 'max_pair_distance': None,
             },

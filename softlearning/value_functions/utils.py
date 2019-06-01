@@ -64,6 +64,7 @@ def get_Q_function_from_variant(variant, env, *args, **kwargs):
     }
 
     Q_function = VALUE_FUNCTIONS[Q_type](
+        env=env,
         input_shapes=input_shapes,
         observation_keys=observation_keys,
         *args,

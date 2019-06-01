@@ -4,7 +4,7 @@ from copy import deepcopy
 from softlearning.preprocessors.utils import get_preprocessor_from_params
 
 
-def get_gaussian_policy(*args, **kwargs):
+def get_gaussian_policy(env, *args, **kwargs):
     from .gaussian_policy import FeedforwardGaussianPolicy
 
     policy = FeedforwardGaussianPolicy(*args, **kwargs)
@@ -24,7 +24,7 @@ def get_goal_conditioned_gaussian_policy(env, Q, **kwargs):
     return policy
 
 
-def get_uniform_policy(*args, **kwargs):
+def get_uniform_policy(env, *args, **kwargs):
     from .uniform_policy import UniformPolicy
 
     policy = UniformPolicy(*args, **kwargs)
@@ -34,10 +34,7 @@ def get_uniform_policy(*args, **kwargs):
 
 def get_goal_conditioned_uniform_policy(env, *args, **kwargs):
     from .uniform_policy import UniformPolicy
-    policy = UniformPolicy(
-        input_shapes=(env.active_observation_shape,
-                      env.active_observation_shape),
-        output_shape=env.action_space.shape)
+    policy = UniformPolicy(*args, **kwargs)
 
     return policy
 
@@ -83,6 +80,7 @@ def get_policy_from_params(policy_params, env, *args, **kwargs):
         policy_kwargs['action_range'] = action_range
 
     policy = POLICY_FUNCTIONS[policy_type](
+        env=env,
         input_shapes=observation_shapes,
         output_shape=env.action_space.shape,
         observation_keys=observation_keys,
