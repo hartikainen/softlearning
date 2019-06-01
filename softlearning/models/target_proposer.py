@@ -40,7 +40,8 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
         self._target_candidate_strategy = target_candidate_strategy
 
     def propose_target(self, epoch):
-        past_observations = self._pool.last_n_batch(1e5)['observations']
+        past_batch = self._pool.last_n_batch(1e5)
+        past_observations = past_batch['observations']
 
         if self._first_observation is None:
             self._first_observation = type(past_observations)(
@@ -50,7 +51,7 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
 
         if self._target_candidate_strategy == 'last_steps':
             episode_end_indices = np.flatnonzero(
-                past_observations['episode_index_backwards'])
+                past_batch['episode_index_backwards'])
             new_observations = type(past_observations)(
                 (key, values[episode_end_indices])
                 for key, values in past_observations.items()
