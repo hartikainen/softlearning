@@ -275,7 +275,7 @@ class MetricLearningAlgorithm(SAC):
         try:
             goal = self._evaluation_environment._env.env.sample_metric_goal()
             evaluation_env._env.env.set_goal(goal)
-        except Exception as e:
+        except AttributeError:
             goal = self._evaluation_environment.unwrapped.sample_metric_goal()
             evaluation_env.unwrapped.set_goal(goal)
 
