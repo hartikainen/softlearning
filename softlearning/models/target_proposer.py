@@ -21,7 +21,7 @@ class BaseTargetProposer(object):
     def set_distance_fn(self, distance_fn):
         self.distance_fn = distance_fn
 
-    def propose_target(self, paths):
+    def propose_target(self):
         raise NotImplementedError
 
 
@@ -39,55 +39,41 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
         self._random_weighted_scale = random_weighted_scale
         self._target_candidate_strategy = target_candidate_strategy
 
-    def propose_target(self, paths, epoch):
+    def propose_target(self, epoch):
+        past_observations = self._pool.last_n_batch(1e5)['observations']
+
         if self._first_observation is None:
-            self._first_observation = paths[0].get(
-                'observations.observation', paths[0].get('observations'))[0]
-            self._first_state_observation = paths[0].get(
-                'observations.state_observation', paths[0].get('observations'))[0]
+            self._first_observation = type(past_observations)(
+                (key, values[0])
+                for key, values in past_observations.items()
+            )
 
         if self._target_candidate_strategy == 'last_steps':
-            paths_observations = [
-                path.get(
-                    'observations.observation', path.get('observations')
-                )[-1:]
-                for path in paths
-            ]
-            paths_state_observations = [
-                path.get(
-                    'observations.state_observation', path.get('observations')
-                )[-1:]
-                for path in paths
-            ]
+            episode_end_indices = np.flatnonzero(
+                past_observations['episode_index_backwards'])
+            new_observations = type(past_observations)(
+                (key, values[episode_end_indices])
+                for key, values in past_observations.items()
+            )
         elif self._target_candidate_strategy == 'all_steps':
-            paths_observations = [
-                path.get('observations.observation', path.get('observations'))
-                for path in paths
-            ]
-            paths_state_observations = [
-                path.get('observations.state_observation', path.get('observations'))
-                for path in paths
-            ]
+            new_observations = past_observations
         else:
             raise NotImplementedError(self._target_candidate_strategy)
 
-        new_observations = np.concatenate(paths_observations, axis=0)
-        new_state_observations = np.concatenate(paths_state_observations, axis=0)
-
         if (self._target_proposal_rule in
-              ('farthest_estimate_from_first_observation',
-               'random_weighted_estimate_from_first_observation')):
+            ('farthest_estimate_from_first_observation',
+             'random_weighted_estimate_from_first_observation')):
+            first_observations = type(self._first_observation)(
+                (key, np.tile(value[None, :],
+                              (new_observations[key].shape[0], 1)))
+                for key, value in self._first_observation.items()
+            )
             new_distances = self.distance_fn(
-                np.tile(self._first_observation[None, :],
-                        (new_observations.shape[0], 1)),
-                new_observations)
+                first_observations, new_observations)
 
             if (self._target_proposal_rule
                 == 'farthest_estimate_from_first_observation'):
                 best_observation_index = np.argmax(new_distances)
-                best_observation = new_observations[best_observation_index]
-                best_state_observation = new_state_observations[
-                    best_observation_index]
 
             elif (self._target_proposal_rule
                   == 'random_weighted_estimate_from_first_observation'):
@@ -97,23 +83,20 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
                         new_distances * self._random_weighted_scale
                     ).ravel()
                 )
-                best_observation = new_observations[best_observation_index]
-                best_state_observation = new_state_observations[
-                    best_observation_index]
 
         elif self._target_proposal_rule == 'random':
             best_observation_index = np.random.randint(
-                new_observations.shape[0])
-            best_observation = new_observations[best_observation_index]
-            best_state_observation = new_state_observations[
-                best_observation_index]
+                new_observations[next(iter(new_observations.keys()))].shape[0])
         else:
             raise NotImplementedError(self._target_proposal_rule)
 
-        self._current_target = best_observation
-        self._current_state_target = best_state_observation
+        best_observation = type(new_observations)(
+            (key, values[best_observation_index])
+            for key, values in new_observations.items())
 
-        return best_state_observation
+        self._current_target = best_observation
+
+        return best_observation
 
 
 class LogarithmicLabelScheduler(object):
@@ -203,7 +186,7 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
         self._epoch_length = epoch_length
         self._max_path_length = max_path_length
 
-    def propose_target(self, paths, epoch):
+    def propose_target(self, epoch):
         env = self._env.unwrapped
 
         expected_num_supervision_labels = (
@@ -320,7 +303,7 @@ class RandomTargetProposer(BaseTargetProposer):
         super(RandomTargetProposer, self).__init__(*args, **kwargs)
         self._target_proposal_rule = target_proposal_rule
 
-    def propose_target(self, paths, epoch):
+    def propose_target(self, epoch):
         if self._target_proposal_rule == 'uniform_from_environment':
             try:
                 target = self._env._env.env.sample_metric_goal()

@@ -123,9 +123,8 @@ class MetricLearningAlgorithm(SAC):
 
         return Q_target
 
-    def _update_goal(self, training_paths):
-        new_goal = self._target_proposer.propose_target(
-            training_paths, epoch=self._epoch)
+    def _update_goal(self):
+        new_goal = self._target_proposer.propose_target(epoch=self._epoch)
 
         try:
             self._training_environment._env.env.set_goal(new_goal)
@@ -137,7 +136,7 @@ class MetricLearningAlgorithm(SAC):
 
     def _timestep_before_hook(self, *args, **kwargs):
         if self.sampler._path_length == 0:
-            self._update_goal(self.sampler.get_last_n_paths())
+            self._update_goal()
 
         random_explore_after = (
             self.sampler._max_path_length
