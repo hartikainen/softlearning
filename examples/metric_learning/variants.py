@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from ray import tune
 import numpy as np
 
@@ -67,7 +69,7 @@ ENVIRONMENT_PARAMS = {
             'reset_positions': ((-5.0, -5.0), ),
         },
         'Wall-v0': {
-            'observation_keys': ('observation', ),
+            'observation_keys': None,
             'terminate_on_success': False,
             # 'fixed_goal': (5.0, 4.0),
             # 'fixed_goal': (0.0, 0.0),
@@ -351,19 +353,29 @@ def get_variant_spec(args):
             'kwargs': {
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
                 'squash': True,
+                'observation_keys': None,
+                'observation_preprocessors_params': {},
             },
         },
         'exploration_policy_params': {
             'type': 'UniformPolicy',
-            'kwargs': {},
+            'kwargs': {
+                'observation_keys': tune.sample_from(lambda spec: (
+                    spec.get('config', spec)
+                    ['policy_params']
+                    ['kwargs']
+                    .get('observation_keys')
+                ))
+            },
         },
         'Q_params': {
             'type': 'double_feedforward_Q_function',
             'kwargs': {
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
+                'observation_keys': None,
+                'observation_preprocessors_params': {}
             }
         },
-        'preprocessor_params': {},
         'algorithm_params': {
             'type': 'MetricLearningAlgorithm',
 
@@ -375,7 +387,7 @@ def get_variant_spec(args):
                 'n_train_repeat': 1,
                 'n_initial_exploration_steps': int(1e4),
                 'reparameterize': True,
-                'eval_render_mode': None,
+                'eval_render_kwargs': {},
                 'eval_n_episodes': 1,
                 'eval_deterministic': True,
 
@@ -440,10 +452,7 @@ def get_variant_spec(args):
                           None)
                 )),
                 'max_pair_distance': None,
-                'path_length': max_path_length,
-                'fixed_path_length': tune.sample_from(fixed_path_length),
-                'terminal_epsilon': 0.0,
-            }
+            },
         },
         'sampler_params': {
             'type': 'SimpleSampler',
@@ -469,6 +478,8 @@ def get_variant_spec(args):
         'distance_estimator_params': {
             'type': 'FeedforwardDistanceEstimator',
             'kwargs': {
+                'observation_keys': None,
+                'observation_preprocessors_params': {},
                 'hidden_layer_sizes': (256, 256),
                 'activation': 'relu',
                 'output_activation': 'linear',
@@ -482,11 +493,18 @@ def get_variant_spec(args):
         'lambda_estimator_params': {
             'type': 'FeedforwardLambdaEstimator',
             'kwargs': {
+                'observation_keys': variant_equals(
+                    'distance_estimator_params',
+                    'kwargs',
+                    'observation_keys'),
+                'observation_preprocessors_params': variant_equals(
+                    'distance_estimator_params',
+                    'kwargs',
+                    'observation_preprocessors_params'),
                 'hidden_layer_sizes': variant_equals(
                     'distance_estimator_params',
                     'kwargs',
-                    'hidden_layer_sizes'
-                ),
+                    'hidden_layer_sizes'),
                 'activation': 'relu',
                 'output_activation': 'softplus',
             }
@@ -520,22 +538,25 @@ def get_variant_spec(args):
                 'dense_hidden_layer_sizes': (),
             },
         }
-        variant_spec['policy_params']['kwargs']['preprocessor_params'] = (
-            preprocessor_params.copy())
-        variant_spec['Q_params']['kwargs']['preprocessor_params'] = (
-            tune.sample_from(lambda spec: (
-                spec.get('config', spec)
-                ['policy_params']
-                ['kwargs']
-                ['preprocessor_params']
-            )))
+        variant_spec['policy_params']['kwargs'][
+            'observation_preprocessors_params'] = {
+                'pixels': deepcopy(preprocessor_params)
+            }
+        variant_spec['Q_params']['kwargs'][
+            'observation_preprocessors_params'] = (
+                tune.sample_from(lambda spec: (deepcopy(
+                    spec.get('config', spec)
+                    ['policy_params']
+                    ['kwargs']
+                    ['observation_preprocessors_params']
+                ))))
         variant_spec['distance_estimator_params']['kwargs'][
-            'preprocessor_params'] = (
-            tune.sample_from(lambda spec: (
-                spec.get('config', spec)
-                ['policy_params']
-                ['kwargs']
-                ['preprocessor_params']
-            )))
+            'observation_preprocessors_params'] = (
+                tune.sample_from(lambda spec: (deepcopy(
+                    spec.get('config', spec)
+                    ['policy_params']
+                    ['kwargs']
+                    ['observation_preprocessors_params']
+                ))))
 
     return variant_spec
