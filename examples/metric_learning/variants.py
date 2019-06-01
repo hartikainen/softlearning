@@ -255,6 +255,20 @@ def replay_pool_params(spec):
     return params
 
 
+def distance_pool_params(spec):
+    config = spec.get('config', spec)
+    params = {
+        'type': 'DistancePool',
+        'kwargs': {
+            'max_size': {
+                'SupervisedMetricLearner': int(1e5),
+            }.get(config['metric_learner_params']['type'], int(1e6)),
+            'max_pair_distance': None,
+        },
+    }
+    return params
+
+
 def get_variant_spec(args):
     universe, domain, task = args.universe, args.domain, args.task
     max_path_length = MAX_PATH_LENGTH_PER_DOMAIN.get(
@@ -440,20 +454,7 @@ def get_variant_spec(args):
         #     },
         # },
         'replay_pool_params': tune.sample_from(replay_pool_params),
-        'distance_pool_params': {
-            'type': 'DistancePool',
-            'kwargs': {
-                'max_size': tune.sample_from(lambda spec: (
-                    {
-                        'SupervisedMetricLearner': 1000,
-                    }.get(spec.get('config', spec)
-                          ['metric_learner_params']
-                          ['type'],
-                          int(1e6))
-                )),
-                'max_pair_distance': None,
-            },
-        },
+        'distance_pool_params': tune.sample_from(distance_pool_params),
         'sampler_params': {
             'type': 'SimpleSampler',
             'kwargs': {
