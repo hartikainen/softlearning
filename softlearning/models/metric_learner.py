@@ -194,7 +194,6 @@ class MetricLearner(object):
 
     def get_diagnostics(self,
                         iteration,
-                        batch,
                         training_paths,
                         evaluation_paths,
                         *args,
@@ -485,11 +484,11 @@ class HingeMetricLearner(MetricLearner):
 
     def get_diagnostics(self,
                         iteration,
-                        batch,
                         training_paths,
                         evaluation_paths,
                         *args,
                         **kwargs):
+        batch = self._evaluation_batch()
         feed_dict = self._get_feed_dict(iteration, batch)
 
         (objectives,
@@ -752,11 +751,11 @@ class TemporalDifferenceMetricLearner(MetricLearner):
 
     def get_diagnostics(self,
                         iteration,
-                        batch,
                         training_paths,
                         evaluation_paths,
                         *args,
                         **kwargs):
+        batch = self._evaluation_batch()
         feed_dict = self._get_feed_dict(iteration, batch)
         distance_loss = self._session.run(self.distance_loss, feed_dict)
         return OrderedDict((
