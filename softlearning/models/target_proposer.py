@@ -13,9 +13,10 @@ from softlearning.environments.utils import is_point_2d_env
 
 
 class BaseTargetProposer(object):
-    def __init__(self, env, pool):
+    def __init__(self, env, pool, target_candidate_strategy='all_steps'):
         self._env = env
         self._pool = pool
+        self._target_candidate_strategy = target_candidate_strategy
         self._current_target = None
 
     def set_distance_fn(self, distance_fn):
@@ -28,7 +29,6 @@ class BaseTargetProposer(object):
 class UnsupervisedTargetProposer(BaseTargetProposer):
     def __init__(self,
                  target_proposal_rule,
-                 target_candidate_strategy='all_steps',
                  random_weighted_scale=1.0,
                  *args,
                  **kwargs):
@@ -37,7 +37,6 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
         self._first_state_observation = None
         self._target_proposal_rule = target_proposal_rule
         self._random_weighted_scale = random_weighted_scale
-        self._target_candidate_strategy = target_candidate_strategy
 
     def propose_target(self, epoch):
         past_batch = self._pool.last_n_batch(1e5)
@@ -196,61 +195,53 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
             expected_num_supervision_labels > self._supervision_labels_used)
 
         if self._current_target is None:
-            self._current_target = (
-                paths[0]
-                .get('observations.observation', paths[0].get('observations'))
-                [-1])
-            self._current_state_target = (
-                paths[0]
-                .get('observations.state_observation', paths[0].get('observations'))
-                [-1])
+            last_observation = self._pool.last_n_batch(1)['observations']
+            self._current_target = type(last_observation)(
+                (key, values[-1])
+                for key, values in last_observation.items()
+            )
 
         num_epochs_since_last_supervision = (
             epoch - self._last_supervision_epoch)
 
         if (not should_supervise) or num_epochs_since_last_supervision < 1:
-            return self._current_state_target
+            return self._current_target
 
         self._last_supervision_epoch = epoch
         self._supervision_labels_used += 1
 
-        use_last_n_paths = num_epochs_since_last_supervision * (
-            self._epoch_length // self._max_path_length)
+        past_batch = self._pool.last_n_batch(1e5)
+        past_observations = past_batch['observations']
 
-        paths_observations = [
-            path.get(
-                'observations.observation', path.get('observations')
-            )[-1:]
-            for path in paths[:use_last_n_paths]
-        ]
-        paths_state_observations = [
-            path.get(
-                'observations.state_observation', path.get('observations')
-            )[-1:]
-            for path in paths[:use_last_n_paths]
-        ]
-
-        new_observations = np.concatenate(paths_observations, axis=0)
-        new_state_observations = np.concatenate(paths_state_observations, axis=0)
+        if self._target_candidate_strategy == 'last_steps':
+            episode_end_indices = np.flatnonzero(
+                past_batch['episode_index_backwards'] == 0)
+            new_observations = type(past_observations)(
+                (key, values[episode_end_indices])
+                for key, values in past_observations.items()
+            )
+        elif self._target_candidate_strategy == 'all_steps':
+            new_observations = past_observations
+        else:
+            raise NotImplementedError(self._target_candidate_strategy)
 
         if is_point_2d_env(env):
-            ultimate_goal = self._env.unwrapped.ultimate_goal
-            goals = np.tile(
-                ultimate_goal, (new_state_observations.shape[0], 1))
+            ultimate_goal = env.ultimate_goal
+            new_positions = new_observations['state_observation']
+            goals = np.tile(ultimate_goal, (new_positions.shape[0], 1))
             last_observations_distances = env.get_optimal_paths(
-                new_state_observations, goals)
+                new_positions, goals)
 
             best_observation_index = np.argmin(last_observations_distances)
             if (-last_observations_distances[best_observation_index]
                 > self._best_observation_value):
-                best_observation = new_observations[best_observation_index]
-                best_state_observation = new_state_observations[
-                    best_observation_index]
+                best_observation = type(new_observations)(
+                    (key, values[best_observation_index])
+                    for key, values in new_observations.items())
                 self._best_observation_value = -last_observations_distances[
                     best_observation_index]
             else:
                 best_observation = self._current_target
-                best_state_observation = self._current_state_target
 
         elif isinstance(
                 env,
@@ -279,21 +270,17 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
             if (last_observations_distances[best_observation_index]
                 > self._best_observation_value):
                 best_observation = new_observations[best_observation_index]
-                best_state_observation = new_state_observations[
-                    best_observation_index]
                 self._best_observation_value = last_observations_distances[
                     best_observation_index]
             else:
                 best_observation = self._current_target
-                best_state_observation = self._current_state_target
 
         else:
             raise NotImplementedError
 
         self._current_target = best_observation
-        self._current_state_target = best_state_observation
 
-        return best_state_observation
+        return best_observation
 
 
 class RandomTargetProposer(BaseTargetProposer):
