@@ -121,6 +121,7 @@ class RLAlgorithm(Checkpointable):
                     name=name)
                 for name, observation_space
                 in self._training_environment.observation_space.spaces.items()
+                if name not in self._training_environment.goal_key_map.keys()
             },
             'next_observations': {
                 name: tf.compat.v1.placeholder(
@@ -133,6 +134,7 @@ class RLAlgorithm(Checkpointable):
                     name=name)
                 for name, observation_space
                 in self._training_environment.observation_space.spaces.items()
+                if name not in self._training_environment.goal_key_map.keys()
             },
             'actions': tf.compat.v1.placeholder(
                 dtype=tf.float32,

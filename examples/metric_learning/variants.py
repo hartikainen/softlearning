@@ -66,7 +66,6 @@ ENVIRONMENT_PARAMS = {
             'observation_keys': ('state_observation', 'state_desired_goal'),
             'goal_key_map': {
                 'state_desired_goal': 'state_observation',
-                'desired_goal': 'observation',
             },
             'terminate_on_success': True,
             'fixed_goal': (5.0, 5.0),
@@ -297,7 +296,7 @@ def get_variant_spec(args):
                 **shared_kwargs,
                 **{
                     'train_every_n_steps': 1,
-                    'ground_truth_terminals': True,
+                    'ground_truth_terminals': False,
                 },
             }
         elif (spec['metric_learner_params']['type']
@@ -371,7 +370,7 @@ def get_variant_spec(args):
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
                 'squash': True,
                 'observation_keys': ('state_observation', ),
-                'goal_keys': ('state_desired_goal', ),
+                'goal_keys': ('state_observation', ),
                 'observation_preprocessors_params': {},
             },
         },
@@ -391,7 +390,7 @@ def get_variant_spec(args):
             'kwargs': {
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
                 'observation_keys': ('state_observation', ),
-                'goal_keys': ('state_desired_goal', ),
+                'goal_keys': ('state_observation', ),
                 'observation_preprocessors_params': {}
             }
         },
@@ -484,7 +483,7 @@ def get_variant_spec(args):
         'distance_estimator_params': {
             'type': 'FeedforwardDistanceEstimator',
             'kwargs': {
-                'observation_keys': ('state_observation', 'state_desired_goal'),
+                'observation_keys': ('state_observation', ),
                 'observation_preprocessors_params': {},
                 'hidden_layer_sizes': (256, 256),
                 'activation': 'relu',

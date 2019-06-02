@@ -47,6 +47,7 @@ class MetricLearningAlgorithm(SAC):
                 name=f'goals/{name}')
             for name, observation_space
             in self._training_environment.observation_space.spaces.items()
+            if name in self._training_environment.goal_key_map.values()
         }
 
     def _get_Q_target(self):
