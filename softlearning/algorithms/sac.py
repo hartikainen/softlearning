@@ -215,10 +215,9 @@ class SAC(RLAlgorithm):
         and Section 5 in [1] for further information of the entropy update.
         """
 
-        policy_inputs = flatten_input_structure({
-            name: self._placeholders['observations'][name]
-            for name in self._policy.observation_keys
-        })
+        policy_inputs = self._policy_inputs(
+            observations=self._placeholders['observations'],
+        )
         actions = self._policy.actions(policy_inputs)
         log_pis = self._policy.log_pis(policy_inputs, actions)
 
@@ -253,12 +252,9 @@ class SAC(RLAlgorithm):
         elif self._action_prior == 'uniform':
             policy_prior_log_probs = 0.0
 
-        Q_observations = {
-            name: self._placeholders['observations'][name]
-            for name in self._Qs[0].observation_keys
-        }
-        Q_inputs = flatten_input_structure({
-            **Q_observations, 'actions': actions})
+        Q_inputs = self._Q_inputs(
+            observations=self._placeholders['observations'],
+            actions=actions)
         Q_log_targets = tuple(Q(Q_inputs) for Q in self._Qs)
         min_Q_log_target = tf.reduce_min(Q_log_targets, axis=0)
 
