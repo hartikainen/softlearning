@@ -12,6 +12,7 @@ class GoalReplayPool(SimpleReplayPool):
         observation_space = environment.observation_space
         assert isinstance(observation_space, Dict), observation_space
 
+        # TODO(hartikainen): should remove goal keys from observations field
         extra_fields = {
             'goals': {
                 name: Field(

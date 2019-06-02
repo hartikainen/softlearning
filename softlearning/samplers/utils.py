@@ -49,10 +49,11 @@ def rollout(env,
             policy,
             path_length,
             sampler_class=simple_sampler.SimpleSampler,
+            pool_class=replay_pools.SimpleReplayPool,
             callback=None,
             render_kwargs=None,
             break_on_terminal=True):
-    pool = replay_pools.SimpleReplayPool(env, max_size=path_length)
+    pool = pool_class(env, max_size=path_length)
     sampler = sampler_class(
         max_path_length=path_length,
         min_pool_size=None,
