@@ -51,7 +51,7 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
 
         if self._target_candidate_strategy == 'last_steps':
             episode_end_indices = np.flatnonzero(
-                past_batch['episode_index_backwards'])
+                past_batch['episode_index_backwards'] == 0)
             new_observations = type(past_observations)(
                 (key, values[episode_end_indices])
                 for key, values in past_observations.items()
