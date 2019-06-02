@@ -410,7 +410,7 @@ def plot_V(figure,
     training_cmap = plt.cm.get_cmap('Set1', len(training_paths))
     for i, training_path in enumerate(training_paths):
         positions = training_path['observations']['state_observation']
-        target_positions = training_path['goals']['state_desired_goal']
+        target_positions = training_path['goals']['state_observation']
 
         assert np.allclose(target_positions[0], target_positions)
         assert observations.shape[1] == 2, observations.shape
@@ -434,7 +434,7 @@ def plot_V(figure,
     evaluation_cmap = plt.cm.get_cmap('Set2', len(evaluation_paths))
     for i, evaluation_path in enumerate(evaluation_paths):
         positions = evaluation_path['observations']['state_observation']
-        target_positions = evaluation_path['goals']['state_desired_goal']
+        target_positions = evaluation_path['goals']['state_observation']
 
         assert np.allclose(target_positions[0], target_positions)
         assert observations.shape[1] == 2, observations.shape
