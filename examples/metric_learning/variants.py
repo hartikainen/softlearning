@@ -436,7 +436,6 @@ def get_variant_spec(args):
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
                 'squash': True,
                 'observation_keys': ('state_observation', ),
-                'goal_keys': ('state_observation', ),
                 'observation_preprocessors_params': {},
             },
         },
@@ -456,7 +455,6 @@ def get_variant_spec(args):
             'kwargs': {
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
                 'observation_keys': ('state_observation', ),
-                'goal_keys': ('state_observation', ),
                 'observation_preprocessors_params': {}
             }
         },
