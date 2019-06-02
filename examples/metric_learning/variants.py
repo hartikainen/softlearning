@@ -165,7 +165,7 @@ ENVIRONMENT_PARAMS = {
             'target_initial_velocity_range': (0, 0),
             'target_initial_position_range': (np.pi, np.pi),
             'object_initial_velocity_range': (0, 0),
-            'object_initial_position_range': (np.pi, np.pi),
+            'object_initial_position_range': (0, 0),
         },
         'ImageScrewV2-v0': {
             'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
@@ -175,7 +175,7 @@ ENVIRONMENT_PARAMS = {
             'target_initial_velocity_range': (0, 0),
             'target_initial_position_range': (np.pi, np.pi),
             'object_initial_velocity_range': (0, 0),
-            'object_initial_position_range': (np.pi, np.pi),
+            'object_initial_position_range': (0, 0),
             'pixel_wrapper_kwargs': {
                 'observation_key': 'pixels',
                 'pixels_only': False,
@@ -197,7 +197,7 @@ ENVIRONMENT_PARAMS = {
             'target_initial_velocity_range': (0, 0),
             'target_initial_position_range': (np.pi, np.pi),
             'object_initial_velocity_range': (0, 0),
-            'object_initial_position_range': (np.pi, np.pi),
+            'object_initial_position_range': (0, 0),
         },
         'ImageScrewV2-v0': {
             'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
@@ -207,7 +207,7 @@ ENVIRONMENT_PARAMS = {
             'target_initial_velocity_range': (0, 0),
             'target_initial_position_range': (np.pi, np.pi),
             'object_initial_velocity_range': (0, 0),
-            'object_initial_position_range': (np.pi, np.pi),
+            'object_initial_position_range': (0, 0),
             'pixel_wrapper_kwargs': {
                 'observation_key': 'pixels',
                 'pixels_only': False,
