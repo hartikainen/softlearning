@@ -242,13 +242,9 @@ def fixed_path_length(spec):
 def replay_pool_params(spec):
     config = spec.get('config', spec)
     params = {
-        'type': 'HindsightExperienceReplayPool',
+        'type': 'GoalReplayPool',
         'kwargs': {
             'max_size': int(1e6),
-            'her_strategy': {
-                'type': 'future',
-                'resampling_probability': 0.8,
-            },
         }
     }
 
