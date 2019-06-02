@@ -88,7 +88,9 @@ class SimpleSampler(BaseSampler):
                 for pool in self._extra_pools:
                     pool.add_path(path_for_pool)
 
-            self._last_n_paths.appendleft(last_path)
+            last_path_from_pool = self.pool.last_n_batch(self._path_length)
+            last_path_from_pool['infos'] = last_path['infos']
+            self._last_n_paths.appendleft(last_path_from_pool)
 
             self._max_path_return = max(self._max_path_return,
                                         self._path_return)
