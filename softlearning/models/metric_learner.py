@@ -622,53 +622,37 @@ class TemporalDifferenceMetricLearner(MetricLearner):
         assert self.distance_estimator.condition_with_action
         return result
 
-    def _init_placeholders(self):
-        """Create input placeholders for the MetricLearner algorithm."""
-        super(TemporalDifferenceMetricLearner, self)._init_placeholders()
-
-        self._observations_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, *self._observation_shape),
-            name='observation',
-        )
-
-        self._next_observations_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, *self._observation_shape),
-            name='next_observation',
-        )
-
-        self._actions_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, *self._action_shape),
-            name='actions',
-        )
-
-        self._goals_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, *self._observation_shape),
-            name='goals',
-        )
-
     def _init_distance_update(self):
         """Create minimization operations for distance estimator."""
 
-        observations = self._observations_ph
-        actions = self._actions_ph
-        next_observations = self._next_observations_ph
-        goals = self._goals_ph
+        observations1_ph = self._placeholders['observations1']
+        actions1_ph = self._placeholders['actions1']
+        next_observations1_ph = self._placeholders['next_observations1']
+        observations2_ph = self._placeholders['observations2']
 
         inputs_1 = self._distance_estimator_inputs(
-            observations, goals, actions)
+            observations1_ph, observations2_ph, actions1_ph)
         distance_predictions_1 = self.distance_estimator(inputs_1)
 
-        next_actions = self._policy.actions([next_observations, goals])
+        next_actions = self._policy.actions(flatten_input_structure({
+            'observations': {
+                name: values
+                for name, values in next_observations1_ph.items()
+                if name in self._policy.observation_keys
+            },
+            'goals': {
+                name: values
+                for name, values in observations2_ph.items()
+                if name in self._policy.goal_keys
+            },
+        }))
         inputs_2 = self._distance_estimator_inputs(
-            next_observations, goals, next_actions)
+            next_observations1_ph, observations2_ph, next_actions)
         distance_predictions_2 = self.distance_estimator_target(inputs_2)
 
         goal_successes = tf.cast(tf.reduce_all(tf.equal(
-            self._next_observations_ph, self._goals_ph
+            tf.concat(flatten_input_structure(next_observations1_ph), axis=-1),
+            tf.concat(flatten_input_structure(observations2_ph), axis=-1),
         ), axis=1, keepdims=True), tf.float32)
 
         assert (goal_successes.shape.as_list()
@@ -733,21 +717,6 @@ class TemporalDifferenceMetricLearner(MetricLearner):
             distance_grads_and_vars)
 
         self._distance_train_ops = (distance_train_op, )
-
-    def _get_feed_dict(self, iteration, batch):
-        """Construct TensorFlow feed_dict from sample batch."""
-        feed_dict = (
-            super(TemporalDifferenceMetricLearner, self)._get_feed_dict(
-                iteration, batch))
-
-        feed_dict.update({
-            self._observations_ph: batch['observations'],
-            self._actions_ph: batch['actions'],
-            self._next_observations_ph: batch['next_observations'],
-            self._goals_ph: batch['goals'],
-        })
-
-        return feed_dict
 
     def get_diagnostics(self,
                         iteration,
