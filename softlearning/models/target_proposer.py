@@ -25,6 +25,23 @@ class BaseTargetProposer(object):
     def propose_target(self):
         raise NotImplementedError
 
+    def _get_new_observations(self):
+        past_batch = self._pool.last_n_batch(1e5)
+        past_observations = past_batch['observations']
+        if self._target_candidate_strategy == 'last_steps':
+            episode_end_indices = np.flatnonzero(
+                past_batch['episode_index_backwards'] == 0)
+            new_observations = type(past_observations)(
+                (key, values[episode_end_indices])
+                for key, values in past_observations.items()
+            )
+        elif self._target_candidate_strategy == 'all_steps':
+            new_observations = past_observations
+        else:
+            raise NotImplementedError(self._target_candidate_strategy)
+
+        return new_observations
+
 
 class UnsupervisedTargetProposer(BaseTargetProposer):
     def __init__(self,
@@ -48,17 +65,7 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
                 for key, values in past_observations.items()
             )
 
-        if self._target_candidate_strategy == 'last_steps':
-            episode_end_indices = np.flatnonzero(
-                past_batch['episode_index_backwards'] == 0)
-            new_observations = type(past_observations)(
-                (key, values[episode_end_indices])
-                for key, values in past_observations.items()
-            )
-        elif self._target_candidate_strategy == 'all_steps':
-            new_observations = past_observations
-        else:
-            raise NotImplementedError(self._target_candidate_strategy)
+        new_observations = self._get_new_observations()
 
         if (self._target_proposal_rule in
             ('farthest_estimate_from_first_observation',
@@ -210,20 +217,7 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
         self._last_supervision_epoch = epoch
         self._supervision_labels_used += 1
 
-        past_batch = self._pool.last_n_batch(1e5)
-        past_observations = past_batch['observations']
-
-        if self._target_candidate_strategy == 'last_steps':
-            episode_end_indices = np.flatnonzero(
-                past_batch['episode_index_backwards'] == 0)
-            new_observations = type(past_observations)(
-                (key, values[episode_end_indices])
-                for key, values in past_observations.items()
-            )
-        elif self._target_candidate_strategy == 'all_steps':
-            new_observations = past_observations
-        else:
-            raise NotImplementedError(self._target_candidate_strategy)
+        new_observations = self._get_new_observations()
 
         if is_point_2d_env(env):
             ultimate_goal = env.ultimate_goal
@@ -275,6 +269,9 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
             else:
                 best_observation = self._current_target
 
+        elif 'dclaw' in type(env).__name__.lower():
+            from pprint import pprint; import ipdb; ipdb.set_trace(context=30)
+            raise NotImplementedError("TODO(hartikainen)")
         else:
             raise NotImplementedError
 
@@ -292,22 +289,24 @@ class RandomTargetProposer(BaseTargetProposer):
         self._target_proposal_rule = target_proposal_rule
 
     def propose_target(self, epoch):
+        new_observations = self._get_new_observations()
+
         if self._target_proposal_rule == 'uniform_from_environment':
             try:
-                target = self._env._env.env.sample_metric_goal()
-            except Exception as e:
-                target = self._env.unwrapped.sample_metric_goal()
+                best_observation = self._env._env.env.sample_metric_goal()
+            except AttributeError:
+                best_observation = self._env.unwrapped.sample_metric_goal()
+
         elif self._target_proposal_rule == 'uniform_from_pool':
-            new_observations = np.concatenate([
-                path.get('observations.observation', path.get('observations'))
-                for path in paths
-            ], axis=0)
+            best_observation_index = np.random.randint(
+                new_observations[next(iter(new_observations.keys()))].shape[0])
+            best_observation = type(new_observations)(
+                (key, values[best_observation_index])
+                for key, values in new_observations.items())
 
-            target = new_observations[
-                np.random.randint(new_observations.shape[0])]
         else:
-            raise NotImplementedError
+            raise NotImplementedError(self._target_proposal_rule)
 
-        self._current_target = target
+        self._current_target = best_observation
 
-        return target
+        return best_observation
