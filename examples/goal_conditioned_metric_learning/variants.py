@@ -1,5 +1,4 @@
 from ray import tune
-import numpy as np
 
 from flatten_dict import flatten, unflatten
 
@@ -7,19 +6,11 @@ from examples.metric_learning import (
     get_variant_spec as get_metric_learning_variant_spec)
 
 
-def terminal(batch, where_resampled, environment):
-    resampled_terminals = np.linalg.norm(
-        batch['observations']['state_desired_goal'][where_resampled]
-        - batch['goals']['state_desired_goal'][where_resampled],
-        ord=2,
-        axis=1,
-        keepdims=True,
-    ) < 0.1
-
-    batch['terminals'][where_resampled] = resampled_terminals
+def terminal(batch, resampled_batch, where_resampled, environment):
+    return
 
 
-def reward(batch, where_resampled, environment):
+def reward(batch, resampled_batch, where_resampled, environment):
     resampled_actions = batch['actions'][where_resampled]
     resampled_observations = type(batch['observations'])(
         (key, values[where_resampled])
@@ -30,14 +21,21 @@ def reward(batch, where_resampled, environment):
         resampled_actions, resampled_observations)
 
 
-def update_batch(original_batch, resampled_batch, where_resampled):
+def update_batch(original_batch,
+                 resampled_batch,
+                 where_resampled,
+                 environment):
     batch_flat = flatten(original_batch)
     resampled_batch_flat = flatten(resampled_batch)
 
-    batch_flat[
-        ('goals', 'state_desired_goal')
-    ][where_resampled] = resampled_batch_flat[
-        ('observations', 'state_observation')]
+    for observation_key, goal_key in environment.goal_key_map.items():
+        batch_flat[('goals', goal_key)][where_resampled] = (
+            resampled_batch_flat[('observations', observation_key)])
+
+    # batch_flat[
+    #     ('goals', 'state_desired_goal')
+    # ][where_resampled] = resampled_batch_flat[
+    #     ('observations', 'state_observation')]
 
     updated_batch = unflatten(batch_flat)
     return updated_batch
