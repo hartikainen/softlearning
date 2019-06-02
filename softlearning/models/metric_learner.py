@@ -70,6 +70,18 @@ class MetricLearner(object):
                 for name, observation_space
                 in self._env.observation_space.spaces.items()
             },
+            'next_observations1': {
+                name: tf.compat.v1.placeholder(
+                    dtype=(
+                        np.float32
+                        if np.issubdtype(observation_space.dtype, np.floating)
+                        else observation_space.dtype
+                    ),
+                    shape=(None, *observation_space.shape),
+                    name=f'next_observations1/{name}')
+                for name, observation_space
+                in self._env.observation_space.spaces.items()
+            },
             'observations2': {
                 name: tf.compat.v1.placeholder(
                     dtype=(

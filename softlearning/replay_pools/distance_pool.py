@@ -26,6 +26,7 @@ class DistancePool(ResamplingReplayPool):
 
         batch = {
             'observations1': batch1['observations'],
+            'next_observations1': batch1['next_observations'],
             'actions1': batch1['actions'],
             'observations2': batch2['observations'],
             'distances': resampled_distances,
