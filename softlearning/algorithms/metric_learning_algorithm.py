@@ -216,8 +216,8 @@ class MetricLearningAlgorithm(SAC):
             #     self._training_environment,
             #     self._training_environment.unwrapped.optimal_policy,
             #     self._pool)
-            if self.sampler.policy is not self._policy:
-                assert is_point_2d_env(self._training_environment.unwrapped)
+        if self.sampler.policy is not self._policy:
+            assert is_point_2d_env(self._training_environment.unwrapped)
 
     def _timestep_after_hook(self, *args, **kwargs):
         if hasattr(self._metric_learner, '_update_target'):
