@@ -63,13 +63,13 @@ ENVIRONMENT_PARAMS = {
     },
     'Point2DEnv': {
         'Default-v0': {
-            'observation_keys': ('observation', 'desired_goal'),
+            'observation_keys': ('state_observation', 'state_desired_goal'),
             'terminate_on_success': True,
             'fixed_goal': (5.0, 5.0),
             'reset_positions': ((-5.0, -5.0), ),
         },
         'Wall-v0': {
-            'observation_keys': ('observation', 'desired_goal'),
+            'observation_keys': ('state_observation', 'state_desired_goal'),
             'terminate_on_success': False,
             'fixed_goal': (5.0, 4.0),
             # 'fixed_goal': (0.0, 0.0),
@@ -367,7 +367,8 @@ def get_variant_spec(args):
             'kwargs': {
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
                 'squash': True,
-                'observation_keys': ('observation', ),
+                'observation_keys': ('state_observation', ),
+                'goal_keys': ('state_desired_goal', ),
                 'observation_preprocessors_params': {},
             },
         },
@@ -386,7 +387,8 @@ def get_variant_spec(args):
             'type': 'double_feedforward_Q_function',
             'kwargs': {
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
-                'observation_keys': ('observation', ),
+                'observation_keys': ('state_observation', ),
+                'goal_keys': ('state_desired_goal', ),
                 'observation_preprocessors_params': {}
             }
         },
@@ -479,7 +481,7 @@ def get_variant_spec(args):
         'distance_estimator_params': {
             'type': 'FeedforwardDistanceEstimator',
             'kwargs': {
-                'observation_keys': ('observation', ),
+                'observation_keys': ('state_observation', 'state_desired_goal'),
                 'observation_preprocessors_params': {},
                 'hidden_layer_sizes': (256, 256),
                 'activation': 'relu',

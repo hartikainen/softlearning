@@ -211,12 +211,12 @@ def plot_distances(figure,
 
             distances = get_distances_fn(
                 {
-                    'observation': observations_1,
-                    'desired_goal': observations_2,
+                    'state_observation': observations_1,
+                    'state_desired_goal': observations_2,
                 },
                 {
-                    'observation': observations_2,
-                    'desired_goal': observations_2,
+                    'state_observation': observations_2,
+                    'state_desired_goal': observations_2,
                 },
             )
             X = np.reshape(observations_xy[:, 0], (nx, ny))
@@ -310,12 +310,12 @@ def plot_Q(figure,
             actions = actions_xy
             Z = get_Q_values_fn(
                 {
-                    'observation': observations_1,
-                    'desired_goal': observations_2,
+                    'state_observation': observations_1,
+                    'state_desired_goal': observations_2,
                 },
                 {
-                    'observation': observations_2,
-                    'desired_goal': observations_2,
+                    'state_observation': observations_2,
+                    'state_desired_goal': observations_2,
                 },
                 actions
             ).reshape(nx, ny)
@@ -377,12 +377,12 @@ def plot_V(figure,
 
     Z = get_V_values_fn(
         {
-            'observation': observations,
-            'desired_goal': goals
+            'state_observation': observations,
+            'state_desired_goal': goals
         },
         {
-            'observation': goals,
-            'desired_goal': goals
+            'state_observation': goals,
+            'state_desired_goal': goals
         }
     ).reshape(nx, ny)
 
@@ -409,8 +409,8 @@ def plot_V(figure,
 
     training_cmap = plt.cm.get_cmap('Set1', len(training_paths))
     for i, training_path in enumerate(training_paths):
-        positions = training_path['observations']['observation']
-        target_positions = training_path['observations']['desired_goal']
+        positions = training_path['observations']['state_observation']
+        target_positions = training_path['goals']['state_desired_goal']
 
         assert np.allclose(target_positions[0], target_positions)
         assert observations.shape[1] == 2, observations.shape
@@ -433,8 +433,8 @@ def plot_V(figure,
 
     evaluation_cmap = plt.cm.get_cmap('Set2', len(evaluation_paths))
     for i, evaluation_path in enumerate(evaluation_paths):
-        positions = evaluation_path['observations']['observation']
-        target_positions = evaluation_path['observations']['desired_goal']
+        positions = evaluation_path['observations']['state_observation']
+        target_positions = evaluation_path['goals']['state_desired_goal']
 
         assert np.allclose(target_positions[0], target_positions)
         assert observations.shape[1] == 2, observations.shape
@@ -543,12 +543,12 @@ def plot_distance_quiver(figure,
             Y = np.reshape(observations_xy[:, 1], (nx, ny))
             UV = -get_quiver_gradients_fn(
                 {
-                    'observation': observations_1,
-                    'desired_goal': observations_2,
+                    'state_observation': observations_1,
+                    'state_desired_goal': observations_2,
                 },
                 {
-                    'observation': observations_2,
-                    'desired_goal': observations_2,
+                    'state_observation': observations_2,
+                    'state_desired_goal': observations_2,
                 },
             )[0]
 
@@ -619,12 +619,12 @@ def plot_big_distance(algorithm,
 
     distances = get_distances_fn(
         {
-            'observation': observations_1,
-            'desired_goal': observations_2,
+            'state_observation': observations_1,
+            'state_desired_goal': observations_2,
         },
         {
-            'observation': observations_2,
-            'desired_goal': observations_2,
+            'state_observation': observations_2,
+            'state_desired_goal': observations_2,
         }
     )
     X = np.reshape(observations_xy[:, 0], (nx, ny))
