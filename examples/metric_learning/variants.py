@@ -5,6 +5,7 @@ import numpy as np
 
 from softlearning.misc.utils import get_git_rev
 from examples.utils import variant_equals
+from sac_envs.envs.dclaw.dclaw3_screw_v2 import LinearLossFn, NegativeLogLossFn
 
 
 DEFAULT_LAYER_SIZE = 256
@@ -155,6 +156,70 @@ ENVIRONMENT_PARAMS = {
             'observation_keys': ('observation', ),
         }
     },
+    'DClaw3': {
+        'ScrewV2-v0': {
+            'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
+            'pose_difference_cost_coeff': 0,
+            'joint_velocity_cost_coeff': 0,
+            'joint_acceleration_cost_coeff': 0,
+            'target_initial_velocity_range': (0, 0),
+            'target_initial_position_range': (np.pi, np.pi),
+            'object_initial_velocity_range': (0, 0),
+            'object_initial_position_range': (np.pi, np.pi),
+        },
+        'ImageScrewV2-v0': {
+            'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
+            'pose_difference_cost_coeff': 0,
+            'joint_velocity_cost_coeff': 0,
+            'joint_acceleration_cost_coeff': 0,
+            'target_initial_velocity_range': (0, 0),
+            'target_initial_position_range': (np.pi, np.pi),
+            'object_initial_velocity_range': (0, 0),
+            'object_initial_position_range': (np.pi, np.pi),
+            'pixel_wrapper_kwargs': {
+                'observation_key': 'pixels',
+                'pixels_only': False,
+                'render_kwargs': {
+                    'width': 32,
+                    'height': 32,
+                    'camera_id': -1
+                },
+            },
+            'observation_keys': ('hand_position', 'hand_velocity', 'pixels'),
+        },
+    },
+    'HardwareDClaw3': {
+        'ScrewV2-v0': {
+            'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
+            'pose_difference_cost_coeff': 0,
+            'joint_velocity_cost_coeff': 0,
+            'joint_acceleration_cost_coeff': 0,
+            'target_initial_velocity_range': (0, 0),
+            'target_initial_position_range': (np.pi, np.pi),
+            'object_initial_velocity_range': (0, 0),
+            'object_initial_position_range': (np.pi, np.pi),
+        },
+        'ImageScrewV2-v0': {
+            'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
+            'pose_difference_cost_coeff': 0,
+            'joint_velocity_cost_coeff': 0,
+            'joint_acceleration_cost_coeff': 0,
+            'target_initial_velocity_range': (0, 0),
+            'target_initial_position_range': (np.pi, np.pi),
+            'object_initial_velocity_range': (0, 0),
+            'object_initial_position_range': (np.pi, np.pi),
+            'pixel_wrapper_kwargs': {
+                'observation_key': 'pixels',
+                'pixels_only': False,
+                'render_kwargs': {
+                    'width': 32,
+                    'height': 32,
+                    'camera_id': -1
+                },
+            },
+            'observation_keys': ('hand_position', 'hand_velocity', 'pixels'),
+        },
+    },
 }
 
 DEFAULT_NUM_EPOCHS = 200
@@ -181,6 +246,7 @@ DEFAULT_MAX_PATH_LENGTH = 1000
 MAX_PATH_LENGTH_PER_DOMAIN = {
     'Point2DEnv': 50,
     'GoalReacher': 200,
+    'DClaw3': 250,
 }
 
 NUM_CHECKPOINTS = 10
@@ -406,6 +472,13 @@ def get_variant_spec(args):
                 'n_initial_exploration_steps': int(1e4),
                 'reparameterize': True,
                 'eval_render_kwargs': {},
+                # {
+                #     'mode': 'rgb_array',
+                #     'width': 100,
+                #     'height': 100,
+                #     'camera_id': -1,
+                #     # 'camera_name': 'agentview', # ('frontview', 'birdview', 'agentview')
+                # },
                 'eval_n_episodes': 1,
                 'eval_deterministic': True,
 
