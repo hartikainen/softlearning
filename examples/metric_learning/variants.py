@@ -383,7 +383,7 @@ def get_variant_spec(args):
                     ['policy_params']
                     ['kwargs']
                     .get('observation_keys')
-                ))
+                )),
             },
         },
         'Q_params': {

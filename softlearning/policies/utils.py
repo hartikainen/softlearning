@@ -12,14 +12,38 @@ def get_gaussian_policy(env, *args, **kwargs):
     return policy
 
 
-def get_goal_conditioned_gaussian_policy(env, Q, **kwargs):
+def get_goal_conditioned_gaussian_policy(env,
+                                         *args,
+                                         input_shapes=None,
+                                         preprocessors=None,
+                                         observation_keys=None,
+                                         goal_keys=None,
+                                         **kwargs):
     from .gaussian_policy import FeedforwardGaussianPolicy
-    # Assume the goals are in the same shape as observations.
+
+    goal_keys = goal_keys or observation_keys or env.observation_keys
+
+    goal_shapes = OrderedDict((
+        (key, value)
+        for key, value in env.observation_shape.items()
+        if key in goal_keys
+    ))
+
+    goal_preprocessors = OrderedDict((
+        (key, preprocessors['observations'].get(key, None))
+        for key in goal_keys
+    ))
+
+    input_shapes = {**input_shapes, 'goals': goal_shapes}
+    preprocessors = {**preprocessors, 'goals': goal_preprocessors}
+
     policy = FeedforwardGaussianPolicy(
-        input_shapes=(env.active_observation_shape,
-                      env.active_observation_shape),
-        output_shape=env.action_space.shape,
+        *args,
+        input_shapes=input_shapes,
+        preprocessors=preprocessors,
+        observation_keys=observation_keys,
         **kwargs)
+    policy.goal_keys = goal_keys
 
     return policy
 
@@ -32,9 +56,16 @@ def get_uniform_policy(env, *args, **kwargs):
     return policy
 
 
-def get_goal_conditioned_uniform_policy(env, *args, **kwargs):
+def get_goal_conditioned_uniform_policy(env,
+                                        *args,
+                                        observation_keys=None,
+                                        goal_keys=None,
+                                        **kwargs):
     from .uniform_policy import UniformPolicy
-    policy = UniformPolicy(*args, **kwargs)
+    goal_keys = goal_keys or observation_keys or env.observation_keys
+
+    policy = UniformPolicy(*args, observation_keys=observation_keys, **kwargs)
+    policy.goal_keys = goal_keys
 
     return policy
 
@@ -81,11 +112,11 @@ def get_policy_from_params(policy_params, env, *args, **kwargs):
 
     policy = POLICY_FUNCTIONS[policy_type](
         env=env,
-        input_shapes=observation_shapes,
+        input_shapes={'observations': observation_shapes},
         output_shape=env.action_space.shape,
         observation_keys=observation_keys,
         *args,
-        preprocessors=observation_preprocessors,
+        preprocessors={'observations': observation_preprocessors},
         **policy_kwargs,
         **kwargs)
 
