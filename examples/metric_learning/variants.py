@@ -64,12 +64,19 @@ ENVIRONMENT_PARAMS = {
     'Point2DEnv': {
         'Default-v0': {
             'observation_keys': ('state_observation', 'state_desired_goal'),
+            'goal_key_map': {
+                'state_desired_goal': 'state_observation',
+                'desired_goal': 'observation',
+            },
             'terminate_on_success': True,
             'fixed_goal': (5.0, 5.0),
             'reset_positions': ((-5.0, -5.0), ),
         },
         'Wall-v0': {
             'observation_keys': ('state_observation', 'state_desired_goal'),
+            'goal_key_map': {
+                'state_desired_goal': 'state_observation',
+            },
             'terminate_on_success': False,
             'fixed_goal': (5.0, 4.0),
             # 'fixed_goal': (0.0, 0.0),
