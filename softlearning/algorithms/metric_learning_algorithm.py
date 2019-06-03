@@ -252,9 +252,10 @@ class MetricLearningAlgorithm(SAC):
             iteration, batch)
 
         for name, placeholder in self._placeholders['goals'].items():
-            feed_dict[placeholder] = np.tile(
+            feed_dict[placeholder] = np.repeat(
                 self._newest_goal[name][None, ...],
-                (batch['terminals'].shape[0], 1)
+                batch['terminals'].shape[0],
+                axis=0
             )
 
         return feed_dict
