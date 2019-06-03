@@ -159,19 +159,28 @@ ENVIRONMENT_PARAMS = {
     'DClaw3': {
         'ScrewV2-v0': {
             'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
-            'pose_difference_cost_coeff': 0,
-            'joint_velocity_cost_coeff': 0,
-            'joint_acceleration_cost_coeff': 0,
+            'hand_position_cost_coeff': 0,
+            'hand_velocity_cost_coeff': 0,
+            'hand_acceleration_cost_coeff': 0,
             'target_initial_velocity_range': (0, 0),
             'target_initial_position_range': (np.pi, np.pi),
             'object_initial_velocity_range': (0, 0),
             'object_initial_position_range': (0, 0),
+            'goal_key_map': {
+                'desired_hand_position': 'hand_position',
+                'desired_hand_velocity': 'hand_velocity',
+                'desired_hand_acceleration': 'hand_acceleration',
+                'desired_object_position': 'object_position',
+                'desired_object_position_sin': 'object_position_sin',
+                'desired_object_position_cos': 'object_position_cos',
+                'desired_object_velocity': 'object_velocity',
+            },
         },
         'ImageScrewV2-v0': {
             'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
-            'pose_difference_cost_coeff': 0,
-            'joint_velocity_cost_coeff': 0,
-            'joint_acceleration_cost_coeff': 0,
+            'hand_position_cost_coeff': 0,
+            'hand_velocity_cost_coeff': 0,
+            'hand_acceleration_cost_coeff': 0,
             'target_initial_velocity_range': (0, 0),
             'target_initial_position_range': (np.pi, np.pi),
             'object_initial_velocity_range': (0, 0),
@@ -191,9 +200,9 @@ ENVIRONMENT_PARAMS = {
     'HardwareDClaw3': {
         'ScrewV2-v0': {
             'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
-            'pose_difference_cost_coeff': 0,
-            'joint_velocity_cost_coeff': 0,
-            'joint_acceleration_cost_coeff': 0,
+            'hand_position_cost_coeff': 0,
+            'hand_velocity_cost_coeff': 0,
+            'hand_acceleration_cost_coeff': 0,
             'target_initial_velocity_range': (0, 0),
             'target_initial_position_range': (np.pi, np.pi),
             'object_initial_velocity_range': (0, 0),
@@ -201,9 +210,9 @@ ENVIRONMENT_PARAMS = {
         },
         'ImageScrewV2-v0': {
             'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
-            'pose_difference_cost_coeff': 0,
-            'joint_velocity_cost_coeff': 0,
-            'joint_acceleration_cost_coeff': 0,
+            'hand_position_cost_coeff': 0,
+            'hand_velocity_cost_coeff': 0,
+            'hand_acceleration_cost_coeff': 0,
             'target_initial_velocity_range': (0, 0),
             'target_initial_position_range': (np.pi, np.pi),
             'object_initial_velocity_range': (0, 0),
@@ -263,7 +272,8 @@ def get_supervision_schedule_params(domain):
         'GoalHopper': (
             (2000.0, 20),
         ),
-        'Point2DEnv': ((50, 1), )
+        'Point2DEnv': ((50, 1), ),
+        'DClaw3': ((200, 1), ),
     }[domain]
     # SCHEDULER_TYPES = ('linear', 'logarithmic')
     SCHEDULER_TYPES = ('linear', )
@@ -376,6 +386,7 @@ def get_variant_spec(args):
                             'GoalAnt': 64,
                             'GoalHopper': 64,
                             'Point2DEnv': 1,
+                            'DClaw3': 1,
                         }[domain]
                     ),
                 },
@@ -425,8 +436,14 @@ def get_variant_spec(args):
                     ['environment_params']
                     ['training']
                     ['kwargs'],
-                    # 'fixed_goal': (5.0, 4.0),
-                    # 'terminate_on_success': True,
+                    **(
+                        {
+                            'fixed_goal': (5.0, 4.0),
+                            'terminate_on_success': True,
+                        }
+                        if 'point' in domain
+                        else {}
+                    )
                 }))
             },
         },
@@ -435,7 +452,15 @@ def get_variant_spec(args):
             'kwargs': {
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
                 'squash': True,
-                'observation_keys': ('state_observation', ),
+                # 'observation_keys': ('state_observation', ),
+                'observation_keys': (
+                    'hand_position',
+                    'hand_velocity',
+                    'object_position',
+                    'object_position_sin',
+                    'object_position_cos',
+                    'object_velocity',
+                ),
                 'observation_preprocessors_params': {},
             },
         },
@@ -454,7 +479,15 @@ def get_variant_spec(args):
             'type': 'double_feedforward_Q_function',
             'kwargs': {
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
-                'observation_keys': ('state_observation', ),
+                # 'observation_keys': ('state_observation', ),
+                'observation_keys': (
+                    'hand_position',
+                    'hand_velocity',
+                    'object_position',
+                    'object_position_sin',
+                    'object_position_cos',
+                    'object_velocity',
+                ),
                 'observation_preprocessors_params': {}
             }
         },
@@ -554,7 +587,15 @@ def get_variant_spec(args):
         'distance_estimator_params': {
             'type': 'FeedforwardDistanceEstimator',
             'kwargs': {
-                'observation_keys': ('state_observation', ),
+                'observation_keys': (
+                    'hand_position',
+                    'hand_velocity',
+                    'object_position',
+                    'object_position_sin',
+                    'object_position_cos',
+                    'object_velocity',
+                ),
+                # 'observation_keys': ('state_observation', ),
                 'observation_preprocessors_params': {},
                 'hidden_layer_sizes': (256, 256),
                 'activation': 'relu',
