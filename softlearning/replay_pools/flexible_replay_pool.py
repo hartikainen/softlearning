@@ -147,7 +147,8 @@ class FlexibleReplayPool(ReplayPool):
 
     def last_n_batch(self, last_n, field_name_filter=None, **kwargs):
         last_n_indices = np.arange(
-            self._pointer - min(self.size, last_n), self._pointer
+            self._pointer - min(self.size, int(last_n)), self._pointer,
+            dtype=int
         ) % self._max_size
 
         return self.batch_by_indices(
