@@ -76,8 +76,9 @@ class UnsupervisedTargetProposer(BaseTargetProposer):
             ('farthest_estimate_from_first_observation',
              'random_weighted_estimate_from_first_observation')):
             first_observations = type(self._first_observation)(
-                (key, np.tile(value[None, :],
-                              (new_observations[key].shape[0], 1)))
+                (key, np.repeat(value[None, ...],
+                                new_observations[key].shape[0],
+                                axis=0))
                 for key, value in self._first_observation.items()
             )
             new_distances = self.distance_fn(
