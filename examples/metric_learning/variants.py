@@ -196,6 +196,8 @@ ENVIRONMENT_PARAMS = {
                 },
             },
             'observation_keys': (
+                'object_position',
+
                 'hand_position',
                 'hand_velocity',
                 'pixels',
