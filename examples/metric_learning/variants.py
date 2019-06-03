@@ -196,11 +196,19 @@ ENVIRONMENT_PARAMS = {
                 },
             },
             'observation_keys': (
-                'object_position',
+                'pixels',
 
                 'hand_position',
                 'hand_velocity',
-                'pixels',
+                'hand_acceleration',
+
+                # These are supposed to not be fed to the models,
+                # but they are here just for the reward computation
+                # when we set the goal from outside of the environment.
+                'object_position',
+                'object_position_sin',
+                'object_position_cos',
+                'object_velocity',
 
                 'desired_hand_position',
                 'desired_hand_velocity',
