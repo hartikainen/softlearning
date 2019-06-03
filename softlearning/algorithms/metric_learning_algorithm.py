@@ -164,9 +164,9 @@ class MetricLearningAlgorithm(SAC):
         self._newest_goal = new_goal.copy()
 
         try:
-            self._training_environment._env.env.set_goal(new_goal)
+            self._training_environment._env.env.set_fixed_goal(new_goal)
         except AttributeError:
-            self._training_environment.unwrapped.set_goal(new_goal)
+            self._training_environment.unwrapped.set_fixed_goal(new_goal)
 
     def _epoch_after_hook(self, training_paths):
         self._previous_training_paths = training_paths
