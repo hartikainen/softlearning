@@ -217,7 +217,7 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
             epoch - self._last_supervision_epoch)
 
         if (not should_supervise) or num_epochs_since_last_supervision < 1:
-            return self._current_target
+            return self._current_target.copy()
 
         self._last_supervision_epoch = epoch
         self._supervision_labels_used += 1
@@ -263,24 +263,41 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
             }[type(env)]
 
             last_observations_x_positions = new_state_observations[:, 0:1]
-            last_observations_distances = last_observations_x_positions
+            new_observations_distances = last_observations_x_positions
 
-            best_observation_index = np.argmax(last_observations_distances)
-            if (last_observations_distances[best_observation_index]
+            best_observation_index = np.argmax(new_observations_distances)
+            if (new_observations_distances[best_observation_index]
                 > self._best_observation_value):
                 best_observation = new_observations[best_observation_index]
-                self._best_observation_value = last_observations_distances[
+                self._best_observation_value = new_observations_distances[
                     best_observation_index]
             else:
                 best_observation = self._current_target
 
         elif 'dclaw' in type(env).__name__.lower():
-            from pprint import pprint; import ipdb; ipdb.set_trace(context=30)
-            raise NotImplementedError("TODO(hartikainen)")
+            object_positions = new_observations['object_position']
+            desired_object_position = np.pi
+            new_observations_distances = np.linalg.norm(
+                np.abs(object_positions) - desired_object_position,
+                ord=1,
+                axis=1,
+                keepdims=True)
+
+            best_observation_index = np.argmin(new_observations_distances)
+            if (-new_observations_distances[best_observation_index]
+                > self._best_observation_value):
+                best_observation = type(new_observations)(
+                    (key, values[best_observation_index])
+                    for key, values in new_observations.items())
+                self._best_observation_value = -new_observations_distances[
+                    best_observation_index]
+            else:
+                best_observation = self._current_target
+
         else:
             raise NotImplementedError
 
-        self._current_target = best_observation
+        self._current_target = best_observation.copy()
 
         return best_observation
 
