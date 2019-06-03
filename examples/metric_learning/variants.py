@@ -4,6 +4,7 @@ from ray import tune
 import numpy as np
 
 from softlearning.misc.utils import get_git_rev
+from examples.development.variants import is_image_env
 from examples.utils import variant_equals
 from sac_envs.envs.dclaw.dclaw3_screw_v2 import LinearLossFn, NegativeLogLossFn
 
@@ -522,7 +523,7 @@ def get_variant_spec(args):
                 'action_prior': 'uniform',
                 'save_full_state': False,
 
-                'plot_distances': True,
+                'plot_distances': False,
                 'use_distance_for': tune.grid_search([
                     'reward',
                     # 'value',
@@ -636,29 +637,31 @@ def get_variant_spec(args):
         },
     }
 
-    if 'image' in task.lower() or 'image' in domain.lower():
+    if is_image_env(domain, task, variant_spec):
         preprocessor_params = {
             'type': 'convnet_preprocessor',
             'kwargs': {
-                'image_shape': (
-                    variant_spec
-                    ['environment_params']
-                    ['training']
-                    ['kwargs']
-                    ['image_shape']),
-                'output_size': None,
-                'conv_filters': (4, 4),
-                'conv_kernel_sizes': ((3, 3), (3, 3)),
-                'pool_type': 'MaxPool2D',
-                'pool_sizes': ((2, 2), (2, 2)),
-                'pool_strides': (2, 2),
-                'dense_hidden_layer_sizes': (),
+                'conv_filters': (64, ) * 3,
+                'conv_kernel_sizes': (3, ) * 3,
+                'conv_strides': (2, ) * 3,
+                'normalization_type': 'layer',
+                'downsampling_type': 'conv',
             },
         }
+
         variant_spec['policy_params']['kwargs'][
             'observation_preprocessors_params'] = {
                 'pixels': deepcopy(preprocessor_params)
             }
+
+        variant_spec['Q_params']['kwargs']['hidden_layer_sizes'] = (
+            tune.sample_from(lambda spec: (deepcopy(
+                spec.get('config', spec)
+                ['policy_params']
+                ['kwargs']
+                ['hidden_layer_sizes']
+            )))
+        )
         variant_spec['Q_params']['kwargs'][
             'observation_preprocessors_params'] = (
                 tune.sample_from(lambda spec: (deepcopy(
