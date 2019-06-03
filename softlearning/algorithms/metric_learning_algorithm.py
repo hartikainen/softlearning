@@ -54,14 +54,15 @@ class MetricLearningAlgorithm(SAC):
         observations_ph = self._placeholders['observations']
         actions_ph = self._placeholders['actions']
         next_observations_ph = self._placeholders['next_observations']
-        goals_ph = self._placeholders['goals']
 
-        # # goals_ph is possibly a single element. Broadcast it to batch size.
-        # for name, placeholder in goals_ph.items():
-        #     goals_ph[name] = tf.zeros(
-        #         (tf.shape(actions_ph)[0], *placeholder.shape[1:]),
-        #         dtype=placeholder.dtype,
-        #     ) + placeholder
+        # goals_ph is possibly a single element. Broadcast it to batch size.
+        goals_ph = {
+            name: placeholder + tf.zeros(
+                (tf.shape(actions_ph)[0], *placeholder.shape[1:]),
+                dtype=placeholder.dtype,
+            )
+            for name, placeholder in self._placeholders['goals'].items()
+        }
 
         # equal_shapes = (
         #     set(next_observations_ph.keys()) == set(goals_ph.keys())
@@ -252,11 +253,7 @@ class MetricLearningAlgorithm(SAC):
             iteration, batch)
 
         for name, placeholder in self._placeholders['goals'].items():
-            feed_dict[placeholder] = np.repeat(
-                self._newest_goal[name][None, ...],
-                batch['terminals'].shape[0],
-                axis=0
-            )
+            feed_dict[placeholder] = self._newest_goal[name][None, ...]
 
         return feed_dict
 
