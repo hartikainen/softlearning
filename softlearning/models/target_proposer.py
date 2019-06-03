@@ -13,10 +13,15 @@ from softlearning.environments.utils import is_point_2d_env
 
 
 class BaseTargetProposer(object):
-    def __init__(self, env, pool, target_candidate_strategy='all_steps'):
+    def __init__(self,
+                 env,
+                 pool,
+                 target_candidate_strategy='all_steps',
+                 target_candidate_window=int(1e5)):
         self._env = env
         self._pool = pool
         self._target_candidate_strategy = target_candidate_strategy
+        self._target_candidate_window = target_candidate_window
         self._current_target = None
 
     def set_distance_fn(self, distance_fn):
@@ -26,7 +31,7 @@ class BaseTargetProposer(object):
         raise NotImplementedError
 
     def _get_new_observations(self):
-        past_batch = self._pool.last_n_batch(1e5)
+        past_batch = self._pool.last_n_batch(self._target_candidate_window)
         past_observations = past_batch['observations']
         if self._target_candidate_strategy == 'last_steps':
             episode_end_indices = np.flatnonzero(
