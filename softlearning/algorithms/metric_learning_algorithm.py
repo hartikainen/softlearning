@@ -63,22 +63,25 @@ class MetricLearningAlgorithm(SAC):
         #         dtype=placeholder.dtype,
         #     ) + placeholder
 
-        equal_shapes = (
-            set(next_observations_ph.keys()) == set(goals_ph.keys())
-            and all(next_observations_ph[key].shape[1:]
-                    == goals_ph[key].shape[1:]
-                    for key in next_observations_ph.keys()))
+        # equal_shapes = (
+        #     set(next_observations_ph.keys()) == set(goals_ph.keys())
+        #     and all(next_observations_ph[key].shape[1:]
+        #             == goals_ph[key].shape[1:]
+        #             for key in next_observations_ph.keys()))
 
-        if equal_shapes:
-            goal_successes = (
-                tf.cast(tf.reduce_all(tf.equal(
-                    tf.concat(self._policy_inputs(
-                        observations=next_observations_ph), axis=-1),
-                    tf.concat(self._policy_inputs(
-                        observations=goals_ph), axis=-1),
-                ), axis=1, keepdims=True), tf.float32))
-        else:
-            goal_successes = tf.zeros_like(self._placeholders['terminals'])
+        # if equal_shapes:
+        #     goal_successes = (
+        #         tf.cast(tf.reduce_all(tf.equal(
+        #             tf.concat(self._policy_inputs(
+        #                 observations=next_observations_ph), axis=-1),
+        #             tf.concat(self._policy_inputs(
+        #                 observations=goals_ph), axis=-1),
+        #         ), axis=1, keepdims=True), tf.float32))
+        # else:
+        #     goal_successes = tf.zeros_like(self._placeholders['terminals'])
+
+        goal_successes = tf.zeros_like(
+            self._placeholders['terminals'], dtype=tf.float32)
 
         if self._use_distance_for == 'reward':
             policy_inputs = self._policy_inputs(
