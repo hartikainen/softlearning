@@ -195,7 +195,23 @@ ENVIRONMENT_PARAMS = {
                     'camera_id': -1
                 },
             },
-            'observation_keys': ('hand_position', 'hand_velocity', 'pixels'),
+            'observation_keys': (
+                'hand_position',
+                'hand_velocity',
+                'pixels',
+
+                'desired_hand_position',
+                'desired_hand_velocity',
+                'desired_pixels',
+            ),
+            'goal_key_map': {
+                f'desired_{key}': key
+                for key in (
+                    'hand_position',
+                    'hand_velocity',
+                    'pixels',
+                )
+            },
         },
     },
     'HardwareDClaw3': {
@@ -256,7 +272,7 @@ DEFAULT_MAX_PATH_LENGTH = 1000
 MAX_PATH_LENGTH_PER_DOMAIN = {
     'Point2DEnv': 50,
     'GoalReacher': 200,
-    'DClaw3': 250,
+    'DClaw3': 500,
 }
 
 NUM_CHECKPOINTS = 10
@@ -454,13 +470,18 @@ def get_variant_spec(args):
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
                 'squash': True,
                 # 'observation_keys': ('state_observation', ),
+                # 'observation_keys': (
+                #     'hand_position',
+                #     'hand_velocity',
+                #     'object_position',
+                #     'object_position_sin',
+                #     'object_position_cos',
+                #     'object_velocity',
+                # ),
                 'observation_keys': (
                     'hand_position',
                     'hand_velocity',
-                    'object_position',
-                    'object_position_sin',
-                    'object_position_cos',
-                    'object_velocity',
+                    'pixels',
                 ),
                 'observation_preprocessors_params': {},
             },
@@ -481,13 +502,18 @@ def get_variant_spec(args):
             'kwargs': {
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
                 # 'observation_keys': ('state_observation', ),
+                # 'observation_keys': (
+                #     'hand_position',
+                #     'hand_velocity',
+                #     'object_position',
+                #     'object_position_sin',
+                #     'object_position_cos',
+                #     'object_velocity',
+                # ),
                 'observation_keys': (
                     'hand_position',
                     'hand_velocity',
-                    'object_position',
-                    'object_position_sin',
-                    'object_position_cos',
-                    'object_velocity',
+                    'pixels',
                 ),
                 'observation_preprocessors_params': {}
             }
@@ -588,15 +614,20 @@ def get_variant_spec(args):
         'distance_estimator_params': {
             'type': 'FeedforwardDistanceEstimator',
             'kwargs': {
+                # 'observation_keys': (
+                #     'hand_position',
+                #     'hand_velocity',
+                #     'object_position',
+                #     'object_position_sin',
+                #     'object_position_cos',
+                #     'object_velocity',
+                # ),
+                # 'observation_keys': ('state_observation', ),
                 'observation_keys': (
                     'hand_position',
                     'hand_velocity',
-                    'object_position',
-                    'object_position_sin',
-                    'object_position_cos',
-                    'object_velocity',
+                    'pixels',
                 ),
-                # 'observation_keys': ('state_observation', ),
                 'observation_preprocessors_params': {},
                 'hidden_layer_sizes': (256, 256),
                 'activation': 'relu',
