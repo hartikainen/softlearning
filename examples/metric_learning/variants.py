@@ -310,8 +310,8 @@ def get_supervision_schedule_params(domain):
             (2000.0, 20),
         ),
         'Point2DEnv': ((50, 1), ),
-        'DClaw3': ((200, 10), ),
-        'HardwareDClaw3': ((200, 10), ),
+        'DClaw3': ((100, 9), ),
+        'HardwareDClaw3': ((100, 9), ),
     }[domain]
     # SCHEDULER_TYPES = ('linear', 'logarithmic')
     SCHEDULER_TYPES = ('linear', )
@@ -321,9 +321,9 @@ def get_supervision_schedule_params(domain):
             'kwargs': {
                 'start_labels': 1,
                 'decay_steps': decay_steps,
-                'end_labels': decay_steps / labels_every_n_steps,
+                'end_labels': decay_steps // labels_every_n_steps,
                 **(
-                    {'decay_rate': 0.25}
+                    {'decay_rate': 1e-2}
                     if scheduler_type == 'logarithmic'
                     else {}
                 )
