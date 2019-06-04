@@ -164,7 +164,7 @@ ENVIRONMENT_PARAMS = {
             'hand_velocity_cost_coeff': 0,
             'hand_acceleration_cost_coeff': 0,
             'target_initial_velocity_range': (0, 0),
-            'target_initial_position_range': (np.pi, np.pi),
+            'target_initial_position_range': (0, 0),
             'object_initial_velocity_range': (0, 0),
             'object_initial_position_range': (0, 0),
             'goal_key_map': {
@@ -231,9 +231,18 @@ ENVIRONMENT_PARAMS = {
             'hand_velocity_cost_coeff': 0,
             'hand_acceleration_cost_coeff': 0,
             'target_initial_velocity_range': (0, 0),
-            'target_initial_position_range': (np.pi, np.pi),
+            'target_initial_position_range': (0, 0),
             'object_initial_velocity_range': (0, 0),
             'object_initial_position_range': (0, 0),
+            'goal_key_map': {
+                'desired_hand_position': 'hand_position',
+                'desired_hand_velocity': 'hand_velocity',
+                'desired_hand_acceleration': 'hand_acceleration',
+                'desired_object_position': 'object_position',
+                'desired_object_position_sin': 'object_position_sin',
+                'desired_object_position_cos': 'object_position_cos',
+                'desired_object_velocity': 'object_velocity',
+            },
         },
         'ImageScrewV2-v0': {
             'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
@@ -272,8 +281,8 @@ NUM_EPOCHS_PER_DOMAIN = {
     'HandManipulateEgg': int(1e4 + 1),
     'HandManipulateBlock': int(1e4 + 1),
     'HandReach': int(1e4 + 1),
-    'DClaw3': int(5e2 + 1),
-    'ImageDClaw3': int(5e3 + 1),
+    'DClaw3': int(150),
+    'HardwareDClaw3': int(150),
     'Point2DEnv': int(50 + 1)
 }
 
@@ -282,7 +291,8 @@ DEFAULT_MAX_PATH_LENGTH = 1000
 MAX_PATH_LENGTH_PER_DOMAIN = {
     'Point2DEnv': 50,
     'GoalReacher': 200,
-    'DClaw3': 500,
+    'DClaw3': 250,
+    'HardwareDClaw3': 250,
 }
 
 NUM_CHECKPOINTS = 10
@@ -300,7 +310,8 @@ def get_supervision_schedule_params(domain):
             (2000.0, 20),
         ),
         'Point2DEnv': ((50, 1), ),
-        'DClaw3': ((200, 1), ),
+        'DClaw3': ((200, 10), ),
+        'HardwareDClaw3': ((200, 10), ),
     }[domain]
     # SCHEDULER_TYPES = ('linear', 'logarithmic')
     SCHEDULER_TYPES = ('linear', )
@@ -414,6 +425,7 @@ def get_variant_spec(args):
                             'GoalHopper': 64,
                             'Point2DEnv': 1,
                             'DClaw3': 1,
+                            'HardwareDClaw3': 1,
                         }[domain]
                     ),
                 },
@@ -469,7 +481,9 @@ def get_variant_spec(args):
                             'terminate_on_success': True,
                         }
                         if 'point' in domain
-                        else {}
+                        else {
+                                'target_initial_position_range': (np.pi, np.pi),
+                        }
                     )
                 }))
             },
@@ -480,18 +494,13 @@ def get_variant_spec(args):
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
                 'squash': True,
                 # 'observation_keys': ('state_observation', ),
-                # 'observation_keys': (
-                #     'hand_position',
-                #     'hand_velocity',
-                #     'object_position',
-                #     'object_position_sin',
-                #     'object_position_cos',
-                #     'object_velocity',
-                # ),
                 'observation_keys': (
                     'hand_position',
                     'hand_velocity',
-                    'pixels',
+                    'object_position',
+                    'object_position_sin',
+                    'object_position_cos',
+                    'object_velocity',
                 ),
                 'observation_preprocessors_params': {},
             },
@@ -512,18 +521,13 @@ def get_variant_spec(args):
             'kwargs': {
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
                 # 'observation_keys': ('state_observation', ),
-                # 'observation_keys': (
-                #     'hand_position',
-                #     'hand_velocity',
-                #     'object_position',
-                #     'object_position_sin',
-                #     'object_position_cos',
-                #     'object_velocity',
-                # ),
                 'observation_keys': (
                     'hand_position',
                     'hand_velocity',
-                    'pixels',
+                    'object_position',
+                    'object_position_sin',
+                    'object_position_cos',
+                    'object_velocity',
                 ),
                 'observation_preprocessors_params': {}
             }
@@ -537,7 +541,7 @@ def get_variant_spec(args):
                     domain, DEFAULT_NUM_EPOCHS),
                 'train_every_n_steps': 1,
                 'n_train_repeat': 1,
-                'n_initial_exploration_steps': int(1e4),
+                'n_initial_exploration_steps': int(1e3),
                 'reparameterize': True,
                 'eval_render_kwargs': {},
                 # {
@@ -565,23 +569,24 @@ def get_variant_spec(args):
                     # 'value',
                     # 'telescope_reward',
                 ]),
-                'final_exploration_proportion': 0.1,
+                'final_exploration_proportion': 0.2,
             }
         },
-        'target_proposer_params': {
-            'type': 'UnsupervisedTargetProposer',
-            'kwargs': {
-                'target_proposal_rule': tune.grid_search([
-                    'farthest_estimate_from_first_observation',
-                    'random_weighted_estimate_from_first_observation',
-                    'random',
-                ]),
-                'random_weighted_scale': 1.0,
-                'target_candidate_strategy': tune.grid_search([
-                    'all_steps', 'last_steps'
-                ]),
-            },
-        },
+        # 'target_proposer_params': {
+        #     'type': 'UnsupervisedTargetProposer',
+        #     'kwargs': {
+        #         'target_proposal_rule': tune.grid_search([
+        #             'farthest_estimate_from_first_observation',
+        #             'random_weighted_estimate_from_first_observation',
+        #             'random',
+        #         ]),
+        #         'random_weighted_scale': 1.0,
+        #         'target_candidate_strategy': tune.grid_search([
+        #             # 'all_steps',
+        #             'last_steps'
+        #         ]),
+        #     },
+        # },
         # 'target_proposer_params': {
         #     'type': 'RandomTargetProposer',
         #     'kwargs': {
@@ -591,13 +596,15 @@ def get_variant_spec(args):
         #         ]),
         #     }
         # },
-        # 'target_proposer_params': {
-        #     'type': 'SemiSupervisedTargetProposer',
-        #     'kwargs': {
-        #         'supervision_schedule_params': get_supervision_schedule_params(
-        #             domain),
-        #     },
-        # },
+        'target_proposer_params': {
+            'type': 'SemiSupervisedTargetProposer',
+            'kwargs': {
+                'supervision_schedule_params': get_supervision_schedule_params(
+                    domain),
+                'target_candidate_strategy': 'last_steps',
+                'target_candidate_window': int(1e3),
+            },
+        },
         'replay_pool_params': tune.sample_from(replay_pool_params),
         'distance_pool_params': tune.sample_from(distance_pool_params),
         'sampler_params': {
@@ -624,20 +631,15 @@ def get_variant_spec(args):
         'distance_estimator_params': {
             'type': 'FeedforwardDistanceEstimator',
             'kwargs': {
-                # 'observation_keys': (
-                #     'hand_position',
-                #     'hand_velocity',
-                #     'object_position',
-                #     'object_position_sin',
-                #     'object_position_cos',
-                #     'object_velocity',
-                # ),
-                # 'observation_keys': ('state_observation', ),
                 'observation_keys': (
                     'hand_position',
                     'hand_velocity',
-                    'pixels',
+                    'object_position',
+                    'object_position_sin',
+                    'object_position_cos',
+                    'object_velocity',
                 ),
+                # 'observation_keys': ('state_observation', ),
                 'observation_preprocessors_params': {},
                 'hidden_layer_sizes': (256, 256),
                 'activation': 'relu',
