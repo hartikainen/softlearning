@@ -284,13 +284,19 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
                 best_observation = self._current_target
 
         elif 'dclaw' in type(env).__name__.lower():
+            from sac_envs.utils.unit_circle_math import angle_distance_from_positions
+
             object_positions = new_observations['object_position']
-            desired_object_position = np.pi
-            new_observations_distances = np.linalg.norm(
-                np.abs(object_positions) - desired_object_position,
+            desired_object_positions = np.array(np.pi).reshape(1, -1)
+            new_observations_distances = angle_distance_from_positions(
+                [np.sin(object_positions), np.cos(object_positions)],
+                [np.sin(desired_object_positions),
+                 np.cos(desired_object_positions)],
+            )
+            new_observations_distances2 = np.linalg.norm(
+                np.abs(object_positions) - desired_object_positions,
                 ord=1,
-                axis=1,
-                keepdims=True)
+                axis=1)
 
             best_observation_index = np.argmin(new_observations_distances)
             if (-new_observations_distances[best_observation_index]
