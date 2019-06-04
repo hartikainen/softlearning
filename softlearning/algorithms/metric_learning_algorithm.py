@@ -313,9 +313,11 @@ class MetricLearningAlgorithm(SAC):
             metric_learner_diagnostics.items()
         ])
 
-        if hasattr(self._target_proposer, '_supervision_labels_used'):
-            diagnostics['supervision_labels_used'] = (
-                self._target_proposer._supervision_labels_used)
+        target_proposer_diagnostics = self._target_proposer.get_diagnostics()
+        diagnostics.update((
+            (f'target_proposer/{key}', value)
+            for key, value in target_proposer_diagnostics.items()
+        ))
 
         if self._plot_distances:
             env = self._training_environment.unwrapped

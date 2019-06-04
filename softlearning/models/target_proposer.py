@@ -1,5 +1,6 @@
-import numpy as np
+from collections import OrderedDict
 
+import numpy as np
 
 from gym.envs.mujoco.swimmer_v3 import SwimmerEnv
 from gym.envs.mujoco.ant_v3 import AntEnv
@@ -46,6 +47,9 @@ class BaseTargetProposer(object):
             raise NotImplementedError(self._target_candidate_strategy)
 
         return new_observations
+
+    def get_diagnostics(self):
+        return OrderedDict()
 
 
 class UnsupervisedTargetProposer(BaseTargetProposer):
@@ -193,6 +197,7 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
             supervision_schedule_params['type']](
                 **supervision_schedule_params['kwargs'])
         self._supervision_labels_used = 0
+        self._observations_seen = 0
         self._last_supervision_epoch = -1
         self._best_observation_value = -float('inf')
 
@@ -224,6 +229,9 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
         self._supervision_labels_used += 1
 
         new_observations = self._get_new_observations()
+
+        self._observations_seen += new_observations[
+            next(iter(new_observations.keys()))].shape[0]
 
         if is_point_2d_env(env):
             ultimate_goal = env.ultimate_goal
@@ -301,6 +309,12 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
         self._current_target = best_observation.copy()
 
         return best_observation
+
+    def get_diagnostics(self):
+        return OrderedDict((
+            ('observations_seen', self._observations_seen),
+            ('supervision_labels_used', self._supervision_labels_used),
+        ))
 
 
 class RandomTargetProposer(BaseTargetProposer):
