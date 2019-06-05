@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from ray import tune
 import numpy as np
 
@@ -13,6 +15,8 @@ GAUSSIAN_POLICY_PARAMS_BASE = {
     'kwargs': {
         'hidden_layer_sizes': (M, M),
         'squash': True,
+        'observation_keys': None,
+        'observation_preprocessors_params': {}
     }
 }
 
@@ -47,7 +51,7 @@ ALGORITHM_PARAMS_BASE = {
         'epoch_length': 10000,
         'train_every_n_steps': 1,
         'n_train_repeat': 1,
-        'eval_render_mode': None,
+        'eval_render_kwargs': {},
         'eval_n_episodes': 1,
         'eval_deterministic': True,
 
@@ -66,7 +70,6 @@ ALGORITHM_PARAMS_ADDITIONAL = {
             'lr': 3e-4,
             'target_update_interval': 1,
             'tau': 5e-3,
-            'store_extra_policy_info': False,
             'action_prior': 'uniform',
             'n_initial_exploration_steps': int(1e3),
         }
@@ -126,6 +129,9 @@ NUM_EPOCHS_PER_DOMAIN = {
     'Reacher': int(200),
     'Pendulum': 10,
     'Sawyer': int(1e4),
+    'ball_in_cup': int(2e4),
+    'cheetah': int(2e4),
+    'finger': int(2e4),
 }
 
 ALGORITHM_PARAMS_PER_DOMAIN = {
@@ -227,7 +233,47 @@ ENVIRONMENT_PARAMS = {
                 'PickPlaceSingle',
                 'Stack',
         )
-    }
+    },
+    'ball_in_cup': {
+        'catch': {
+            'pixel_wrapper_kwargs': {
+                'observation_key': 'pixels',
+                'pixels_only': True,
+                'render_kwargs': {
+                    'width': 84,
+                    'height': 84,
+                    'camera_id': 0,
+                },
+            },
+        },
+    },
+    'cheetah': {
+        'run': {
+            'pixel_wrapper_kwargs': {
+                'observation_key': 'pixels',
+                'pixels_only': True,
+                'render_kwargs': {
+                    'width': 84,
+                    'height': 84,
+                    'camera_id': 0,
+                },
+            },
+        },
+    },
+    'finger': {
+        'spin': {
+            'pixel_wrapper_kwargs': {
+                'observation_key': 'pixels',
+                'pixels_only': True,
+                'render_kwargs': {
+                    'width': 84,
+                    'height': 84,
+                    'camera_id': 0,
+                },
+            },
+        },
+    },
+
 }
 
 NUM_CHECKPOINTS = 10
@@ -361,10 +407,23 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             POLICY_PARAMS_BASE[policy],
             POLICY_PARAMS_FOR_DOMAIN[policy].get(domain, {})
         ),
+        'exploration_policy_params': {
+            'type': 'UniformPolicy',
+            'kwargs': {
+                'observation_keys': tune.sample_from(lambda spec: (
+                    spec.get('config', spec)
+                    ['policy_params']
+                    ['kwargs']
+                    .get('observation_keys')
+                ))
+            },
+        },
         'Q_params': {
             'type': 'double_feedforward_Q_function',
             'kwargs': {
                 'hidden_layer_sizes': (M, M),
+                'observation_keys': None,
+                'observation_preprocessors_params': {}
             }
         },
         'algorithm_params': algorithm_params,
@@ -399,6 +458,13 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
     return variant_spec
 
 
+def is_image_env(domain, task, variant_spec):
+    return ('image' in task.lower()
+            or 'image' in domain.lower()
+            or 'pixel_wrapper_kwargs' in (
+                variant_spec['environment_params']['training']['kwargs']))
+
+
 def get_variant_spec_image(universe,
                            domain,
                            task,
@@ -409,29 +475,41 @@ def get_variant_spec_image(universe,
     variant_spec = get_variant_spec_base(
         universe, domain, task, policy, algorithm, *args, **kwargs)
 
-    if 'image' in task.lower() or 'image' in domain.lower():
+    if is_image_env(domain, task, variant_spec):
         preprocessor_params = {
             'type': 'convnet_preprocessor',
             'kwargs': {
-                'image_shape': (
-                    variant_spec
-                    ['environment_params']
-                    ['training']
-                    ['kwargs']
-                    ['image_shape']),
-                'output_size': M,
-                'conv_filters': (4, 4),
-                'conv_kernel_sizes': ((3, 3), (3, 3)),
-                'pool_type': 'MaxPool2D',
-                'pool_sizes': ((2, 2), (2, 2)),
-                'pool_strides': (2, 2),
-                'dense_hidden_layer_sizes': (),
+                'conv_filters': (64, ) * 3,
+                'conv_kernel_sizes': (3, ) * 3,
+                'conv_strides': (2, ) * 3,
+                'normalization_type': 'layer',
+                'downsampling_type': 'conv',
             },
         }
-        variant_spec['policy_params']['kwargs']['preprocessor_params'] = (
-            preprocessor_params.copy())
-        variant_spec['Q_params']['kwargs']['preprocessor_params'] = (
-            preprocessor_params.copy())
+
+        variant_spec['policy_params']['kwargs']['hidden_layer_sizes'] = (M, M)
+        variant_spec['policy_params']['kwargs'][
+            'observation_preprocessors_params'] = {
+                'pixels': deepcopy(preprocessor_params)
+            }
+
+        variant_spec['Q_params']['kwargs']['hidden_layer_sizes'] = (
+            tune.sample_from(lambda spec: (deepcopy(
+                spec.get('config', spec)
+                ['policy_params']
+                ['kwargs']
+                ['hidden_layer_sizes']
+            )))
+        )
+        variant_spec['Q_params']['kwargs'][
+            'observation_preprocessors_params'] = (
+                tune.sample_from(lambda spec: (deepcopy(
+                    spec.get('config', spec)
+                    ['policy_params']
+                    ['kwargs']
+                    ['observation_preprocessors_params']
+                )))
+            )
 
     return variant_spec
 
@@ -439,14 +517,8 @@ def get_variant_spec_image(universe,
 def get_variant_spec(args):
     universe, domain, task = args.universe, args.domain, args.task
 
-    if ('image' in task.lower()
-        or 'blind' in task.lower()
-        or 'image' in domain.lower()):
-        variant_spec = get_variant_spec_image(
-            universe, domain, task, args.policy, args.algorithm)
-    else:
-        variant_spec = get_variant_spec_base(
-            universe, domain, task, args.policy, args.algorithm)
+    variant_spec = get_variant_spec_image(
+        universe, domain, task, args.policy, args.algorithm)
 
     if args.checkpoint_replay_pool is not None:
         variant_spec['run_params']['checkpoint_replay_pool'] = (

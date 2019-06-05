@@ -4,7 +4,9 @@ from numbers import Number
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
+from flatten_dict import flatten
 
+from softlearning.models.utils import flatten_input_structure
 from .rl_algorithm import RLAlgorithm
 
 
@@ -40,7 +42,6 @@ class SAC(RLAlgorithm):
             target_update_interval=1,
             action_prior='uniform',
             reparameterize=False,
-            store_extra_policy_info=False,
 
             save_full_state=False,
             **kwargs,
@@ -94,102 +95,45 @@ class SAC(RLAlgorithm):
         self._action_prior = action_prior
 
         self._reparameterize = reparameterize
-        self._store_extra_policy_info = store_extra_policy_info
 
         self._save_full_state = save_full_state
-
-        observation_shape = self._training_environment.active_observation_shape
-        action_shape = self._training_environment.action_space.shape
-
-        assert len(observation_shape) == 1, observation_shape
-        self._observation_shape = observation_shape
-        assert len(action_shape) == 1, action_shape
-        self._action_shape = action_shape
 
         self._build()
 
     def _build(self):
-        self._training_ops = {}
+        super(SAC, self)._build()
 
-        self._init_global_step()
-        self._init_placeholders()
         self._init_actor_update()
         self._init_critic_update()
         self._init_diagnostics_ops()
 
-    def _init_placeholders(self):
-        """Create input placeholders for the SAC algorithm.
-
-        Creates `tf.placeholder`s for:
-            - observation
-            - next observation
-            - action
-            - reward
-            - terminals
-        """
-        self._iteration_ph = tf.placeholder(
-            tf.int64, shape=None, name='iteration')
-
-        self._observations_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, *self._observation_shape),
-            name='observation',
-        )
-
-        self._next_observations_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, *self._observation_shape),
-            name='next_observation',
-        )
-
-        self._actions_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, *self._action_shape),
-            name='actions',
-        )
-
-        self._rewards_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, 1),
-            name='rewards',
-        )
-
-        self._terminals_ph = tf.placeholder(
-            tf.float32,
-            shape=(None, 1),
-            name='terminals',
-        )
-
-        if self._store_extra_policy_info:
-            self._log_pis_ph = tf.placeholder(
-                tf.float32,
-                shape=(None, 1),
-                name='log_pis',
-            )
-            self._raw_actions_ph = tf.placeholder(
-                tf.float32,
-                shape=(None, *self._action_shape),
-                name='raw_actions',
-            )
-
     def _get_Q_target(self):
-        next_actions = self._policy.actions([self._next_observations_ph])
-        next_log_pis = self._policy.log_pis(
-            [self._next_observations_ph], next_actions)
+        policy_inputs = flatten_input_structure({
+            name: self._placeholders['next_observations'][name]
+            for name in self._policy.observation_keys
+        })
+        next_actions = self._policy.actions(policy_inputs)
+        next_log_pis = self._policy.log_pis(policy_inputs, next_actions)
 
-        next_Qs_values = tuple(
-            Q([self._next_observations_ph, next_actions])
-            for Q in self._Q_targets)
+        next_Q_observations = {
+            name: self._placeholders['next_observations'][name]
+            for name in self._Qs[0].observation_keys
+        }
+        next_Q_inputs = flatten_input_structure(
+            {**next_Q_observations, 'actions': next_actions})
+        next_Qs_values = tuple(Q(next_Q_inputs) for Q in self._Q_targets)
 
         min_next_Q = tf.reduce_min(next_Qs_values, axis=0)
-        next_value = min_next_Q - self._alpha * next_log_pis
+        next_values = min_next_Q - self._alpha * next_log_pis
+
+        terminals = tf.cast(self._placeholders['terminals'], next_values.dtype)
 
         Q_target = td_target(
-            reward=self._reward_scale * self._rewards_ph,
+            reward=self._reward_scale * self._placeholders['rewards'],
             discount=self._discount,
-            next_value=(1 - self._terminals_ph) * next_value)
+            next_value=(1 - terminals) * next_values)
 
-        return Q_target
+        return tf.stop_gradient(Q_target)
 
     def _init_critic_update(self):
         """Create minimization operation for critic Q-function.
@@ -201,21 +145,24 @@ class SAC(RLAlgorithm):
         See Equations (5, 6) in [1], for further information of the
         Q-function update rule.
         """
-        Q_target = tf.stop_gradient(self._get_Q_target())
-
+        Q_target = self._get_Q_target()
         assert Q_target.shape.as_list() == [None, 1]
 
-        Q_values = self._Q_values = tuple(
-            Q([self._observations_ph, self._actions_ph])
-            for Q in self._Qs)
+        Q_observations = {
+            name: self._placeholders['observations'][name]
+            for name in self._Qs[0].observation_keys
+        }
+        Q_inputs = flatten_input_structure({
+            **Q_observations, 'actions': self._placeholders['actions']})
+        Q_values = self._Q_values = tuple(Q(Q_inputs) for Q in self._Qs)
 
         Q_losses = self._Q_losses = tuple(
-            tf.losses.mean_squared_error(
+            tf.compat.v1.losses.mean_squared_error(
                 labels=Q_target, predictions=Q_value, weights=0.5)
             for Q_value in Q_values)
 
         self._Q_optimizers = tuple(
-            tf.train.AdamOptimizer(
+            tf.compat.v1.train.AdamOptimizer(
                 learning_rate=self._Q_lr,
                 name='{}_{}_optimizer'.format(Q._name, i)
             ) for i, Q in enumerate(self._Qs))
@@ -238,12 +185,16 @@ class SAC(RLAlgorithm):
         and Section 5 in [1] for further information of the entropy update.
         """
 
-        actions = self._policy.actions([self._observations_ph])
-        log_pis = self._policy.log_pis([self._observations_ph], actions)
+        policy_inputs = flatten_input_structure({
+            name: self._placeholders['observations'][name]
+            for name in self._policy.observation_keys
+        })
+        actions = self._policy.actions(policy_inputs)
+        log_pis = self._policy.log_pis(policy_inputs, actions)
 
         assert log_pis.shape.as_list() == [None, 1]
 
-        log_alpha = self._log_alpha = tf.get_variable(
+        log_alpha = self._log_alpha = tf.compat.v1.get_variable(
             'log_alpha',
             dtype=tf.float32,
             initializer=0.0)
@@ -253,7 +204,7 @@ class SAC(RLAlgorithm):
             alpha_loss = -tf.reduce_mean(
                 log_alpha * tf.stop_gradient(log_pis + self._target_entropy))
 
-            self._alpha_optimizer = tf.train.AdamOptimizer(
+            self._alpha_optimizer = tf.compat.v1.train.AdamOptimizer(
                 self._policy_lr, name='alpha_optimizer')
             self._alpha_train_op = self._alpha_optimizer.minimize(
                 loss=alpha_loss, var_list=[log_alpha])
@@ -272,9 +223,13 @@ class SAC(RLAlgorithm):
         elif self._action_prior == 'uniform':
             policy_prior_log_probs = 0.0
 
-        Q_log_targets = tuple(
-            Q([self._observations_ph, actions])
-            for Q in self._Qs)
+        Q_observations = {
+            name: self._placeholders['observations'][name]
+            for name in self._Qs[0].observation_keys
+        }
+        Q_inputs = flatten_input_structure({
+            **Q_observations, 'actions': actions})
+        Q_log_targets = tuple(Q(Q_inputs) for Q in self._Qs)
         min_Q_log_target = tf.reduce_min(Q_log_targets, axis=0)
 
         if self._reparameterize:
@@ -290,7 +245,7 @@ class SAC(RLAlgorithm):
         self._policy_losses = policy_kl_losses
         policy_loss = tf.reduce_mean(policy_kl_losses)
 
-        self._policy_optimizer = tf.train.AdamOptimizer(
+        self._policy_optimizer = tf.compat.v1.train.AdamOptimizer(
             learning_rate=self._policy_lr,
             name="policy_optimizer")
 
@@ -344,22 +299,19 @@ class SAC(RLAlgorithm):
             self._update_target()
 
     def _get_feed_dict(self, iteration, batch):
-        """Construct TensorFlow feed_dict from sample batch."""
+        """Construct a TensorFlow feed dictionary from a sample batch."""
+
+        batch_flat = flatten(batch)
+        placeholders_flat = flatten(self._placeholders)
 
         feed_dict = {
-            self._observations_ph: batch['observations'],
-            self._actions_ph: batch['actions'],
-            self._next_observations_ph: batch['next_observations'],
-            self._rewards_ph: batch['rewards'],
-            self._terminals_ph: batch['terminals'],
+            placeholders_flat[key]: batch_flat[key]
+            for key in placeholders_flat.keys()
+            if key in batch_flat.keys()
         }
 
-        if self._store_extra_policy_info:
-            feed_dict[self._log_pis_ph] = batch['log_pis']
-            feed_dict[self._raw_actions_ph] = batch['raw_actions']
-
         if iteration is not None:
-            feed_dict[self._iteration_ph] = iteration
+            feed_dict[self._placeholders['iteration']] = iteration
 
         return feed_dict
 
@@ -370,20 +322,21 @@ class SAC(RLAlgorithm):
                         evaluation_paths):
         """Return diagnostic information as ordered dictionary.
 
-        Records mean and standard deviation of Q-function and state
-        value function, and TD-loss (mean squared Bellman error)
-        for the sample batch.
-
         Also calls the `draw` method of the plotter, if plotter defined.
         """
 
         feed_dict = self._get_feed_dict(iteration, batch)
-        diagnostics = self._session.run(self._diagnostics_ops, feed_dict)
+        # TODO(hartikainen): We need to unwrap self._diagnostics_ops from its
+        # tensorflow `_DictWrapper`.
+        diagnostics = self._session.run({**self._diagnostics_ops}, feed_dict)
 
         diagnostics.update(OrderedDict([
             (f'policy/{key}', value)
             for key, value in
-            self._policy.get_diagnostics(batch['observations']).items()
+            self._policy.get_diagnostics(flatten_input_structure({
+                name: batch['observations'][name]
+                for name in self._policy.observation_keys
+            })).items()
         ]))
 
         if self._plotter:

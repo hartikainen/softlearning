@@ -1,13 +1,15 @@
 """Implements the SoftlearningEnv that is usable in softlearning algorithms."""
 
 from abc import ABCMeta, abstractmethod
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
+import copy
 
 import numpy as np
-from serializable import Serializable
+import tensorflow as tf
+from gym import spaces
 
 
-class SoftlearningEnv(Serializable, metaclass=ABCMeta):
+class SoftlearningEnv(metaclass=ABCMeta):
     """The abstract Softlearning environment class.
 
     It's an abstract class defining the interface an adapter needs to implement
@@ -42,7 +44,7 @@ class SoftlearningEnv(Serializable, metaclass=ABCMeta):
     action_space = None
     observation_space = None
 
-    def __init__(self, domain, task, *args, **kwargs):
+    def __init__(self, domain, task, goal_keys=(), *args, **kwargs):
         """Initialize an environment based on domain and task.
         Keyword Arguments:
         domain   --
@@ -50,26 +52,38 @@ class SoftlearningEnv(Serializable, metaclass=ABCMeta):
         *args    --
         **kwargs --
         """
-        self._Serializable__initialize(locals())
         self._domain = domain
         self._task = task
+        self.goal_keys = goal_keys
 
     @property
-    @abstractmethod
     def observation_space(self):
-        raise NotImplementedError
+        return self._observation_space
 
     @property
-    def active_observation_shape(self):
-        return self.observation_space.shape
+    def observation_shape(self):
+        if not isinstance(self.observation_space, spaces.Dict):
+            raise NotImplementedError(type(self.observation_space))
 
-    def convert_to_active_observation(self, observation):
-        return observation
+        return OrderedDict((
+            (key, tf.TensorShape(space.shape))
+            for key, space in self.observation_space.spaces.items()
+        ))
 
     @property
-    @abstractmethod
-    def action_space(self):
-        raise NotImplementedError
+    def action_space(self, *args, **kwargs):
+        return self._action_space
+
+    @property
+    def action_shape(self, *args, **kwargs):
+        action_shape = tf.TensorShape(self.action_space.shape)
+
+        if len(action_shape) > 1:
+            raise NotImplementedError(
+                "Shape of the action space ({}) is not flat, make sure to"
+                " check the implemenation.".format(self.action_space))
+
+        return action_shape
 
     @abstractmethod
     def step(self, action):
@@ -98,6 +112,14 @@ class SoftlearningEnv(Serializable, metaclass=ABCMeta):
             space.
         """
         raise NotImplementedError
+
+    def _filter_observation(self, observation):
+        observation = type(observation)([
+            (name, value)
+            for name, value in observation.items()
+            if name in self.observation_keys
+        ])
+        return observation
 
     @abstractmethod
     def render(self, mode='human'):
@@ -150,15 +172,6 @@ class SoftlearningEnv(Serializable, metaclass=ABCMeta):
             return unwrapped_env.render_rollouts(paths)
 
     @abstractmethod
-    def close(self):
-        """Override _close in your subclass to perform any necessary cleanup.
-
-        Environments will automatically close() themselves when
-        garbage collected or when the program exits.
-        """
-        return
-
-    @abstractmethod
     def seed(self, seed=None):
         """Sets the seed for this env's random number generator(s).
 
@@ -177,17 +190,13 @@ class SoftlearningEnv(Serializable, metaclass=ABCMeta):
         pass
 
     def copy(self):
-        """Create a deep copy the environment.
-
-        TODO: Investigate if this can be done somehow else, especially for gym
-        envs.
-        """
-        return Serializable.clone(self)
+        """Create a deep copy the environment."""
+        return copy.deepcopy(self)
 
     @property
     @abstractmethod
     def unwrapped(self):
-        """Completely unwrap this env.
+        """Unwrap this env.
 
         Returns:
             gym.Env: The base non-wrapped gym.Env instance
@@ -201,32 +210,16 @@ class SoftlearningEnv(Serializable, metaclass=ABCMeta):
             task=self._task,
             env=self._env)
 
-    @abstractmethod
-    def get_param_values(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def set_param_values(self, params):
-        raise NotImplementedError
-
     def get_path_infos(self, paths, *args, **kwargs):
-        """Log some general diagnostics from the env infos.
+        """Aggregate diagnostics from the environment infos.
 
-        TODO(hartikainen): These logs don't make much sense right now. Need to
-        figure out better format for logging general env infos.
+        TODO(hartikainen): Figure out better format for logging general
+        environment infos.
         """
-        keys = list(paths[0].get('infos', [{}])[0].keys())
-
         results = defaultdict(list)
 
         for path in paths:
-            path_results = {
-                k: [
-                    info[k]
-                    for info in path['infos']
-                ] for k in keys
-            }
-            for info_key, info_values in path_results.items():
+            for info_key, info_values in path.get('infos', {}).items():
                 info_values = np.array(info_values)
                 results[info_key + '-first'].append(info_values[0])
                 results[info_key + '-last'].append(info_values[-1])
@@ -240,3 +233,9 @@ class SoftlearningEnv(Serializable, metaclass=ABCMeta):
             aggregated_results[key + '-mean'] = np.mean(value)
 
         return aggregated_results
+
+    def __getattr__(self, name):
+        if name == '_env':
+            return self.__getattribute__('_env')
+
+        return getattr(self._env, name)

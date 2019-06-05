@@ -10,6 +10,7 @@ import pandas as pd
 from softlearning.environments.utils import get_environment_from_params
 from softlearning.policies.utils import get_policy_from_variant
 from softlearning.samplers import rollouts
+from softlearning.misc.utils import save_video
 
 
 def parse_args():
@@ -41,9 +42,9 @@ def load_checkpoint(checkpoint_path, session=None):
     checkpoint_path = checkpoint_path.rstrip('/')
     trial_path = os.path.dirname(checkpoint_path)
 
-    variant_path = os.path.join(trial_path, 'params.json')
-    with open(variant_path, 'r') as f:
-        variant = json.load(f)
+    variant_path = os.path.join(trial_path, 'params.pkl')
+    with open(variant_path, 'rb') as f:
+        variant = pickle.load(f)
 
     metadata_path = os.path.join(checkpoint_path, ".tune_metadata")
     if os.path.exists(metadata_path):

@@ -54,14 +54,18 @@ class RemoteSampler(BaseSampler):
         path_ready = self.wait_for_path(timeout=timeout)
 
         if len(path_ready) or not self.batch_ready():
-            path = ray.get(self._remote_path)
-            self._last_n_paths.appendleft(path)
+            path_samples = ray.get(self._remote_path)
+            self._last_n_paths.appendleft(path_samples)
 
-            self.pool.add_path(path)
+            self.pool.add_samples({
+                key: value
+                for key, value in path_samples.items()
+                if key != 'infos'
+            })
 
             self._remote_path = None
-            self._total_samples += len(path['observations'])
-            self._last_path_return = np.sum(path['rewards'])
+            self._total_samples += path_samples['rewards'].shape[0]
+            self._last_path_return = np.sum(path_samples['rewards'])
             self._max_path_return = max(self._max_path_return,
                                         self._last_path_return)
             self._n_episodes += 1
@@ -88,15 +92,16 @@ class RemoteSampler(BaseSampler):
 
     def __setstate__(self, state):
         super(RemoteSampler, self).__setstate__(state)
-        self._create_remote_environment(self.env, self.policy)
         self._remote_path = None
 
 
 @ray.remote
 class _RemoteEnv(object):
     def __init__(self, env_pkl, policy_pkl):
-        self._session = tf.keras.backend.get_session()
-        self._session.run(tf.global_variables_initializer())
+        gpu_options = tf.GPUOptions(allow_growth=True)
+        self._session = tf.Session(
+            config=tf.ConfigProto(gpu_options=gpu_options))
+        tf.keras.backend.set_session(self._session)
 
         self._env = pickle.loads(env_pkl)
         self._policy = pickle.loads(policy_pkl)
