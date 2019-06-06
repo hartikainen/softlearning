@@ -13,6 +13,11 @@ from softlearning.samplers import rollouts
 from softlearning.misc.utils import save_video
 
 
+DEFAULT_RENDER_KWARGS = {
+    'mode': 'human',
+}
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('checkpoint_path',
@@ -20,11 +25,10 @@ def parse_args():
                         help='Path to the checkpoint.')
     parser.add_argument('--max-path-length', '-l', type=int, default=1000)
     parser.add_argument('--num-rollouts', '-n', type=int, default=10)
-    parser.add_argument('--render-mode', '-r',
-                        type=str,
-                        default='human',
-                        choices=('human', 'rgb_array', None),
-                        help="Mode to render the rollouts in.")
+    parser.add_argument('--render-kwargs', '-r',
+                        type=json.loads,
+                        default='{}',
+                        help="Kwargs for rollouts renderer.")
     parser.add_argument('--deterministic', '-d',
                         type=lambda x: bool(strtobool(x)),
                         nargs='?',
@@ -71,7 +75,7 @@ def load_policy_and_environment(picklable, variant):
         else variant['environment_params']['training'])
     environment = get_environment_from_params(environment_params)
 
-    policy = get_policy_from_variant(variant, environment, Qs=[None])
+    policy = get_policy_from_variant(variant, environment)
     policy.set_weights(picklable['policy_weights'])
 
     return policy, environment
@@ -81,17 +85,24 @@ def simulate_policy(checkpoint_path,
                     deterministic,
                     num_rollouts,
                     max_path_length,
-                    render_mode):
+                    render_kwargs):
     checkpoint_path = checkpoint_path.rstrip('/')
     picklable, variant, progress, metadata = load_checkpoint(checkpoint_path)
     policy, environment = load_policy_and_environment(picklable, variant)
+    render_kwargs = {**DEFAULT_RENDER_KWARGS, **render_kwargs}
 
     with policy.set_deterministic(deterministic):
         paths = rollouts(num_rollouts,
                          environment,
                          policy,
                          path_length=max_path_length,
-                         render_mode=render_mode)
+                         render_kwargs=render_kwargs)
+
+    if render_kwargs.get('mode') == 'rgb_array':
+        for i, path in enumerate(paths):
+            video_save_dir = os.path.expanduser('/tmp/simulate_policy/')
+            video_save_path = os.path.join(video_save_dir, f'episode_{i}.avi')
+            save_video(path['images'], video_save_path)
 
     return paths
 

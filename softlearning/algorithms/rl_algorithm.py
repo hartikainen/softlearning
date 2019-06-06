@@ -368,7 +368,8 @@ class RLAlgorithm(Checkpointable):
 
     def _evaluate_rollouts_2(self, episodes, env, timestep):
         episodes_rewards = [episode['rewards'] for episode in episodes]
-        episodes_reward = np.sum(episodes_rewards, axis=1)
+        episodes_reward = [np.sum(episode_rewards)
+                           for episode_rewards in episodes_rewards]
         episodes_length = [episode_rewards.shape[0]
                            for episode_rewards in episodes_rewards]
 
