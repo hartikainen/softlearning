@@ -44,16 +44,30 @@ MAX_PATH_LENGTH_PER_DOMAIN = {
     'Pendulum': 200,
 }
 
+
+TOTAL_STEPS_PER_DOMAIN = {
+    'Hopper': int(1e6),
+    'HalfCheetah': int(3e6),
+    'Walker2d': int(3e6),
+    'Ant': int(3e6),
+    'Humanoid': int(2e7),
+}
+
 ALGORITHM_PARAMS_BASE = {
     'type': 'SAC',
 
     'kwargs': {
         'epoch_length': tune.sample_from(lambda spec: (
-            spec.get('config', spec)
-            ['algorithm_params']
-            ['kwargs']
-            ['n_epochs']
-            // 200
+            TOTAL_STEPS_PER_DOMAIN[
+                spec.get('config', spec)
+                ['environment_params']
+                ['training']
+                ['domain']
+            ] // (
+                spec.get('config', spec)
+                ['algorithm_params']
+                ['kwargs']
+                ['n_epochs'])
         )),
         'train_every_n_steps': 1,
         'n_train_repeat': 1,
@@ -144,8 +158,7 @@ ALGORITHM_PARAMS_PER_DOMAIN = {
     **{
         domain: {
             'kwargs': {
-                'n_epochs': NUM_EPOCHS_PER_DOMAIN.get(
-                    domain, DEFAULT_NUM_EPOCHS),
+                'n_epochs': 200,
                 'n_initial_exploration_steps': (
                     MAX_PATH_LENGTH_PER_DOMAIN.get(
                         domain, DEFAULT_MAX_PATH_LENGTH
