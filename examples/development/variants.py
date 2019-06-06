@@ -48,7 +48,13 @@ ALGORITHM_PARAMS_BASE = {
     'type': 'SAC',
 
     'kwargs': {
-        'epoch_length': 10000,
+        'epoch_length': tune.sample_from(lambda spec: (
+            spec.get('config', spec)
+            ['algorithm_params']
+            ['kwargs']
+            ['n_epochs']
+            // 200
+        )),
         'train_every_n_steps': 1,
         'n_train_repeat': 1,
         'eval_render_kwargs': {},
