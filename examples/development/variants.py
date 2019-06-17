@@ -173,14 +173,14 @@ ENVIRONMENT_PARAMS = {
     },
     'Hopper': {  # 3 DoF
         'MaxVelocity-v3': {
-            'max_velocity': tune.grid_search([1.0, 1.5, 2.0]),
+            'max_velocity': tune.grid_search([0.5, 1.0, 2.0]),
         },
     },
     'HalfCheetah': {  # 6 DoF
     },
     'Walker2d': {  # 6 DoF
         'MaxVelocity-v3': {
-            'max_velocity': tune.grid_search([0.5, 1.0, 2.0, 3.0]),
+            'max_velocity': tune.grid_search([0.5, 1.5, 3.0]),
         },
     },
     'Ant': {  # 8 DoF
