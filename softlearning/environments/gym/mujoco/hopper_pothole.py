@@ -10,6 +10,9 @@ from xml.etree import ElementTree
 from xml.dom import minidom
 
 
+FALL_LENGTH = 4
+
+
 def prettify(elem):
     """Return a pretty-printed XML string for the Element.
     """
@@ -23,11 +26,13 @@ class HopperPotholeEnv(HopperEnv):
                  pothole_depth=0.025,
                  pothole_length=0.25,
                  pothole_distance=7.0,
+                 x_reset_range=(-3, 3),
                  *args,
                  **kwargs):
         self._pothole_depth = pothole_depth
         self._pothole_length = pothole_length
         self._pothole_distance = pothole_distance
+        self._x_reset_range = x_reset_range
 
         hopper_xml_path = os.path.join(
             os.path.dirname(inspect.getfile(HopperEnv)),
@@ -107,16 +112,15 @@ class HopperPotholeEnv(HopperEnv):
         min_z, max_z = self._healthy_z_range
         min_angle, max_angle = self._healthy_angle_range
 
-        fall_length = 4
         should_be_falling = (
             self._pothole_distance
             < x
-            < self._pothole_distance + fall_length)
+            < self._pothole_distance + FALL_LENGTH)
         # Adjust z to match drop
         if should_be_falling:
             min_z -= self._pothole_depth
 
-        after_fall = self._pothole_distance + fall_length < x
+        after_fall = self._pothole_distance + FALL_LENGTH < x
 
         if after_fall:
             min_z -= self._pothole_depth
@@ -132,3 +136,27 @@ class HopperPotholeEnv(HopperEnv):
         is_healthy = all((healthy_state, healthy_z, healthy_angle))
 
         return is_healthy
+
+    def _get_obs(self, *args, **kwargs):
+        observation = super(HopperPotholeEnv, self)._get_obs(*args, **kwargs)
+
+        after_fall = self._pothole_distance < self.sim.data.qpos[0]
+        if after_fall:
+            observation[0] = self.sim.data.qpos[1] + self._pothole_depth
+
+        return observation
+
+    def reset_model(self):
+        noise_low = -self._reset_noise_scale
+        noise_high = self._reset_noise_scale
+
+        qpos = self.init_qpos + self.np_random.uniform(
+            low=noise_low, high=noise_high, size=self.model.nq)
+        qvel = self.init_qvel + self.np_random.uniform(
+            low=noise_low, high=noise_high, size=self.model.nv)
+
+        qpos[0] = np.random.uniform(*self._x_reset_range)
+        self.set_state(qpos, qvel)
+
+        observation = self._get_obs()
+        return observation
