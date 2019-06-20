@@ -335,14 +335,14 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             },
         },
         'DClaw': {
-            'DClawPoseStatic-v0': {},
-            'DClawPoseDynamic-v0': {},
-            'DClawTurnFixed-v0': {},
-            'DClawTurnRandom-v0': {},
-            'DClawTurnRandomDynamics-v0': {},
-            'DClawScrewFixed-v0': {},
-            'DClawScrewRandom-v0': {},
-            'DClawScrewRandomDynamics-v0': {},
+            'PoseStatic-v0': {},
+            'PoseDynamic-v0': {},
+            'TurnFixed-v0': {},
+            'TurnRandom-v0': {},
+            'TurnRandomDynamics-v0': {},
+            'ScrewFixed-v0': {},
+            'ScrewRandom-v0': {},
+            'ScrewRandomDynamics-v0': {},
         },
     },
     'dm_control': {
@@ -555,7 +555,7 @@ def get_variant_spec_image(universe,
     variant_spec = get_variant_spec_base(
         universe, domain, task, policy, algorithm, *args, **kwargs)
 
-    if is_image_env(domain, task, variant_spec):
+    if is_image_env(universe, domain, task, variant_spec):
         preprocessor_params = {
             'type': 'ConvnetPreprocessor',
             'kwargs': {
