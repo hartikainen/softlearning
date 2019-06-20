@@ -102,9 +102,16 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'DClaw3': {
             DEFAULT_KEY: 250,
+            'ScrewV2-v0': 250,
+            'ImageScrewV2-v0': 250,
         },
         'HardwareDClaw3': {
             DEFAULT_KEY: 250,
+        },
+        'DClaw': {
+            DEFAULT_KEY: 50,
+            'TurnFixed-v0': 50,
+            'TurnRandom-v0': 50,
         },
     },
 }
@@ -160,6 +167,13 @@ NUM_EPOCHS_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'HardwareDClaw3': {
             DEFAULT_KEY: 100,
+            'ScrewV2-v0': 200,
+            'ImageScrewV2-v0': 200,
+        },
+        'DClaw': {
+            DEFAULT_KEY: 100,
+            'TurnFixed-v0': int(500),
+            'TurnRandom-v0': int(500),
         },
     },
     'dm_control': {
@@ -339,6 +353,20 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             'PoseDynamic-v0': {},
             'TurnFixed-v0': {},
             'TurnRandom-v0': {},
+            'TurnRandomResetSingleGoal-v0': {
+                'use_dict_obs': True,
+                'pixel_wrapper_kwargs': {
+                    'observation_key': 'pixels',
+                    'pixels_only': False,
+                    'render_kwargs': {
+                        'width': 32,
+                        'height': 32,
+                        'camera_id': 1,
+                        # 'camera_name': 'track',
+                    },
+                },
+                'observation_keys': ('claw_qpos', 'last_action', 'pixels'),
+            },
             'TurnRandomDynamics-v0': {},
             'ScrewFixed-v0': {},
             'ScrewRandom-v0': {},
@@ -556,21 +584,35 @@ def get_variant_spec_image(universe,
         universe, domain, task, policy, algorithm, *args, **kwargs)
 
     if is_image_env(universe, domain, task, variant_spec):
-        preprocessor_params = {
-            'type': 'ConvnetPreprocessor',
-            'kwargs': {
-                'conv_filters': (64, ) * 3,
-                'conv_kernel_sizes': (3, ) * 3,
-                'conv_strides': (2, ) * 3,
-                'normalization_type': 'layer',
-                'downsampling_type': 'conv',
-            },
-        }
+        preprocessor_params = tune.grid_search([
+            {
+                'type': 'ConvnetPreprocessor',
+                'kwargs': {
+                    'conv_filters': (64, ) * num_layers,
+                    'conv_kernel_sizes': (3, ) * num_layers,
+                    'conv_strides': (2, ) * num_layers,
+                    'normalization_type': normalization_type,
+                    'downsampling_type': 'conv',
+                },
+            }
+            for num_layers in (3, )
+            for normalization_type in (None, )
+        ])
+
+        if universe == 'robosuite':
+            pixels_key = 'image'
+        else:
+            pixels_key = (variant_spec
+                          ['environment_params']
+                          ['training']
+                          ['kwargs']
+                          ['pixel_wrapper_kwargs']
+                          ['observation_key'])
 
         variant_spec['policy_params']['kwargs']['hidden_layer_sizes'] = (M, M)
         variant_spec['policy_params']['kwargs'][
             'observation_preprocessors_params'] = {
-                'pixels': deepcopy(preprocessor_params)
+                pixels_key: deepcopy(preprocessor_params)
             }
 
         variant_spec['Q_params']['kwargs']['hidden_layer_sizes'] = (
@@ -596,7 +638,6 @@ def get_variant_spec_image(universe,
 
 def get_variant_spec(args):
     universe, domain, task = args.universe, args.domain, args.task
-
     variant_spec = get_variant_spec_image(
         universe, domain, task, args.policy, args.algorithm)
 
