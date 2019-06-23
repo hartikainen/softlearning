@@ -37,15 +37,15 @@ def convnet_model(
         None: None,
     }[normalization_type]
 
-    def conv_block(conv_filter, conv_kernel_size, conv_stride):
+    def conv_block(conv_filter, conv_kernel_size, conv_stride, name='conv_block'):
         block_parts = [
-            layers.Conv2D(
+            tfkl.Conv2D(
+                *args,
                 filters=conv_filter,
                 kernel_size=conv_kernel_size,
                 strides=(conv_stride if downsampling_type == 'conv' else 1),
                 padding=padding,
                 activation='linear',
-                *args,
                 **kwargs),
         ]
 
@@ -60,7 +60,7 @@ def convnet_model(
             block_parts += [getattr(layers, 'AvgPool2D')(
                 pool_size=conv_stride, strides=conv_stride)]
 
-        block = tfk.Sequential(block_parts, name='conv_block')
+        block = tfk.Sequential(block_parts, name=name)
         return block
 
     def preprocess(x):
@@ -73,11 +73,15 @@ def convnet_model(
         return x
 
     model = PicklableSequential((
-        tfkl.Lambda(preprocess),
+        tfkl.Lambda(preprocess, name='preprocess'),
         *[
-            conv_block(conv_filter, conv_kernel_size, conv_stride)
-            for (conv_filter, conv_kernel_size, conv_stride) in
-            zip(conv_filters, conv_kernel_sizes, conv_strides)
+            conv_block(
+                conv_filter,
+                conv_kernel_size,
+                conv_stride,
+                name=f'conv_block_{i}')
+            for i, (conv_filter, conv_kernel_size, conv_stride) in
+            enumerate(zip(conv_filters, conv_kernel_sizes, conv_strides))
         ],
         tfkl.Flatten(),
 
