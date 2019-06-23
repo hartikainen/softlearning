@@ -6,6 +6,7 @@ import tensorflow as tf
 
 from softlearning.models.utils import flatten_input_structure
 from softlearning.policies.gaussian_policy import FeedforwardGaussianPolicy
+from softlearning.policies.utils import get_policy_from_variant
 from softlearning.environments.utils import get_environment
 
 
@@ -130,6 +131,77 @@ class GaussianPolicyTest(tf.test.TestCase):
 
         weights_2 = deserialized.get_weights()
         log_pis_np_2 = deserialized.log_pis_np(observations_np, actions_np)
+
+        for weight, weight_2 in zip(weights, weights_2):
+            np.testing.assert_array_equal(weight, weight_2)
+
+        np.testing.assert_array_equal(log_pis_np, log_pis_np_2)
+        np.testing.assert_equal(
+            actions_np.shape, deserialized.actions_np(observations_np).shape)
+
+    def test_serialize_deserialize_with_preprocessor(self):
+        env = get_environment('gym', 'Swimmer', 'v3', {
+            'pixel_wrapper_kwargs': {
+                'observation_key': 'pixels',
+                'pixels_only': True,
+                'render_kwargs': {
+                    'width': 32,
+                    'height': 32,
+                    'camera_id': -1,
+                },
+            }
+        })
+        observation1_np = env.reset()
+        observation2_np = env.step(env.action_space.sample())[0]
+
+        observations_np = {}
+        for key in observation1_np.keys():
+            observations_np[key] = np.stack((
+                observation1_np[key], observation2_np[key]
+            ))
+        observations_np = flatten_input_structure(observations_np)
+
+        variant = {
+            'policy_params': {
+                'kwargs': {
+                    'hidden_layer_sizes': (256, 256),
+                    'observation_keys': ('pixels', 'hand_position', 'hand_velocity'),
+                    'observation_preprocessors_params': {
+                        'pixels': {
+                            'kwargs': {
+                                'conv_filters': (64, 64, 64),
+                                'conv_kernel_sizes': (3, 3, 3),
+                                'conv_strides': (2, 2, 2),
+                                'downsampling_type': 'conv',
+                                'normalization_type': None
+                            },
+                            'type': 'ConvnetPreprocessor'}
+                    },
+                    'squash': True
+                },
+                'type': 'GaussianPolicy'
+            },
+        }
+        policy = get_policy_from_variant(variant, env)
+        preprocessor = policy.actions_model.get_layer('convnet_preprocessor')
+
+        weights = policy.get_weights()
+        preprocessor_weights = preprocessor.get_weights()
+        actions_np = policy.actions_np(observations_np)
+        log_pis_np = policy.log_pis_np(observations_np, actions_np)
+
+        serialized = pickle.dumps(policy)
+        deserialized = pickle.loads(serialized)
+
+        deserialized_preprocessor = policy.actions_model.get_layer(
+            'convnet_preprocessor')
+        weights_2 = deserialized.get_weights()
+        preprocessor_weights_2 = (
+            deserialized_preprocessor.get_weights())
+        log_pis_np_2 = deserialized.log_pis_np(observations_np, actions_np)
+
+        for weight, weight_2 in zip(preprocessor_weights, preprocessor_weights_2):
+            np.testing.assert_array_equal(weight, weight_2)
 
         for weight, weight_2 in zip(weights, weights_2):
             np.testing.assert_array_equal(weight, weight_2)

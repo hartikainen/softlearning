@@ -5,6 +5,9 @@ from collections import OrderedDict
 import numpy as np
 from serializable import Serializable
 
+from softlearning.utils.keras import PicklableSequential
+from softlearning.utils.tensorflow import nest
+
 
 class BasePolicy(Serializable):
     def __init__(self, observation_keys):
@@ -69,13 +72,37 @@ class BasePolicy(Serializable):
 
     def __getstate__(self):
         state = Serializable.__getstate__(self)
+        preprocessors_state = {}
+        preprocessors = state['__kwargs'].pop('preprocessors', {})
+        preprocessors_state = nest.map_structure(
+            lambda preprocessor: (
+                preprocessor.get_config()
+                if preprocessor is not None
+                else None),
+            preprocessors
+        )
         state['pickled_weights'] = self.get_weights()
+        state['preprocessors_state'] = preprocessors_state
 
         return state
 
     def __setstate__(self, state):
+        weights_state = state.pop('pickled_weights')
+        preprocessors = {}
+        preprocessors_state = state.pop('preprocessors_state')
+        preprocessors = nest.map_structure(
+            lambda config: (
+                PicklableSequential.from_config(config)
+                if config is not None
+                else None
+            ),
+            preprocessors_state,
+        )
+
+        state['__kwargs']['preprocessors'] = preprocessors
+
         Serializable.__setstate__(self, state)
-        self.set_weights(state['pickled_weights'])
+        self.set_weights(weights_state)
 
 
 class LatentSpacePolicy(BasePolicy):
