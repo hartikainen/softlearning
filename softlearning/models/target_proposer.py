@@ -280,8 +280,12 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
         elif 'dclaw3' in type(env).__name__.lower():
             from sac_envs.utils.unit_circle_math import angle_distance_from_positions
 
+            assert np.unique(env.target_initial_position_range).size == 1, (
+                env.target_initial_position_range)
+
             object_positions = new_observations['object_position']
-            desired_object_positions = np.array(np.pi).reshape(1, -1)
+            desired_object_positions = np.array(
+                env.target_initial_position_range[0]).reshape(1, -1)
             new_observations_distances = angle_distance_from_positions(
                 [np.sin(object_positions), np.cos(object_positions)],
                 [np.sin(desired_object_positions),
