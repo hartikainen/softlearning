@@ -26,6 +26,7 @@ class MetricLearner(object):
                  action_shape,
                  distance_learning_rate=3e-4,
                  train_every_n_steps=1,
+                 max_train_repeat_per_timestep=1,
                  n_train_repeat=1,
                  distance_estimator=None):
         self._env = env
@@ -39,8 +40,11 @@ class MetricLearner(object):
 
         self._train_every_n_steps = train_every_n_steps
         self._n_train_repeat = n_train_repeat
+        self._max_train_repeat_per_timestep = max(
+            max_train_repeat_per_timestep, n_train_repeat)
 
         self._session = tf.keras.backend.get_session()
+        self._num_train_steps = 0
 
         self._build()
 
@@ -153,12 +157,26 @@ class MetricLearner(object):
     def _evaluation_batch(self, *args, **kwargs):
         return self._training_batch(*args, **kwargs)
 
+    def _epoch_before_hook(self, *args, **kwargs):
+        self._train_steps_this_epoch = 0
+
     def _do_training_repeats(self, timestep):
         if timestep % self._train_every_n_steps > 0: return
+
+        trained_enough = (
+            self._train_steps_this_epoch
+            > self._max_train_repeat_per_timestep * self._timestep)
+
+        if trained_enough:
+            return
+
         for i in range(self._n_train_repeat):
             self._do_training(
                 iteration=timestep,
                 batch=self._training_batch())
+
+        self._num_train_steps += self._n_train_repeat
+        self._train_steps_this_epoch += self._n_train_repeat
 
     def _do_training(self, iteration, batch):
         """Runs the operations for updating training and target ops."""

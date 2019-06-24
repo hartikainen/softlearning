@@ -660,6 +660,7 @@ def get_variant_spec(args):
         shared_kwargs = {
             'distance_learning_rate': 3e-4,
             'n_train_repeat': 1,
+            'max_train_repeat_per_timestep': 1,
         }
 
         if (spec['metric_learner_params']['type']

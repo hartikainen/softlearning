@@ -171,10 +171,13 @@ class MetricLearningAlgorithm(SAC):
     def _epoch_after_hook(self, training_paths):
         self._previous_training_paths = training_paths
 
-    def _timestep_before_hook(self, *args, **kwargs):
-        if self.sampler._path_length == 0:
-            self._update_goal()
+    def _epoch_before_hook(self, *args, **kwargs):
+        self._update_goal()
+        self._metric_learner._epoch_before_hook(*args, **kwargs)
+        return super(MetricLearningAlgorithm, self)._epoch_before_hook(
+            *args, **kwargs)
 
+    def _timestep_before_hook(self, *args, **kwargs):
         random_explore_after = (
             self.sampler._max_path_length
             * (1.0 - self._final_exploration_proportion))
@@ -224,7 +227,7 @@ class MetricLearningAlgorithm(SAC):
             > self._max_train_repeat_per_timestep * self._timestep)
 
         if trained_enough:
-            raise ValueError("Should not be here")
+            return
 
         for i in range(self._n_train_repeat):
             self._do_training(
