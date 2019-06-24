@@ -1,6 +1,10 @@
 import tempfile
 
 import tensorflow as tf
+from softlearning.models.normalization import (
+    LayerNormalization,
+    GroupNormalization,
+    InstanceNormalization)
 
 
 class PicklableKerasModel(object):
@@ -19,7 +23,12 @@ class PicklableKerasModel(object):
 
             loaded_model = tf.keras.models.load_model(
                 fd.name, custom_objects={
-                    self.__class__.__name__: self.__class__})
+                    self.__class__.__name__: self.__class__,
+                    'tf': tf,
+                    'LayerNormalization': LayerNormalization,
+                    'GroupNormalization': GroupNormalization,
+                    'InstanceNormalization': InstanceNormalization,
+                })
 
         self.__dict__.update(loaded_model.__dict__.copy())
 
