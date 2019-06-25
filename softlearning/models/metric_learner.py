@@ -604,6 +604,76 @@ class SupervisedMetricLearner(MetricLearner):
         }
 
 
+class DistributionalSupervisedMetricLearner(SupervisedMetricLearner):
+    def _init_distance_update(self):
+        """Create minimization operations for distance estimator."""
+        distances = tf.cast(self._placeholders['distances'], tf.float32)
+        inputs = self._distance_estimator_inputs(
+            self._placeholders['observations1'],
+            self._placeholders['observations2'],
+            self._placeholders['actions1'])
+
+        distance_predictions, distance_logits = (
+            self.distance_estimator.compute_all_outputs(inputs)
+        )
+
+        labels = tf.cast(
+            tf.clip_by_value(
+                tf.round(distances / float(self.distance_estimator.bin_size)),
+                0.0, float(self.distance_estimator.n_bins - 1)
+            ),
+            tf.int64
+        )
+
+        distance_loss = tf.losses.sparse_softmax_cross_entropy(
+            labels=labels,
+            logits=distance_logits
+        )
+
+        self.distance_cross_entropy_loss = distance_loss
+        self.distance_absolute_error = tf.losses.absolute_difference(
+            labels=distances,
+            predictions=distance_predictions)
+
+        distance_optimizer = self._distance_optimizer = tf.train.AdamOptimizer(
+            learning_rate=self._distance_learning_rate)
+        distance_grads_and_vars = distance_optimizer.compute_gradients(
+            loss=distance_loss,
+            var_list=self.distance_estimator.trainable_variables)
+
+        distance_train_op = distance_optimizer.apply_gradients(
+            distance_grads_and_vars)
+
+        self._distance_train_ops = (distance_train_op, )
+
+    def get_diagnostics(self,
+                        iteration,
+                        training_paths,
+                        evaluation_paths,
+                        *args,
+                        **kwargs):
+        batch = self._evaluation_batch()
+        feed_dict = self._get_feed_dict(iteration, batch)
+        (distance_cross_entropy_loss,
+         distance_absolute_error) = self._session.run((
+             self.distance_cross_entropy_loss,
+             self.distance_absolute_error
+         ), feed_dict)
+        return OrderedDict((
+            ('distance_cross_entropy_loss-mean',
+             np.mean(distance_cross_entropy_loss)),
+            ('distance_absolute_error-mean',
+             np.mean(distance_absolute_error)),
+        ))
+
+    @property
+    def tf_saveables(self):
+        return {
+            '_distance_optimizer': self._distance_optimizer,
+            'distance_estimator': self.distance_estimator
+        }
+
+
 class TemporalDifferenceMetricLearner(MetricLearner):
     def __init__(self,
                  distance_estimator,

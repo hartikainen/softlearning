@@ -413,8 +413,10 @@ def get_variant_spec(args):
                     'ground_truth_terminals': False,
                 },
             }
+        # elif (spec['metric_learner_params']['type']
+        #       == 'SupervisedMetricLearner'):
         elif (spec['metric_learner_params']['type']
-              == 'SupervisedMetricLearner'):
+              in ['SupervisedMetricLearner', 'DistributionalSupervisedMetricLearner']):
             kwargs = {
                 **shared_kwargs,
                 **{
@@ -623,13 +625,15 @@ def get_variant_spec(args):
         'metric_learner_params': {
             'type': tune.grid_search([
                 # 'TemporalDifferenceMetricLearner',
-                'SupervisedMetricLearner',
+                # 'SupervisedMetricLearner',
+                'DistributionalSupervisedMetricLearner',
                 # 'HingeMetricLearner',
             ]),
             'kwargs': tune.sample_from(metric_learner_kwargs),
         },
         'distance_estimator_params': {
-            'type': 'FeedforwardDistanceEstimator',
+            # 'type': 'FeedforwardDistanceEstimator',
+            'type': 'DistributionalFeedforwardDistanceEstimator',
             'kwargs': {
                 'observation_keys': (
                     'hand_position',
@@ -639,6 +643,8 @@ def get_variant_spec(args):
                     'object_position_cos',
                     'object_velocity',
                 ),
+                'n_bins': 26,
+                'bin_size': 10,
                 # 'observation_keys': ('state_observation', ),
                 'observation_preprocessors_params': {},
                 'hidden_layer_sizes': (256, 256),

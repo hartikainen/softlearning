@@ -1,9 +1,24 @@
+import types
+
 from collections import OrderedDict
+
+import tensorflow as tf
 
 from softlearning.preprocessors.utils import get_preprocessor_from_params
 from softlearning.models.feedforward import feedforward_model
 from softlearning.models.utils import flatten_input_structure, create_inputs
 from softlearning.utils.keras import PicklableModel
+
+
+class DistributionalPicklableModel(PicklableModel):
+    """Only return the expected distance when called. This keeps the API the
+    same for distributional and non-distributional distance estimator. """
+
+    def __call__(self, *args, **kwargs):
+        return super().__call__(*args, **kwargs)[0]
+
+    def compute_all_outputs(self, *args, **kwargs):
+        return super().__call__(*args, **kwargs)
 
 
 def feedforward_distance_estimator(input_shapes,
@@ -39,8 +54,64 @@ def feedforward_distance_estimator(input_shapes,
     return model
 
 
+def distributional_feedforward_distance_estimator(
+        input_shapes,
+        n_bins=10,
+        bin_size=1,
+        *args,
+        preprocessors=None,
+        observation_keys=None,
+        name='feedforward_distance_estimator',
+        **kwargs):
+    inputs_flat = create_inputs(input_shapes)
+    preprocessors_flat = (
+        flatten_input_structure(preprocessors)
+        if preprocessors is not None
+        else tuple(None for _ in inputs_flat))
+
+    assert len(inputs_flat) == len(preprocessors_flat), (
+        inputs_flat, preprocessors_flat)
+
+    preprocessed_inputs = [
+        preprocessor(input_) if preprocessor is not None else input_
+        for preprocessor, input_
+        in zip(preprocessors_flat, inputs_flat)
+    ]
+
+    ff_model = feedforward_model(
+        *args,
+        output_size=n_bins,
+        name=name,
+        **kwargs
+    )
+
+    logits = ff_model(preprocessed_inputs)
+    softmax = tf.keras.backend.softmax(logits)
+    bin_values = tf.keras.backend.reshape(
+        tf.keras.backend.arange(
+            0, bin_size * n_bins, bin_size, dtype='float32'
+        ),
+        [1, n_bins]
+    )
+
+    expectation = tf.keras.backend.sum(
+        softmax * bin_values,
+        axis=1, keepdims=True
+    )
+
+    model = DistributionalPicklableModel(
+        inputs_flat, [expectation, logits]
+    )
+    model.observation_keys = observation_keys
+    model.n_bins = n_bins
+    model.bin_size = bin_size
+
+    return model
+
+
 DISTANCE_ESTIMATORS = {
     'FeedforwardDistanceEstimator': feedforward_distance_estimator,
+    'DistributionalFeedforwardDistanceEstimator': distributional_feedforward_distance_estimator,
 }
 
 

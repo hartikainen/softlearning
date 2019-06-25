@@ -284,15 +284,15 @@ class MetricLearningAlgorithm(SAC):
         return V_values
 
     def _evaluation_paths(self, policy, evaluation_env):
-        try:
-            goal = self._evaluation_environment._env.env.sample_metric_goal()
-            evaluation_env._env.env.set_goal(goal)
-        except AttributeError:
-            goal = self._evaluation_environment.unwrapped.sample_metric_goal()
-            evaluation_env.unwrapped.set_goal(goal)
+        # try:
+        #     goal = self._evaluation_environment._env.env.sample_metric_goal()
+        #     evaluation_env._env.env.set_goal(goal)
+        # except AttributeError:
+        #     goal = self._evaluation_environment.unwrapped.sample_metric_goal()
+        #     evaluation_env.unwrapped.set_goal(goal)
 
-        if is_point_2d_env(evaluation_env.unwrapped):
-            evaluation_env.unwrapped.optimal_policy.set_goal(goal)
+        # if is_point_2d_env(evaluation_env.unwrapped):
+        #     evaluation_env.unwrapped.optimal_policy.set_goal(goal)
 
         return super(MetricLearningAlgorithm, self)._evaluation_paths(
             policy, evaluation_env)
