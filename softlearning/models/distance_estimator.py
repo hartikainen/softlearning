@@ -17,6 +17,9 @@ class DistributionalPicklableModel(PicklableModel):
     def __call__(self, *args, **kwargs):
         return super().__call__(*args, **kwargs)[0]
 
+    def predict(self, *args, **kwargs):
+        return super().predict(*args, **kwargs)[0]
+
     def compute_all_outputs(self, *args, **kwargs):
         return super().__call__(*args, **kwargs)
 
