@@ -11,7 +11,7 @@ DEFAULT_KEY = "__DEFAULT_KEY__"
 
 M = 256
 REPARAMETERIZE = True
-
+NUM_CHECKPOINTS = 10
 NUM_COUPLING_LAYERS = 2
 
 
@@ -476,9 +476,6 @@ def get_environment_params(universe, domain, task):
         .get(universe, {}).get(domain, {}).get(task, {}))
 
     return environment_params
-
-
-NUM_CHECKPOINTS = 10
 
 
 def get_variant_spec_base(universe, domain, task, policy, algorithm):
