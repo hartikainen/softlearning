@@ -110,8 +110,6 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'DClaw': {
             DEFAULT_KEY: 50,
-            'TurnFixed-v0': 50,
-            'TurnRandom-v0': 50,
         },
     },
 }
@@ -171,9 +169,8 @@ NUM_EPOCHS_PER_UNIVERSE_DOMAIN_TASK = {
             'ImageScrewV2-v0': 200,
         },
         'DClaw': {
-            DEFAULT_KEY: 100,
-            'TurnFixed-v0': int(500),
-            'TurnRandom-v0': int(500),
+            DEFAULT_KEY: 200,
+            'TurnFreeValve3ResetFree-0v': int(500),
         },
     },
     'dm_control': {
@@ -325,29 +322,6 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 'object_initial_position_range': (-np.pi, np.pi),
             }
         },
-        'HardwareDClaw3': {
-            'ScrewV2-v0': {
-                'object_target_distance_reward_fn': NegativeLogLossFn(0),
-                'pose_difference_cost_coeff': 0,
-                'joint_velocity_cost_coeff': 0,
-                'joint_acceleration_cost_coeff': 0,
-                'target_initial_velocity_range': (0, 0),
-                'target_initial_position_range': (np.pi, np.pi),
-                'object_initial_velocity_range': (0, 0),
-                'object_initial_position_range': (-1.98, -1.98 + 2 * np.pi),
-            },
-            'ImageScrewV2-v0': {
-                'image_shape': (32, 32, 3),
-                'object_target_distance_reward_fn': NegativeLogLossFn(0),
-                'pose_difference_cost_coeff': 0,
-                'joint_velocity_cost_coeff': 0,
-                'joint_acceleration_cost_coeff': 0,
-                'target_initial_velocity_range': (0, 0),
-                'target_initial_position_range': (np.pi, np.pi),
-                'object_initial_velocity_range': (0, 0),
-                'object_initial_position_range': (-1.98, -1.98 + 2 * np.pi),
-            },
-        },
         'DClaw': {
             'PoseStatic-v0': {},
             'PoseDynamic-v0': {},
@@ -371,6 +345,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             'ScrewFixed-v0': {},
             'ScrewRandom-v0': {},
             'ScrewRandomDynamics-v0': {},
+            'TurnFreeValve3ResetFree-0v': {},
         },
     },
     'dm_control': {
@@ -414,6 +389,21 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             },
         },
     },
+}
+
+ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK['gym']['HardwareDClaw'] = {
+    task: {
+        'device_path': '/dev/ttyUSB0',
+        **task_params,
+    }
+    for task, task_params in
+    ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK['gym']['DClaw'].items()
+}
+
+ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK['gym']['HardwareDClaw3'] = {
+    task: {'is_hardware': True, **task_params}
+    for task, task_params in
+    ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK['gym']['DClaw3'].items()
 }
 
 
