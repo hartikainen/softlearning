@@ -617,9 +617,12 @@ class DistributionalSupervisedMetricLearner(SupervisedMetricLearner):
             self.distance_estimator.compute_all_outputs(inputs)
         )
 
+        bin_size = float(self.distance_estimator.max_distance
+                         / (self.distance_estimator.n_bins - 1))
+
         labels = tf.cast(
             tf.clip_by_value(
-                tf.round(distances / float(self.distance_estimator.bin_size)),
+                tf.round(distances / bin_size),
                 0.0, float(self.distance_estimator.n_bins - 1)
             ),
             tf.int64
