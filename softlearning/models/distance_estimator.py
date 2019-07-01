@@ -2,6 +2,8 @@ import types
 
 from collections import OrderedDict
 
+import numpy as np
+
 import tensorflow as tf
 
 from softlearning.preprocessors.utils import get_preprocessor_from_params
@@ -60,7 +62,7 @@ def feedforward_distance_estimator(input_shapes,
 def distributional_feedforward_distance_estimator(
         input_shapes,
         n_bins=10,
-        bin_size=1,
+        max_distance=100,
         *args,
         preprocessors=None,
         observation_keys=None,
@@ -90,11 +92,9 @@ def distributional_feedforward_distance_estimator(
 
     logits = ff_model(preprocessed_inputs)
     softmax = tf.keras.backend.softmax(logits)
-    bin_values = tf.keras.backend.reshape(
-        tf.keras.backend.arange(
-            0, bin_size * n_bins, bin_size, dtype='float32'
-        ),
-        [1, n_bins]
+
+    bin_values = tf.keras.backend.constant(
+        np.linspace(0, max_distance, n_bins, dtype=np.float32).reshape(1, -1)
     )
 
     expectation = tf.keras.backend.sum(
@@ -107,7 +107,7 @@ def distributional_feedforward_distance_estimator(
     )
     model.observation_keys = observation_keys
     model.n_bins = n_bins
-    model.bin_size = bin_size
+    model.max_distance = max_distance
 
     return model
 
