@@ -31,12 +31,12 @@ class MetricLearningAlgorithm(SAC):
         self._metric_learner = metric_learner
         self._target_proposer = target_proposer
         self._final_exploration_proportion = final_exploration_proportion
-        self._newest_goal = None
+        self._current_distance_goal = None
         super(MetricLearningAlgorithm, self).__init__(*args, **kwargs)
 
     def _init_placeholders(self):
         super(MetricLearningAlgorithm, self)._init_placeholders()
-        self._placeholders['goals'] = {
+        self._placeholders['distance_goals'] = {
             name: tf.compat.v1.placeholder(
                 dtype=(
                     np.float32
@@ -57,12 +57,13 @@ class MetricLearningAlgorithm(SAC):
         next_observations_ph = self._placeholders['next_observations']
 
         # goals_ph is possibly a single element. Broadcast it to batch size.
-        goals_ph = {
+        distance_goals = {
             name: placeholder + tf.zeros(
                 (tf.shape(actions_ph)[0], *placeholder.shape[1:]),
                 dtype=placeholder.dtype,
             )
-            for name, placeholder in self._placeholders['goals'].items()
+            for name, placeholder in
+            self._placeholders['distance_goals'].items()
         }
 
         # equal_shapes = (
@@ -100,7 +101,7 @@ class MetricLearningAlgorithm(SAC):
             next_value = min_next_Q - self._alpha * next_log_pis
 
             inputs = self._metric_learner._distance_estimator_inputs(
-                observations_ph, goals_ph, actions_ph)
+                observations_ph, distance_goals, actions_ph)
             distances = self._metric_learner.distance_estimator(inputs)
 
             # Add constant reward to prevent the agent of intentionally
@@ -118,10 +119,10 @@ class MetricLearningAlgorithm(SAC):
                 next_actions = self._policy.actions(policy_inputs)
 
                 inputs = self._metric_learner._distance_estimator_inputs(
-                    next_observations_ph, goals_ph, next_actions)
+                    next_observations_ph, distance_goals, next_actions)
             else:
                 inputs = self._metric_learner._distance_estimator_inputs(
-                    next_observations_ph, goals_ph, None)
+                    next_observations_ph, distance_goals, None)
 
             distances = self._metric_learner.distance_estimator(inputs)
             rewards = 0.0
@@ -129,14 +130,14 @@ class MetricLearningAlgorithm(SAC):
 
         elif self._use_distance_for == 'telescope_reward':
             inputs1 = self._metric_learner._distance_estimator_inputs(
-                observations_ph, goals_ph, actions_ph)
+                observations_ph, distance_goals, actions_ph)
             distances1 = self._metric_learner.distance_estimator(inputs1)
 
             policy_inputs = self._policy_inputs(
                 observations=next_observations_ph)
             next_actions = self._policy.actions(policy_inputs)
             inputs2 = self._metric_learner._distance_estimator_inputs(
-                next_observations_ph, goals_ph, next_actions)
+                next_observations_ph, distance_goals, next_actions)
             distances2 = self._metric_learner.distance_estimator(inputs2)
 
             rewards = -1.0 * (distances2 - distances1)
@@ -166,12 +167,13 @@ class MetricLearningAlgorithm(SAC):
 
     def _update_goal(self):
         new_goal = self._target_proposer.propose_target(epoch=self._epoch)
-        self._newest_goal = new_goal.copy()
+        self._current_distance_goal = new_goal.copy()
+        self._training_environment.set_goal(new_goal)
 
-        try:
-            self._training_environment._env.env.set_fixed_goal(new_goal)
-        except AttributeError:
-            self._training_environment.unwrapped.set_fixed_goal(new_goal)
+        # try:
+        #     self._training_environment._env.env.set_fixed_goal(new_goal)
+        # except AttributeError:
+        #     self._training_environment.unwrapped.set_fixed_goal(new_goal)
 
     def _epoch_after_hook(self, training_paths):
         self._previous_training_paths = training_paths
@@ -253,8 +255,15 @@ class MetricLearningAlgorithm(SAC):
         feed_dict = super(MetricLearningAlgorithm, self)._get_feed_dict(
             iteration, batch)
 
-        for name, placeholder in self._placeholders['goals'].items():
-            feed_dict[placeholder] = self._newest_goal[name][None, ...]
+        if self._current_distance_goal is None:
+            first_observations = self._pool.last_n_batch(1)['observations']
+            self._current_distance_goal = type(first_observations)((
+                (key, values[0]) for key, values in first_observations.items()
+            ))
+
+        for name, value in self._current_distance_goal.items():
+            feed_dict[self._placeholders['distance_goals'][name]] = (
+                value[None, ...])
 
         return feed_dict
 
