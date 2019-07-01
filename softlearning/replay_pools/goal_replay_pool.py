@@ -46,7 +46,7 @@ class GoalReplayPool(FlexibleReplayPool):
                     shape=observation_space.shape)
                 for name, observation_space
                 in observation_space.spaces.items()
-                if name in environment.goal_key_map.values()
+                if name in environment.goal_keys
             },
             'actions': Field(
                 name='actions',

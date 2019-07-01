@@ -65,19 +65,15 @@ ENVIRONMENT_PARAMS = {
     },
     'Point2DEnv': {
         'Default-v0': {
-            'observation_keys': ('state_observation', 'state_desired_goal'),
-            'goal_key_map': {
-                'state_desired_goal': 'state_observation',
-            },
+            'observation_keys': ('state_observation', ),
+            'goal_keys': ('state_desired_goal', ),
             'terminate_on_success': True,
             'fixed_goal': (5.0, 5.0),
             'reset_positions': ((-5.0, -5.0), ),
         },
         'Wall-v0': {
-            'observation_keys': ('state_observation', 'state_desired_goal'),
-            'goal_key_map': {
-                'state_desired_goal': 'state_observation',
-            },
+            'observation_keys': ('state_observation', ),
+            'goal_keys': ('state_desired_goal', ),
             'terminate_on_success': False,
             'fixed_goal': (5.0, 4.0),
             # 'fixed_goal': (0.0, 0.0),
@@ -167,15 +163,15 @@ ENVIRONMENT_PARAMS = {
             'target_initial_position_range': (0, 0),
             'object_initial_velocity_range': (0, 0),
             'object_initial_position_range': (0, 0),
-            'goal_key_map': {
-                'desired_hand_position': 'hand_position',
-                'desired_hand_velocity': 'hand_velocity',
-                'desired_hand_acceleration': 'hand_acceleration',
-                'desired_object_position': 'object_position',
-                'desired_object_position_sin': 'object_position_sin',
-                'desired_object_position_cos': 'object_position_cos',
-                'desired_object_velocity': 'object_velocity',
-            },
+            'goal_keys': (
+                'desired_hand_position',
+                'desired_hand_velocity',
+                'desired_hand_acceleration',
+                'desired_object_position',
+                'desired_object_position_sin',
+                'desired_object_position_cos',
+                'desired_object_velocity',
+            ),
         },
         'ImageScrewV2-v0': {
             'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
@@ -214,14 +210,11 @@ ENVIRONMENT_PARAMS = {
                 'desired_hand_velocity',
                 'desired_pixels',
             ),
-            'goal_key_map': {
-                f'desired_{key}': key
-                for key in (
-                    'hand_position',
-                    'hand_velocity',
-                    'pixels',
-                )
-            },
+            'goal_keys': (
+                'desired_hand_position',
+                'desired_hand_velocity',
+                'desired_pixels',
+            ),
         },
     },
     'HardwareDClaw3': {
@@ -234,15 +227,15 @@ ENVIRONMENT_PARAMS = {
             'target_initial_position_range': (0, 0),
             'object_initial_velocity_range': (0, 0),
             'object_initial_position_range': (0, 0),
-            'goal_key_map': {
-                'desired_hand_position': 'hand_position',
-                'desired_hand_velocity': 'hand_velocity',
-                'desired_hand_acceleration': 'hand_acceleration',
-                'desired_object_position': 'object_position',
-                'desired_object_position_sin': 'object_position_sin',
-                'desired_object_position_cos': 'object_position_cos',
-                'desired_object_velocity': 'object_velocity',
-            },
+            'goal_keys': (
+                'desired_hand_position',
+                'desired_hand_velocity',
+                'desired_hand_acceleration',
+                'desired_object_position',
+                'desired_object_position_sin',
+                'desired_object_position_cos',
+                'desired_object_velocity',
+            ),
         },
         'ImageScrewV2-v0': {
             'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),

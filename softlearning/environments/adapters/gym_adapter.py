@@ -55,7 +55,6 @@ class GymAdapter(SoftlearningEnv):
                  normalize=True,
                  observation_keys=(),
                  goal_keys=(),
-                 goal_key_map={},
                  unwrap_time_limit=True,
                  pixel_wrapper_kwargs=None,
                  **kwargs):
@@ -70,7 +69,6 @@ class GymAdapter(SoftlearningEnv):
             task,
             *args,
             goal_keys=goal_keys,
-            goal_key_map=goal_key_map,
             **kwargs)
 
         if env is None:

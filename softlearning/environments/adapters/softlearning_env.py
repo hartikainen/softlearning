@@ -48,7 +48,6 @@ class SoftlearningEnv(metaclass=ABCMeta):
                  domain,
                  task,
                  goal_keys=(),
-                 goal_key_map={},
                  *args,
                  **kwargs):
         """Initialize an environment based on domain and task.
@@ -61,10 +60,6 @@ class SoftlearningEnv(metaclass=ABCMeta):
         self._domain = domain
         self._task = task
         self.goal_keys = goal_keys
-        self.goal_key_map = goal_key_map
-        self.goal_key_map_inverse = {
-            value: key for key, value in goal_key_map.items()
-        }
 
     @property
     def observation_space(self):
