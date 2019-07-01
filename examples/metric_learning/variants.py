@@ -679,7 +679,7 @@ def get_variant_spec(args):
         },
     }
 
-    if is_image_env(domain, task, variant_spec):
+    if is_image_env(universe, domain, task, variant_spec):
         preprocessor_params = {
             'type': 'convnet_preprocessor',
             'kwargs': {
