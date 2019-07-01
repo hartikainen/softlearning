@@ -25,20 +25,7 @@ def update_batch(original_batch,
                  resampled_batch,
                  where_resampled,
                  environment):
-    batch_flat = flatten(original_batch)
-    resampled_batch_flat = flatten(resampled_batch)
-
-    for observation_key, goal_key in environment.goal_key_map.items():
-        batch_flat[('goals', goal_key)][where_resampled] = (
-            resampled_batch_flat[('observations', observation_key)])
-
-    # batch_flat[
-    #     ('goals', 'state_desired_goal')
-    # ][where_resampled] = resampled_batch_flat[
-    #     ('observations', 'state_observation')]
-
-    updated_batch = unflatten(batch_flat)
-    return updated_batch
+    raise NotImplementedError
 
 
 def get_variant_spec(args):
