@@ -9,284 +9,444 @@ from examples.utils import variant_equals
 from sac_envs.envs.dclaw.dclaw3_screw_v2 import LinearLossFn, NegativeLogLossFn
 
 
+DEFAULT_KEY = "__DEFAULT_KEY__"
 DEFAULT_LAYER_SIZE = 256
 
-ENVIRONMENT_PARAMS = {
-    'Swimmer': {
-        'Parameterizable-v3': {
-            'exclude_current_positions_from_observation': False,
-            'reset_noise_scale': 0,
-        },
-        'Maze-v0': {
-            'exclude_current_positions_from_observation': False,
-            'reset_noise_scale': 0,
-        },
-    },
-    'Ant': {
-        'Parameterizable-v3': {
-            'exclude_current_positions_from_observation': False,
-            'terminate_when_unhealthy': False,
-            'healthy_reward': 1.0,
-        },
-        'Maze-v0': {
-            'exclude_current_positions_from_observation': False,
-            'terminate_when_unhealthy': True,
-            'reset_noise_scale': 0,
-        },
-    },
-    'HalfCheetah': {
-        'Parameterizable-v3': {
-            'exclude_current_positions_from_observation': False,
-        },
-    },
-    'Hopper': {
-        'Parameterizable-v3': {
-            'exclude_current_positions_from_observation': False,
-            'terminate_when_unhealthy': False,
-            'healthy_reward': 1.0,
-            'reset_noise_scale': 0,
-        },
-    },
-    'Walker': {
-        'Parameterizable-v3': {
-            'exclude_current_positions_from_observation': False,
-            'terminate_when_unhealthy': False,
-            'healthy_reward': 1.0,
-            'reset_noise_scale': 0,
-        },
-    },
-    'Humanoid': {
-        'Parameterizable-v3': {
-            'exclude_current_positions_from_observation': False,
-            'terminate_when_unhealthy': False,
-            'healthy_reward': 1.0,
-            'reset_noise_scale': 0,
-        },
-    },
-    'Point2DEnv': {
-        'Default-v0': {
-            'observation_keys': ('state_observation', ),
-            'goal_keys': ('state_desired_goal', ),
-            'terminate_on_success': True,
-            'fixed_goal': (5.0, 5.0),
-            'reset_positions': ((-5.0, -5.0), ),
-        },
-        'Wall-v0': {
-            'observation_keys': ('state_observation', ),
-            'goal_keys': ('state_desired_goal', ),
-            'terminate_on_success': False,
-            'fixed_goal': (5.0, 4.0),
-            # 'fixed_goal': (0.0, 0.0),
-            # 'fixed_goal': (4.0, 0.0),
-            'reset_positions': (
-                # (-5.0, -5.0),
-                (-5.0, -4.0),
-                # (-5.0, -3.0),
-            ),
-            # 'reset_positions': None,
-            'wall_shape': tune.grid_search(['zigzag']),
-            'discretize': False,
-            'target_radius': 0.1,
-            'reward_type': 'sparse',
-        },
-        'ImageWall-v0': {
-            'observation_keys': ('image_observation', ),
 
-            'image_shape': (64, 64, 3),
-            'render_size': 64,
-            'wall_shape': 'zigzag',
-            'images_are_rgb': True,
-            'render_onscreen': False,
+ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
+    'gym': {
+        'Swimmer': {
+            'Parameterizable-v3': {
+                'exclude_current_positions_from_observation': False,
+                'reset_noise_scale': 0,
+            },
+            'Maze-v0': {
+                'exclude_current_positions_from_observation': False,
+                'reset_noise_scale': 0,
+            },
         },
-    },
+        'GoalSwimmer': {
+            'v0': {
+                'exclude_current_positions_from_observation': False,
+                'observation_keys': ('observation', ),
+            },
+        },
+        'GoalAnt': {
+            'v0': {
+                'exclude_current_positions_from_observation': False,
+                'observation_keys': ('observation', ),
+                'terminate_when_unhealthy': False,
+                'reset_noise_scale': tune.grid_search([0.0, 0.1])
+            },
+        },
+        'GoalHalfCheetah': {
+            'v0': {
+                'observation_keys': ('observation', ),
+                'forward_reward_weight': 0,
+                'ctrl_cost_weight': 0,
+                'exclude_current_positions_from_observation': False,
+                'reset_noise_scale': tune.grid_search([0.0, 0.1])
+            }
+        },
+        'GoalHopper': {
+            'v0': {
+                'exclude_current_positions_from_observation': False,
+                'observation_keys': ('observation', ),
+                'terminate_when_unhealthy': tune.grid_search([True, False]),
+                'reset_noise_scale': tune.grid_search([0.0, 0.1])
+            }
+        },
+        'GoalWalker': {
+            'v0': {
+                'exclude_current_positions_from_observation': False,
+                'observation_keys': ('observation', ),
+            }
+        },
+        'GoalHumanoid': {
+            'v0': {
+                'exclude_current_positions_from_observation': False,
+                'observation_keys': ('observation', ),
+            },
+        },
+        'GoalReacher': {
+            'v0': {
+                'observation_keys': ('observation', ),
+            }
+        },
+        'GoalPendulum': {
+            'v0': {
+                'observation_keys': ('observation', ),
+            }
+        },
+        'Hopper': {
+            'Parameterizable-v3': {
+                'exclude_current_positions_from_observation': False,
+                'terminate_when_unhealthy': False,
+                'healthy_reward': 1.0,
+                'reset_noise_scale': 0,
+            },
+        },
+        'HalfCheetah': {
+            'Parameterizable-v3': {
+                'exclude_current_positions_from_observation': False,
+            },
+        },
+        'Walker': {
+            'Parameterizable-v3': {
+                'exclude_current_positions_from_observation': False,
+                'terminate_when_unhealthy': False,
+                'healthy_reward': 1.0,
+                'reset_noise_scale': 0,
+            },
+        },
+        'Ant': {
+            'Parameterizable-v3': {
+                'exclude_current_positions_from_observation': False,
+                'terminate_when_unhealthy': False,
+                'healthy_reward': 1.0,
+            },
+            'Maze-v0': {
+                'exclude_current_positions_from_observation': False,
+                'terminate_when_unhealthy': True,
+                'reset_noise_scale': 0,
+            },
+        },
+        'Humanoid': {
+            'Parameterizable-v3': {
+                'exclude_current_positions_from_observation': False,
+                'terminate_when_unhealthy': False,
+                'healthy_reward': 1.0,
+                'reset_noise_scale': 0,
+            },
+        },
+        'Pusher2d': {  # 3 DoF
+            'Default-v3': {
+                'arm_object_distance_cost_coeff': 0.0,
+                'goal_object_distance_cost_coeff': 1.0,
+                'goal': (0, -1),
+            },
+            'DefaultReach-v0': {
+                'arm_goal_distance_cost_coeff': 1.0,
+                'arm_object_distance_cost_coeff': 0.0,
+            },
+            'ImageDefault-v0': {
+                'image_shape': (32, 32, 3),
+                'arm_object_distance_cost_coeff': 0.0,
+                'goal_object_distance_cost_coeff': 3.0,
+            },
+            'ImageReach-v0': {
+                'image_shape': (32, 32, 3),
+                'arm_goal_distance_cost_coeff': 1.0,
+                'arm_object_distance_cost_coeff': 0.0,
+            },
+            'BlindReach-v0': {
+                'image_shape': (32, 32, 3),
+                'arm_goal_distance_cost_coeff': 1.0,
+                'arm_object_distance_cost_coeff': 0.0,
+            }
+        },
+        'Point2DEnv': {
+            'Default-v0': {
+                'observation_keys': ('state_observation', ),
+                'goal_keys': ('state_desired_goal', ),
+                'terminate_on_success': True,
+                'fixed_goal': (5.0, 5.0),
+                'reset_positions': ((-5.0, -5.0), ),
+            },
+            'Wall-v0': {
+                'observation_keys': ('state_observation', ),
+                'goal_keys': ('state_desired_goal', ),
+                'terminate_on_success': False,
+                'fixed_goal': (5.0, 4.0),
+                # 'fixed_goal': (0.0, 0.0),
+                # 'fixed_goal': (4.0, 0.0),
+                'reset_positions': (
+                    # (-5.0, -5.0),
+                    (-5.0, -4.0),
+                    # (-5.0, -3.0),
+                ),
+                # 'reset_positions': None,
+                'wall_shape': tune.grid_search(['zigzag']),
+                'discretize': False,
+                'target_radius': 0.1,
+                'reward_type': 'sparse',
+            },
+            'ImageWall-v0': {
+                'observation_keys': ('image_observation', ),
 
-    'GoalSwimmer': {
-        'v0': {
-            'exclude_current_positions_from_observation': False,
-            'observation_keys': ('observation', ),
+                'image_shape': (64, 64, 3),
+                'render_size': 64,
+                'wall_shape': 'zigzag',
+                'images_are_rgb': True,
+                'render_onscreen': False,
+            },
         },
-    },
-    'GoalAnt': {
-        'v0': {
-            'exclude_current_positions_from_observation': False,
-            'observation_keys': ('observation', ),
-            'terminate_when_unhealthy': False,
-            'reset_noise_scale': tune.grid_search([0.0, 0.1])
+        'Sawyer': {
+            task_name: {
+                'has_renderer': False,
+                'has_offscreen_renderer': False,
+                'use_camera_obs': False,
+                'reward_shaping': tune.grid_search([True, False]),
+            }
+            for task_name in (
+                    'Lift',
+                    'NutAssembly',
+                    'NutAssemblyRound',
+                    'NutAssemblySingle',
+                    'NutAssemblySquare',
+                    'PickPlace',
+                    'PickPlaceBread',
+                    'PickPlaceCan',
+                    'PickPlaceCereal',
+                    'PickPlaceMilk',
+                    'PickPlaceSingle',
+                    'Stack',
+            )
         },
-    },
-    'GoalHalfCheetah': {
-        'v0': {
-            'observation_keys': ('observation', ),
-            'forward_reward_weight': 0,
-            'ctrl_cost_weight': 0,
-            'exclude_current_positions_from_observation': False,
-            'reset_noise_scale': tune.grid_search([0.0, 0.1])
-        }
-    },
-    'GoalHopper': {
-        'v0': {
-            'exclude_current_positions_from_observation': False,
-            'observation_keys': ('observation', ),
-            'terminate_when_unhealthy': tune.grid_search([True, False]),
-            'reset_noise_scale': tune.grid_search([0.0, 0.1])
-        }
-    },
-    'GoalWalker': {
-        'v0': {
-            'exclude_current_positions_from_observation': False,
-            'observation_keys': ('observation', ),
-        }
-    },
-    'GoalHumanoid': {
-        'v0': {
-            'exclude_current_positions_from_observation': False,
-            'observation_keys': ('observation', ),
+        'DClaw3': {
+            'ScrewV2-v0': {
+                'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
+                'hand_position_cost_coeff': 0,
+                'hand_velocity_cost_coeff': 0,
+                'hand_acceleration_cost_coeff': 0,
+                'target_initial_velocity_range': (0, 0),
+                'target_initial_position_range': (0, 0),
+                'object_initial_velocity_range': (0, 0),
+                'object_initial_position_range': (0, 0),
+                'goal_keys': (
+                    'desired_hand_position',
+                    'desired_hand_velocity',
+                    'desired_hand_acceleration',
+                    'desired_object_position',
+                    'desired_object_position_sin',
+                    'desired_object_position_cos',
+                    'desired_object_velocity',
+                ),
+            },
+            'ImageScrewV2-v0': {
+                'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
+                'hand_position_cost_coeff': 0,
+                'hand_velocity_cost_coeff': 0,
+                'hand_acceleration_cost_coeff': 0,
+                'target_initial_velocity_range': (0, 0),
+                'target_initial_position_range': (np.pi, np.pi),
+                'object_initial_velocity_range': (0, 0),
+                'object_initial_position_range': (0, 0),
+                'pixel_wrapper_kwargs': {
+                    'observation_key': 'pixels',
+                    'pixels_only': False,
+                    'render_kwargs': {
+                        'width': 32,
+                        'height': 32,
+                        'camera_id': -1
+                    },
+                },
+                'observation_keys': (
+                    'pixels',
+
+                    'hand_position',
+                    'hand_velocity',
+                    'hand_acceleration',
+
+                    # These are supposed to not be fed to the models,
+                    # but they are here just for the reward computation
+                    # when we set the goal from outside of the environment.
+                    'object_position',
+                    'object_position_sin',
+                    'object_position_cos',
+                    'object_velocity',
+
+                    'desired_hand_position',
+                    'desired_hand_velocity',
+                    'desired_pixels',
+                ),
+                'goal_keys': (
+                    'desired_hand_position',
+                    'desired_hand_velocity',
+                    'desired_pixels',
+                ),
+            },
         },
-    },
-    'GoalReacher': {
-        'v0': {
-            'observation_keys': ('observation', ),
-        }
-    },
-    'GoalPendulum': {
-        'v0': {
-            'observation_keys': ('observation', ),
-        }
-    },
-    'DClaw3': {
-        'ScrewV2-v0': {
-            'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
-            'hand_position_cost_coeff': 0,
-            'hand_velocity_cost_coeff': 0,
-            'hand_acceleration_cost_coeff': 0,
-            'target_initial_velocity_range': (0, 0),
-            'target_initial_position_range': (0, 0),
-            'object_initial_velocity_range': (0, 0),
-            'object_initial_position_range': (0, 0),
-            'goal_keys': (
-                'desired_hand_position',
-                'desired_hand_velocity',
-                'desired_hand_acceleration',
-                'desired_object_position',
-                'desired_object_position_sin',
-                'desired_object_position_cos',
-                'desired_object_velocity',
-            ),
+        'HardwareDClaw3': {
+            'ScrewV2-v0': {
+                'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
+                'hand_position_cost_coeff': 0,
+                'hand_velocity_cost_coeff': 0,
+                'hand_acceleration_cost_coeff': 0,
+                'target_initial_velocity_range': (0, 0),
+                'target_initial_position_range': (0, 0),
+                'object_initial_velocity_range': (0, 0),
+                'object_initial_position_range': (0, 0),
+                'goal_keys': (
+                    'desired_hand_position',
+                    'desired_hand_velocity',
+                    'desired_hand_acceleration',
+                    'desired_object_position',
+                    'desired_object_position_sin',
+                    'desired_object_position_cos',
+                    'desired_object_velocity',
+                ),
+            },
+            'ImageScrewV2-v0': {
+                'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
+                'hand_position_cost_coeff': 0,
+                'hand_velocity_cost_coeff': 0,
+                'hand_acceleration_cost_coeff': 0,
+                'target_initial_velocity_range': (0, 0),
+                'target_initial_position_range': (np.pi, np.pi),
+                'object_initial_velocity_range': (0, 0),
+                'object_initial_position_range': (0, 0),
+                'pixel_wrapper_kwargs': {
+                    'observation_key': 'pixels',
+                    'pixels_only': False,
+                    'render_kwargs': {
+                        'width': 32,
+                        'height': 32,
+                        'camera_id': -1
+                    },
+                },
+                'observation_keys': (
+                    'hand_position',
+                    'hand_velocity',
+                    'pixels'
+                ),
+            },
         },
-        'ImageScrewV2-v0': {
-            'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
-            'hand_position_cost_coeff': 0,
-            'hand_velocity_cost_coeff': 0,
-            'hand_acceleration_cost_coeff': 0,
-            'target_initial_velocity_range': (0, 0),
-            'target_initial_position_range': (np.pi, np.pi),
-            'object_initial_velocity_range': (0, 0),
-            'object_initial_position_range': (0, 0),
-            'pixel_wrapper_kwargs': {
-                'observation_key': 'pixels',
-                'pixels_only': False,
-                'render_kwargs': {
-                    'width': 32,
-                    'height': 32,
-                    'camera_id': -1
+        'DClaw': {
+
+        }
+    },
+    'dm_control': {
+        'ball_in_cup': {
+            'catch': {
+                'pixel_wrapper_kwargs': {
+                    'observation_key': 'pixels',
+                    'pixels_only': True,
+                    'render_kwargs': {
+                        'width': 84,
+                        'height': 84,
+                        'camera_id': 0,
+                    },
                 },
             },
-            'observation_keys': (
-                'pixels',
-
-                'hand_position',
-                'hand_velocity',
-                'hand_acceleration',
-
-                # These are supposed to not be fed to the models,
-                # but they are here just for the reward computation
-                # when we set the goal from outside of the environment.
-                'object_position',
-                'object_position_sin',
-                'object_position_cos',
-                'object_velocity',
-
-                'desired_hand_position',
-                'desired_hand_velocity',
-                'desired_pixels',
-            ),
-            'goal_keys': (
-                'desired_hand_position',
-                'desired_hand_velocity',
-                'desired_pixels',
-            ),
         },
-    },
-    'HardwareDClaw3': {
-        'ScrewV2-v0': {
-            'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
-            'hand_position_cost_coeff': 0,
-            'hand_velocity_cost_coeff': 0,
-            'hand_acceleration_cost_coeff': 0,
-            'target_initial_velocity_range': (0, 0),
-            'target_initial_position_range': (0, 0),
-            'object_initial_velocity_range': (0, 0),
-            'object_initial_position_range': (0, 0),
-            'goal_keys': (
-                'desired_hand_position',
-                'desired_hand_velocity',
-                'desired_hand_acceleration',
-                'desired_object_position',
-                'desired_object_position_sin',
-                'desired_object_position_cos',
-                'desired_object_velocity',
-            ),
-        },
-        'ImageScrewV2-v0': {
-            'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
-            'hand_position_cost_coeff': 0,
-            'hand_velocity_cost_coeff': 0,
-            'hand_acceleration_cost_coeff': 0,
-            'target_initial_velocity_range': (0, 0),
-            'target_initial_position_range': (np.pi, np.pi),
-            'object_initial_velocity_range': (0, 0),
-            'object_initial_position_range': (0, 0),
-            'pixel_wrapper_kwargs': {
-                'observation_key': 'pixels',
-                'pixels_only': False,
-                'render_kwargs': {
-                    'width': 32,
-                    'height': 32,
-                    'camera_id': -1
+        'cheetah': {
+            'run': {
+                'pixel_wrapper_kwargs': {
+                    'observation_key': 'pixels',
+                    'pixels_only': True,
+                    'render_kwargs': {
+                        'width': 84,
+                        'height': 84,
+                        'camera_id': 0,
+                    },
                 },
             },
-            'observation_keys': ('hand_position', 'hand_velocity', 'pixels'),
+        },
+        'finger': {
+            'spin': {
+                'pixel_wrapper_kwargs': {
+                    'observation_key': 'pixels',
+                    'pixels_only': True,
+                    'render_kwargs': {
+                        'width': 84,
+                        'height': 84,
+                        'camera_id': 0,
+                    },
+                },
+            },
         },
     },
 }
 
-DEFAULT_NUM_EPOCHS = 200
-NUM_EPOCHS_PER_DOMAIN = {
-    'Swimmer': int(3e3 + 1),
-    'GoalSwimmer': int(3e3 + 1),
-    'Hopper': int(5e3 + 1),
-    'HalfCheetah': int(1e4 + 1),
-    'Walker': int(1e4 + 1),
-    'Ant': int(1e4 + 1),
-    'Humanoid': int(3e4 + 1),
-    'Pusher2d': int(2e3 + 1),
-    'HandManipulatePen': int(1e4 + 1),
-    'HandManipulateEgg': int(1e4 + 1),
-    'HandManipulateBlock': int(1e4 + 1),
-    'HandReach': int(1e4 + 1),
-    'DClaw3': int(150),
-    'HardwareDClaw3': int(150),
-    'Point2DEnv': int(50 + 1)
-}
 
+NUM_EPOCHS_PER_UNIVERSE_DOMAIN_TASK = {
+    DEFAULT_KEY: 200,
+    'gym': {
+        DEFAULT_KEY: 200,
+        'Swimmer': {
+            DEFAULT_KEY: int(3e2),
+        },
+        'Hopper': {
+            DEFAULT_KEY: int(1e3),
+        },
+        'HalfCheetah': {
+            DEFAULT_KEY: int(3e3),
+        },
+        'Walker2d': {
+            DEFAULT_KEY: int(3e3),
+        },
+        'Ant': {
+            DEFAULT_KEY: int(3e3),
+        },
+        'Humanoid': {
+            DEFAULT_KEY: int(1e4),
+        },
+        'Pusher2d': {
+            DEFAULT_KEY: int(2e3),
+        },
+        'HandManipulatePen': {
+            DEFAULT_KEY: int(1e4),
+        },
+        'HandManipulateEgg': {
+            DEFAULT_KEY: int(1e4),
+        },
+        'HandManipulateBlock': {
+            DEFAULT_KEY: int(1e4),
+        },
+        'HandReach': {
+            DEFAULT_KEY: int(1e4),
+        },
+        'Point2DEnv': {
+            DEFAULT_KEY: int(50),
+        },
+        'Reacher': {
+            DEFAULT_KEY: int(200),
+        },
+        'Pendulum': {
+            DEFAULT_KEY: 10,
+        },
+        'DClaw3': {
+            DEFAULT_KEY: int(150),
+        },
+        'HardwareDClaw3': {
+            DEFAULT_KEY: int(150),
+        },
+        'DClaw': {
+            DEFAULT_KEY: int(100),
+        },
+    },
+    'dm_control': {
+        DEFAULT_KEY: 200,
+        'ball_in_cup': {
+            DEFAULT_KEY: int(2e4),
+        },
+        'cheetah': {
+            DEFAULT_KEY: int(2e4),
+        },
+        'finger': {
+            DEFAULT_KEY: int(2e4),
+        },
+    },
+    'robosuite': {
+        DEFAULT_KEY: 200,
+    }
+}
 
 DEFAULT_MAX_PATH_LENGTH = 1000
-MAX_PATH_LENGTH_PER_DOMAIN = {
-    'Point2DEnv': 50,
-    'GoalReacher': 200,
-    'DClaw3': 250,
-    'HardwareDClaw3': 250,
+MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
+    DEFAULT_KEY: 1000,
+    'gym': {
+        DEFAULT_KEY: 1000,
+        'Point2DEnv': {
+            DEFAULT_KEY: 50,
+        },
+        'Pendulum': {
+            DEFAULT_KEY: 200,
+        },
+    },
 }
+
 
 NUM_CHECKPOINTS = 10
 
@@ -378,10 +538,63 @@ def distance_pool_params(spec):
     return params
 
 
+def get_num_epochs(universe, domain, task):
+    level_result = NUM_EPOCHS_PER_UNIVERSE_DOMAIN_TASK.copy()
+    for level_key in (universe, domain, task):
+        if isinstance(level_result, int):
+            return level_result
+
+        level_result = level_result.get(level_key) or level_result[DEFAULT_KEY]
+
+    return level_result
+
+
+def get_max_path_length(universe, domain, task):
+    level_result = MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK.copy()
+    for level_key in (universe, domain, task):
+        if isinstance(level_result, int):
+            return level_result
+
+        level_result = level_result.get(level_key) or level_result[DEFAULT_KEY]
+
+    return level_result
+
+
+def get_initial_exploration_steps(spec):
+    config = spec.get('config', spec)
+    initial_exploration_steps = 10 * (
+        config
+        ['sampler_params']
+        ['kwargs']
+        ['max_path_length']
+    )
+
+    return initial_exploration_steps
+
+
+def get_checkpoint_frequency(spec):
+    config = spec.get('config', spec)
+    checkpoint_frequency = (
+        config
+        ['algorithm_params']
+        ['kwargs']
+        ['n_epochs']
+    ) // NUM_CHECKPOINTS
+
+    return checkpoint_frequency
+
+
+def get_environment_params(universe, domain, task):
+    environment_params = (
+        ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK
+        .get(universe, {}).get(domain, {}).get(task, {}))
+
+    return environment_params
+
+
 def get_variant_spec(args):
     universe, domain, task = args.universe, args.domain, args.task
-    max_path_length = MAX_PATH_LENGTH_PER_DOMAIN.get(
-        domain, DEFAULT_MAX_PATH_LENGTH)
+    max_path_length = get_max_path_length(universe, domain, task)
 
     def metric_learner_kwargs(spec):
         spec = spec.get('config', spec)
@@ -458,8 +671,7 @@ def get_variant_spec(args):
                 'domain': domain,
                 'task': task,
                 'universe': universe,
-                'kwargs': (
-                    ENVIRONMENT_PARAMS.get(domain, {}).get(task, {})),
+                'kwargs': get_environment_params(universe, domain, task),
             },
             'evaluation': {
                 'domain': domain,
@@ -532,11 +744,11 @@ def get_variant_spec(args):
 
             'kwargs': {
                 'epoch_length': 1000,
-                'n_epochs': NUM_EPOCHS_PER_DOMAIN.get(
-                    domain, DEFAULT_NUM_EPOCHS),
+                'n_epochs': get_num_epochs(universe, domain, task),
+                'n_initial_exploration_steps': tune.sample_from(
+                    get_initial_exploration_steps),
                 'train_every_n_steps': 1,
                 'n_train_repeat': 1,
-                'n_initial_exploration_steps': int(1e3),
                 'reparameterize': True,
                 'eval_render_kwargs': {},
                 # {
@@ -618,15 +830,15 @@ def get_variant_spec(args):
         'metric_learner_params': {
             'type': tune.grid_search([
                 # 'TemporalDifferenceMetricLearner',
-                # 'SupervisedMetricLearner',
-                'DistributionalSupervisedMetricLearner',
+                'SupervisedMetricLearner',
+                # 'DistributionalSupervisedMetricLearner',
                 # 'HingeMetricLearner',
             ]),
             'kwargs': tune.sample_from(metric_learner_kwargs),
         },
         'distance_estimator_params': {
-            # 'type': 'FeedforwardDistanceEstimator',
-            'type': 'DistributionalFeedforwardDistanceEstimator',
+            'type': 'FeedforwardDistanceEstimator',
+            # 'type': 'DistributionalFeedforwardDistanceEstimator',
             'kwargs': {
                 'observation_keys': (
                     'hand_position',
@@ -636,8 +848,8 @@ def get_variant_spec(args):
                     'object_position_cos',
                     'object_velocity',
                 ),
-                'n_bins': 26,
-                'bin_size': 10,
+                # 'n_bins': 26,
+                # 'bin_size': 10,
                 # 'observation_keys': ('state_observation', ),
                 'observation_preprocessors_params': {},
                 'hidden_layer_sizes': (256, 256),
@@ -673,8 +885,8 @@ def get_variant_spec(args):
             'seed': tune.sample_from(
                 lambda spec: np.random.randint(0, 10000)),
             'checkpoint_at_end': True,
-            'checkpoint_frequency': NUM_EPOCHS_PER_DOMAIN.get(
-                domain, DEFAULT_NUM_EPOCHS) // NUM_CHECKPOINTS,
+            'checkpoint_frequency': (
+                get_num_epochs(universe, domain, task) // NUM_CHECKPOINTS),
             'checkpoint_replay_pool': False,
         },
     }
