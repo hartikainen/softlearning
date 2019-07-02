@@ -200,6 +200,11 @@ def register_environments():
         register_environments as register_dclaw_environments)
     register_dclaw_environments()
 
+    try:
+        import dsuite
+    except ImportError as e:
+        print(e)
+
     registered_mujoco_environments = register_mujoco_environments()
     registered_general_environments = register_general_environments()
     registered_multiworld_environments = register_multiworld_environments()
