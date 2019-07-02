@@ -109,7 +109,7 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: 250,
         },
         'DClaw': {
-            DEFAULT_KEY: 50,
+            DEFAULT_KEY: 100,
         },
     },
 }
@@ -335,11 +335,19 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'render_kwargs': {
                         'width': 32,
                         'height': 32,
-                        'camera_id': 1,
+                        'camera_id': -1,
                         # 'camera_name': 'track',
                     },
                 },
+                'camera_settings': {
+                    'azimuth': 0,
+                    'elevation': -45,
+                    'distance': 0.25,
+                    'lookat': (0, 0, 1.25e-1),
+                    'track_body_name': 'valve',
+                },
                 'observation_keys': ('claw_qpos', 'last_action', 'pixels'),
+                'reward_keys': ('object_to_target_angle_dist_cost', ),
             },
             'TurnRandomDynamics-v0': {},
             'ScrewFixed-v0': {},
@@ -524,7 +532,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
         'replay_pool_params': {
             'type': 'SimpleReplayPool',
             'kwargs': {
-                'max_size': int(1e6)
+                'max_size': int(3e5)
             }
         },
         'sampler_params': {
