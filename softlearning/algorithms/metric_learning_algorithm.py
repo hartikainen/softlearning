@@ -329,6 +329,12 @@ class MetricLearningAlgorithm(SAC):
             for key, value in target_proposer_diagnostics.items()
         ))
 
+        if type(self._training_environment.unwrapped).__name__ == 'DClawTurnFixed':
+            diagnostics['_current_distance_goal/object_angle'] = np.arctan2(
+                self._current_distance_goal['object_angle_sin'],
+                self._current_distance_goal['object_angle_cos']
+            ).item()
+
         if self._plot_distances:
             env = self._training_environment.unwrapped
             if is_point_2d_env(self._training_environment.unwrapped):
