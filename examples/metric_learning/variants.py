@@ -313,8 +313,34 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             },
         },
         'DClaw': {
-
-        }
+            'PoseStatic-v0': {},
+            'PoseDynamic-v0': {},
+            'TurnFixed-v0': {
+                'use_dict_obs': True,
+                'reward_keys': ('object_to_target_angle_dist_cost', ),
+            },
+            'TurnRandom-v0': {},
+            'TurnRandomResetSingleGoal-v0': {
+                'use_dict_obs': True,
+                # 'pixel_wrapper_kwargs': {
+                #     'observation_key': 'pixels',
+                #     'pixels_only': False,
+                #     'render_kwargs': {
+                #         'width': 32,
+                #         'height': 32,
+                #         'camera_id': 1,
+                #         # 'camera_name': 'track',
+                #     },
+                # },
+                # 'observation_keys': ('claw_qpos', 'last_action', 'pixels'),
+                'reward_keys': ('object_to_target_angle_dist_cost', ),
+            },
+            'TurnRandomDynamics-v0': {},
+            'ScrewFixed-v0': {},
+            'ScrewRandom-v0': {},
+            'ScrewRandomDynamics-v0': {},
+            'TurnFreeValve3ResetFree-0v': {},
+        },
     },
     'dm_control': {
         'ball_in_cup': {
@@ -413,7 +439,7 @@ NUM_EPOCHS_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: int(150),
         },
         'DClaw': {
-            DEFAULT_KEY: int(100),
+            DEFAULT_KEY: int(300),
         },
     },
     'dm_control': {
@@ -433,7 +459,6 @@ NUM_EPOCHS_PER_UNIVERSE_DOMAIN_TASK = {
     }
 }
 
-DEFAULT_MAX_PATH_LENGTH = 1000
 MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
     DEFAULT_KEY: 1000,
     'gym': {
@@ -443,6 +468,17 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'Pendulum': {
             DEFAULT_KEY: 200,
+        },
+        'DClaw3': {
+            DEFAULT_KEY: 250,
+            'ScrewV2-v0': 250,
+            'ImageScrewV2-v0': 250,
+        },
+        'HardwareDClaw3': {
+            DEFAULT_KEY: 250,
+        },
+        'DClaw': {
+            DEFAULT_KEY: 100,
         },
     },
 }
@@ -464,6 +500,7 @@ def get_supervision_schedule_params(domain):
         ),
         'Point2DEnv': ((50, 1), ),
         'DClaw3': ((100, 9), ),
+        'DClaw': ((150, 1), (150, 4), (150, 8), (150, 16), (150, 32)),
         'HardwareDClaw3': ((100, 9), ),
     }[domain]
     # SCHEDULER_TYPES = ('linear', 'logarithmic')
@@ -633,6 +670,7 @@ def get_variant_spec(args):
                             'GoalHopper': 64,
                             'Point2DEnv': 1,
                             'DClaw3': 1,
+                            'DClaw': tune.grid_search([32]),
                             'HardwareDClaw3': 1,
                         }[domain]
                     ),
@@ -682,16 +720,6 @@ def get_variant_spec(args):
                     ['environment_params']
                     ['training']
                     ['kwargs'],
-                    **(
-                        {
-                            'fixed_goal': (5.0, 4.0),
-                            'terminate_on_success': True,
-                        }
-                        if 'point' in domain
-                        else {
-                                'target_initial_position_range': (np.pi, np.pi),
-                        }
-                    )
                 }))
             },
         },
@@ -834,7 +862,18 @@ def get_variant_spec(args):
                 # 'DistributionalSupervisedMetricLearner',
                 # 'HingeMetricLearner',
             ]),
-            'kwargs': tune.sample_from(metric_learner_kwargs),
+            # 'kwargs': tune.sample_from(metric_learner_kwargs),
+            'kwargs': {
+                'train_every_n_steps': tune.grid_search([4]),
+                'distance_learning_rate': 3e-4,
+                'n_train_repeat': 1,
+
+                'distance_input_type': tune.grid_search([
+                    'full',
+                    # 'xy_coordinates',
+                    # 'xy_velocities',
+                ]),
+            }
         },
         'distance_estimator_params': {
             'type': 'FeedforwardDistanceEstimator',
