@@ -42,10 +42,10 @@ class GoalConditionedSAC(SAC):
     def _update_goal(self):
         new_goal = self._target_proposer.propose_target(epoch=self._epoch)
 
-        try:
-            self._training_environment._env.env.set_goal(new_goal)
-        except AttributeError:
-            self._training_environment.unwrapped.set_goal(new_goal)
+        # try:
+        #     self._training_environment._env.env.set_goal(new_goal)
+        # except AttributeError:
+        #     self._training_environment.unwrapped.set_goal(new_goal)
 
     def _epoch_after_hook(self, training_paths):
         self._previous_training_paths = training_paths
@@ -121,15 +121,15 @@ class GoalConditionedSAC(SAC):
         return V_values
 
     def _evaluation_paths(self, policy, evaluation_env):
-        try:
-            goal = self._evaluation_environment._env.env.sample_metric_goal()
-            evaluation_env._env.env.set_goal(goal)
-        except Exception as e:
-            goal = self._evaluation_environment.unwrapped.sample_metric_goal()
-            evaluation_env.unwrapped.set_goal(goal)
+        # try:
+        #     goal = self._evaluation_environment._env.env.sample_metric_goal()
+        #     evaluation_env._env.env.set_goal(goal)
+        # except Exception as e:
+        #     goal = self._evaluation_environment.unwrapped.sample_metric_goal()
+        #     evaluation_env.unwrapped.set_goal(goal)
 
-        if is_point_2d_env(evaluation_env.unwrapped):
-            evaluation_env.unwrapped.optimal_policy.set_goal(goal)
+        # if is_point_2d_env(evaluation_env.unwrapped):
+        #     evaluation_env.unwrapped.optimal_policy.set_goal(goal)
 
         return super(GoalConditionedSAC, self)._evaluation_paths(
             policy, evaluation_env)

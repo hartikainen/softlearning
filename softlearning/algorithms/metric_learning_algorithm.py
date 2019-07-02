@@ -168,7 +168,8 @@ class MetricLearningAlgorithm(SAC):
     def _update_goal(self):
         new_goal = self._target_proposer.propose_target(epoch=self._epoch)
         self._current_distance_goal = new_goal.copy()
-        self._training_environment.set_goal(new_goal)
+
+        # self._training_environment.set_goal(new_goal)
 
         # try:
         #     self._training_environment._env.env.set_fixed_goal(new_goal)
