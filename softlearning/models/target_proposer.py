@@ -283,7 +283,7 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
             else:
                 best_observation = self._current_target
 
-        elif 'dclaw' in type(env).__name__.lower():
+        elif 'dclaw3' in type(env).__name__.lower():
             from sac_envs.utils.unit_circle_math import angle_distance_from_positions
 
             object_positions = new_observations['object_position']
@@ -308,7 +308,21 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
                     best_observation_index]
             else:
                 best_observation = self._current_target
+        elif type(env).__name__ == 'DClawTurnFixed':
+            from sac_envs.utils.unit_circle_math import angle_distance_from_positions
+            new_observations_distances = new_observations[
+                'object_to_target_angle_dist']
 
+            best_observation_index = np.argmin(new_observations_distances)
+            if (-new_observations_distances[best_observation_index]
+                > self._best_observation_value):
+                best_observation = type(new_observations)(
+                    (key, values[best_observation_index])
+                    for key, values in new_observations.items())
+                self._best_observation_value = -new_observations_distances[
+                    best_observation_index]
+            else:
+                best_observation = self._current_target
         else:
             raise NotImplementedError
 
