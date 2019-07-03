@@ -318,6 +318,24 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             'TurnFixed-v0': {
                 'use_dict_obs': True,
                 'reward_keys': ('object_to_target_angle_dist_cost', ),
+                'pixel_wrapper_kwargs': {
+                    'observation_key': 'pixels',
+                    'pixels_only': False,
+                    'render_kwargs': {
+                        'width': 32,
+                        'height': 32,
+                        'camera_id': 1,
+                        # 'camera_name': 'track',
+                    },
+                },
+                'camera_settings': {
+                    'azimuth': 0,
+                    'elevation': -45,
+                    'distance': 0.25,
+                    'lookat': (0, 0, 1.25e-1),
+                },
+                # 'observation_keys': ('claw_qpos', 'last_action', 'pixels'),
+                'reward_keys': ('object_to_target_angle_dist_cost', ),
             },
             'TurnRandom-v0': {},
             'TurnRandomResetSingleGoal-v0': {
@@ -433,7 +451,7 @@ NUM_EPOCHS_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: 10,
         },
         'DClaw3': {
-            DEFAULT_KEY: int(150),
+            DEFAULT_KEY: int(300),
         },
         'HardwareDClaw3': {
             DEFAULT_KEY: int(150),
@@ -500,7 +518,7 @@ def get_supervision_schedule_params(domain):
         ),
         'Point2DEnv': ((50, 1), ),
         'DClaw3': ((100, 9), ),
-        'DClaw': ((150, 1), (150, 4), (150, 8), (150, 16), (150, 32)),
+        'DClaw': ((300, 1), ),
         'HardwareDClaw3': ((100, 9), ),
     }[domain]
     # SCHEDULER_TYPES = ('linear', 'logarithmic')
@@ -728,15 +746,7 @@ def get_variant_spec(args):
             'kwargs': {
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
                 'squash': True,
-                # 'observation_keys': ('state_observation', ),
-                'observation_keys': (
-                    'hand_position',
-                    'hand_velocity',
-                    'object_position',
-                    'object_position_sin',
-                    'object_position_cos',
-                    'object_velocity',
-                ),
+                'observation_keys': ('claw_qpos', 'last_action', 'pixels'),
                 'observation_preprocessors_params': {},
             },
         },
@@ -755,15 +765,12 @@ def get_variant_spec(args):
             'type': 'double_feedforward_Q_function',
             'kwargs': {
                 'hidden_layer_sizes': (DEFAULT_LAYER_SIZE, ) * 2,
-                # 'observation_keys': ('state_observation', ),
-                'observation_keys': (
-                    'hand_position',
-                    'hand_velocity',
-                    'object_position',
-                    'object_position_sin',
-                    'object_position_cos',
-                    'object_velocity',
-                ),
+                'observation_keys': tune.sample_from(lambda spec: (
+                    spec.get('config', spec)
+                    ['policy_params']
+                    ['kwargs']
+                    .get('observation_keys')
+                )),
                 'observation_preprocessors_params': {}
             }
         },
@@ -864,7 +871,7 @@ def get_variant_spec(args):
             ]),
             # 'kwargs': tune.sample_from(metric_learner_kwargs),
             'kwargs': {
-                'train_every_n_steps': tune.grid_search([4]),
+                'train_every_n_steps': tune.grid_search([8, 16, 32, 64]),
                 'distance_learning_rate': 3e-4,
                 'n_train_repeat': 1,
 
@@ -879,17 +886,14 @@ def get_variant_spec(args):
             'type': 'FeedforwardDistanceEstimator',
             # 'type': 'DistributionalFeedforwardDistanceEstimator',
             'kwargs': {
-                'observation_keys': (
-                    'hand_position',
-                    'hand_velocity',
-                    'object_position',
-                    'object_position_sin',
-                    'object_position_cos',
-                    'object_velocity',
-                ),
+                'observation_keys': tune.sample_from(lambda spec: (
+                    spec.get('config', spec)
+                    ['policy_params']
+                    ['kwargs']
+                    .get('observation_keys')
+                )),
                 # 'n_bins': 26,
                 # 'bin_size': 10,
-                # 'observation_keys': ('state_observation', ),
                 'observation_preprocessors_params': {},
                 'hidden_layer_sizes': (256, 256),
                 'activation': 'relu',
