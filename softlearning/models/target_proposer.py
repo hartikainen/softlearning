@@ -262,22 +262,16 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
             if env._exclude_current_positions_from_observation:
                 raise NotImplementedError
 
-            position_slice = {
-                SwimmerEnv: slice(0, 2),
-                AntEnv: slice(0, 2),
-                HumanoidEnv: slice(0, 2),
-                HalfCheetahEnv: slice(0, 1),
-                HopperEnv: slice(0, 1),
-                Walker2dEnv: slice(0, 1),
-            }[type(env)]
-
-            last_observations_x_positions = new_state_observations[:, 0:1]
+            last_observations_x_positions = new_observations[
+                'observations'][:, 0:1]
             new_observations_distances = last_observations_x_positions
 
             best_observation_index = np.argmax(new_observations_distances)
             if (new_observations_distances[best_observation_index]
                 > self._best_observation_value):
-                best_observation = new_observations[best_observation_index]
+                best_observation = type(new_observations)(
+                    (key, values[best_observation_index])
+                    for key, values in new_observations.items())
                 self._best_observation_value = new_observations_distances[
                     best_observation_index]
             else:
@@ -291,12 +285,7 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
             new_observations_distances = angle_distance_from_positions(
                 [np.sin(object_positions), np.cos(object_positions)],
                 [np.sin(desired_object_positions),
-                 np.cos(desired_object_positions)],
-            )
-            new_observations_distances2 = np.linalg.norm(
-                np.abs(object_positions) - desired_object_positions,
-                ord=1,
-                axis=1)
+                 np.cos(desired_object_positions)])
 
             best_observation_index = np.argmin(new_observations_distances)
             if (-new_observations_distances[best_observation_index]
