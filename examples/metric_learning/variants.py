@@ -657,12 +657,6 @@ def get_variant_spec(args):
         shared_kwargs = {
             'distance_learning_rate': 3e-4,
             'n_train_repeat': 1,
-
-            'distance_input_type': tune.grid_search([
-                'full',
-                # 'xy_coordinates',
-                # 'xy_velocities',
-            ]),
         }
 
         if (spec['metric_learner_params']['type']
@@ -874,12 +868,6 @@ def get_variant_spec(args):
                 'train_every_n_steps': tune.grid_search([8, 16, 32, 64]),
                 'distance_learning_rate': 3e-4,
                 'n_train_repeat': 1,
-
-                'distance_input_type': tune.grid_search([
-                    'full',
-                    # 'xy_coordinates',
-                    # 'xy_velocities',
-                ]),
             }
         },
         'distance_estimator_params': {
@@ -903,6 +891,11 @@ def get_variant_spec(args):
                     ['metric_learner_params']
                     ['type']
                     == 'TemporalDifferenceMetricLearner')),
+                'target_input_type': tune.grid_search([
+                    # 'full',
+                    'xy_coordinates',
+                    # 'xy_velocities',
+                ]),
             }
         },
         'lambda_estimator_params': {

@@ -42,6 +42,7 @@ CONFIG = {
             'hidden_layer_sizes': (256, 256),
             'output_activation': 'linear',
             'condition_with_action': True,
+            'target_input_type': 'full',
         },
         'type': 'FeedforwardDistanceEstimator'
     },
@@ -73,7 +74,6 @@ CONFIG = {
     },
     'metric_learner_params': {
         'kwargs': {
-            'distance_input_type': 'full',
             'distance_learning_rate': 0.0003,
             'n_train_repeat': 1,
             'train_every_n_steps': 1,

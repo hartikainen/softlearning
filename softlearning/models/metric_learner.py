@@ -4,15 +4,10 @@ import numpy as np
 import tensorflow as tf
 from flatten_dict import flatten
 
-from gym.envs.mujoco.swimmer_v3 import SwimmerEnv
-from gym.envs.mujoco.ant_v3 import AntEnv
-from gym.envs.mujoco.humanoid_v3 import HumanoidEnv
-from gym.envs.mujoco.half_cheetah_v3 import HalfCheetahEnv
-from gym.envs.mujoco.hopper_v3 import HopperEnv
-from gym.envs.mujoco.walker2d_v3 import Walker2dEnv
-
 from softlearning.algorithms.sac import td_target
 from softlearning.models.utils import flatten_input_structure
+from softlearning.environments.gym.mujoco.utils import (
+    LOCOMOTION_ENVS, POSITION_SLICES)
 
 
 class MetricLearner(object):
@@ -32,8 +27,7 @@ class MetricLearner(object):
                  distance_learning_rate=3e-4,
                  train_every_n_steps=1,
                  n_train_repeat=1,
-                 distance_estimator=None,
-                 distance_input_type='full'):
+                 distance_estimator=None):
         self._env = env
         self._policy = policy
         self._pool = pool
@@ -42,7 +36,6 @@ class MetricLearner(object):
         self._distance_learning_rate = distance_learning_rate
 
         self.distance_estimator = distance_estimator
-        self._distance_input_type = distance_input_type
 
         self._train_every_n_steps = train_every_n_steps
         self._n_train_repeat = n_train_repeat
@@ -114,24 +107,35 @@ class MetricLearner(object):
             name: observations1[name]
             for name in self.distance_estimator.observation_keys
         }
+        target_input_type = self.distance_estimator.target_input_type
 
-        if self._distance_input_type == 'full':
+        if target_input_type == 'full':
             inputs2 = {
                 name: observations2[name]
                 for name in self.distance_estimator.observation_keys
             }
 
-        elif self._distance_input_type == 'xy_coordinates':
+        elif target_input_type == 'xy_coordinates':
+            # This only works for gym locomotion environments
+            environment = self._env.unwrapped
+            assert set(observations2.keys()) == {'observations'}, observations2
+            assert isinstance(environment, LOCOMOTION_ENVS)
+            assert not environment._exclude_current_positions_from_observation
+            position_slice = POSITION_SLICES[type(environment)]
+
+            positions = observations2['observations'][:, position_slice]
+            inputs2 = {
+                'positions': positions
+            }
+
+        elif target_input_type == 'xy_velocities':
             raise NotImplementedError("TODO(hartikainen)")
 
-        elif self._distance_input_type == 'xy_velocities':
-            raise NotImplementedError("TODO(hartikainen)")
-
-        elif self._distance_input_type == 'reward_sum':
-            raise NotImplementedError(self._distance_input_type)
+        elif target_input_type == 'reward_sum':
+            raise NotImplementedError(target_input_type)
 
         else:
-            raise NotImplementedError(self._distance_input_type)
+            raise NotImplementedError(target_input_type)
 
         inputs = {'observations1': inputs1, 'observations2': inputs2}
 
@@ -336,7 +340,7 @@ class HingeMetricLearner(MetricLearner):
         observations = tf.unstack(zero_observations, 2, axis=1)
 
         if self.distance_estimator.condition_with_action:
-            raise ValueError(self._distance_input_type)
+            raise ValueError(self.distance_estimator.condition_with_action)
 
         with tf.control_dependencies([tf.assert_equal(*observations)]):
             inputs = self._distance_estimator_inputs(*observations, None)

@@ -10,6 +10,8 @@ from softlearning.preprocessors.utils import get_preprocessor_from_params
 from softlearning.models.feedforward import feedforward_model
 from softlearning.models.utils import flatten_input_structure, create_inputs
 from softlearning.utils.keras import PicklableModel
+from softlearning.environments.gym.mujoco.utils import (
+    LOCOMOTION_ENVS, POSITION_SLICES)
 
 
 class DistributionalPicklableModel(PicklableModel):
@@ -122,6 +124,8 @@ def get_distance_estimator_from_variant(variant, env, *args, **kwargs):
     distance_estimator_params = variant['distance_estimator_params']
     distance_estimator_type = distance_estimator_params['type']
     distance_estimator_kwargs = distance_estimator_params.get('kwargs', {})
+    target_input_type = distance_estimator_kwargs.pop(
+        'target_input_type', 'full')
 
     observation_preprocessors_params = distance_estimator_kwargs.pop(
         'observation_preprocessors_params', {}).copy()
@@ -135,13 +139,29 @@ def get_distance_estimator_from_variant(variant, env, *args, **kwargs):
         for name, shape in env.observation_shape.items()
         if name in observation_keys
     ))
-    # TODO(hartikainen): This needs to change if we use only partial
-    # states as the "goal".
-    observation2_shapes = OrderedDict((
-        (name, shape)
-        for name, shape in env.observation_shape.items()
-        if name in observation_keys
-    ))
+
+    if target_input_type == 'full':
+        observation2_shapes = OrderedDict((
+            (name, shape)
+            for name, shape in env.observation_shape.items()
+            if name in observation_keys
+        ))
+    elif target_input_type == 'xy_coordinates':
+        assert isinstance(env.unwrapped, LOCOMOTION_ENVS)
+        assert set(env.observation_space.spaces.keys()) == {'observations'}, (
+            set(env.observation_space.spaces.keys()))
+        assert not env.unwrapped._exclude_current_positions_from_observation
+
+        position_slice = POSITION_SLICES[type(env.unwrapped)]
+        position_size = position_slice.stop - position_slice.start
+        observation2_shapes = OrderedDict((
+            ('positions', tf.TensorShape(position_size, )),
+        ))
+    elif target_input_type == 'xy_velocities':
+        raise NotImplementedError(target_input_type)
+    else:
+        raise NotImplementedError(target_input_type)
+
     action_shape = env.action_shape
     input_shapes = {
         'observations1': observation1_shapes,
@@ -175,5 +195,6 @@ def get_distance_estimator_from_variant(variant, env, *args, **kwargs):
         **distance_estimator_kwargs,
         **kwargs)
     distance_estimator.condition_with_action = condition_with_action
+    distance_estimator.target_input_type = target_input_type
 
     return distance_estimator
