@@ -1,25 +1,10 @@
 import numpy as np
 import tensorflow as tf
 
-from gym.envs.mujoco.swimmer_v3 import SwimmerEnv
-from gym.envs.mujoco.ant_v3 import AntEnv
-from gym.envs.mujoco.humanoid_v3 import HumanoidEnv
-from gym.envs.mujoco.half_cheetah_v3 import HalfCheetahEnv
-from gym.envs.mujoco.hopper_v3 import HopperEnv
-from gym.envs.mujoco.walker2d_v3 import Walker2dEnv
-
 from softlearning.algorithms.sac import SAC, td_target
 from softlearning.environments.utils import is_point_2d_env
-
-
-GYM_LOCOMOTION_ENVS = (
-    HopperEnv,
-    Walker2dEnv,
-    HalfCheetahEnv,
-    SwimmerEnv,
-    AntEnv,
-    HumanoidEnv,
-)
+from softlearning.environments.gym.mujoco.utils import (
+    LOCOMOTION_ENVS, POSITION_SLICES)
 
 
 class MetricLearningAlgorithm(SAC):
@@ -335,16 +320,9 @@ class MetricLearningAlgorithm(SAC):
                 self._current_distance_goal['object_angle_sin'],
                 self._current_distance_goal['object_angle_cos']
             ).item()
-        elif isinstance(environment, GYM_LOCOMOTION_ENVS):
+        elif isinstance(environment, LOCOMOTION_ENVS):
             assert not environment._exclude_current_positions_from_observation
-            position_slice = slice(*{
-                SwimmerEnv: (0, 2),
-                AntEnv: (0, 2),
-                HumanoidEnv: (0, 2),
-                HalfCheetahEnv: (0, 1),
-                HopperEnv: (0, 1),
-                Walker2dEnv: (0, 1),
-            }[type(environment)])
+            position_slice = POSITION_SLICES[type(environment)]
 
             qpos_size = environment.sim.data.qpos.size
             velocity_slice = slice(
