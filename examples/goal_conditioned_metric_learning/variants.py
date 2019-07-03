@@ -36,7 +36,6 @@ def get_variant_spec(args):
         'GoalConditionedMetricLearningAlgorithm')
     variant_spec['algorithm_params']['kwargs'].update({
         'eval_n_episodes': 1,
-        'plot_distances': True,
     })
     variant_spec['exploration_policy_params']['type'] = (
         'GoalConditionedUniformPolicy')

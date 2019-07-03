@@ -16,9 +16,8 @@ DEFAULT_LAYER_SIZE = 256
 ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
     'gym': {
         'Swimmer': {
-            'Parameterizable-v3': {
+            'v3': {
                 'exclude_current_positions_from_observation': False,
-                'reset_noise_scale': 0,
             },
             'Maze-v0': {
                 'exclude_current_positions_from_observation': False,
@@ -409,7 +408,7 @@ NUM_EPOCHS_PER_UNIVERSE_DOMAIN_TASK = {
     'gym': {
         DEFAULT_KEY: 200,
         'Swimmer': {
-            DEFAULT_KEY: int(3e2),
+            DEFAULT_KEY: int(1e4),
         },
         'Hopper': {
             DEFAULT_KEY: int(1e3),
@@ -520,6 +519,7 @@ def get_supervision_schedule_params(domain):
         'DClaw3': ((100, 9), ),
         'DClaw': ((300, 1), ),
         'HardwareDClaw3': ((100, 9), ),
+        'Swimmer': ((int(1e4), int(1e4)), ),
     }[domain]
     # SCHEDULER_TYPES = ('linear', 'logarithmic')
     SCHEDULER_TYPES = ('linear', )
@@ -651,6 +651,9 @@ def get_variant_spec(args):
     universe, domain, task = args.universe, args.domain, args.task
     max_path_length = get_max_path_length(universe, domain, task)
 
+    distance_estimator_type = 'FeedforwardDistanceEstimator'
+    # distance_estimator_type = 'DistributionalFeedforwardDistanceEstimator'
+
     def metric_learner_kwargs(spec):
         spec = spec.get('config', spec)
 
@@ -668,8 +671,6 @@ def get_variant_spec(args):
                     'ground_truth_terminals': False,
                 },
             }
-        # elif (spec['metric_learner_params']['type']
-        #       == 'SupervisedMetricLearner'):
         elif (spec['metric_learner_params']['type']
               in ['SupervisedMetricLearner', 'DistributionalSupervisedMetricLearner']):
             kwargs = {
@@ -799,7 +800,7 @@ def get_variant_spec(args):
                 'action_prior': 'uniform',
                 'save_full_state': False,
 
-                'plot_distances': False,
+                'plot_distances': domain == 'Point2DEnv',
                 'use_distance_for': tune.grid_search([
                     'reward',
                     # 'value',
@@ -871,8 +872,7 @@ def get_variant_spec(args):
             }
         },
         'distance_estimator_params': {
-            'type': 'FeedforwardDistanceEstimator',
-            # 'type': 'DistributionalFeedforwardDistanceEstimator',
+            'type': distance_estimator_type,
             'kwargs': {
                 'observation_keys': tune.sample_from(lambda spec: (
                     spec.get('config', spec)
@@ -880,8 +880,10 @@ def get_variant_spec(args):
                     ['kwargs']
                     .get('observation_keys')
                 )),
-                # 'n_bins': 26,
-                # 'bin_size': 10,
+                **({'n_bins': 51}
+                    if (distance_estimator_type
+                        == 'DistributionalFeedforwardDistanceEstimator')
+                    else {}),
                 'observation_preprocessors_params': {},
                 'hidden_layer_sizes': (256, 256),
                 'activation': 'relu',
