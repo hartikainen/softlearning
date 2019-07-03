@@ -21,7 +21,7 @@ def get_goal_conditioned_gaussian_policy(env,
                                          **kwargs):
     from .gaussian_policy import FeedforwardGaussianPolicy
 
-    goal_keys = goal_keys or observation_keys or env.observation_keys
+    goal_keys = goal_keys or env.goal_keys
 
     goal_shapes = OrderedDict((
         (key, value)
@@ -62,7 +62,7 @@ def get_goal_conditioned_uniform_policy(env,
                                         goal_keys=None,
                                         **kwargs):
     from .uniform_policy import UniformPolicy
-    goal_keys = goal_keys or observation_keys or env.observation_keys
+    goal_keys = goal_keys or env.goal_keys
 
     policy = UniformPolicy(*args, observation_keys=observation_keys, **kwargs)
     policy.goal_keys = goal_keys

@@ -5,13 +5,18 @@ from .simple_sampler import SimpleSampler
 class GoalSampler(SimpleSampler):
     @property
     def _policy_input(self):
-        observation = super(GoalSampler, self)._action_input
-        goal = flatten_input_structure({
+        observation = {
+            key: self._current_observation[key][None, ...]
+            for key in self.policy.observation_keys
+        }
+
+        goal = {
             key: self._current_observation[key][None, ...]
             for key in self.policy.goal_keys
-        })
+        }
 
-        return (observation, goal)
+        return flatten_input_structure({
+            'observations': observation, 'goals': goal})
 
     def _process_sample(self,
                         observation,
@@ -23,11 +28,11 @@ class GoalSampler(SimpleSampler):
         full_observation = observation.copy()
         observation = {
             key: full_observation[key]
-            for key, value in self.policy.observation_keys
+            for key in self.policy.observation_keys
         }
         goal = {
             key: full_observation[key]
-            for key, value in self.policy.goal_keys
+            for key in self.policy.goal_keys
         }
         processed_observation = {
             'observations': observation,

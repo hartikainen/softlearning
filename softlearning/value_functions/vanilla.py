@@ -50,7 +50,7 @@ def create_goal_conditioned_feedforward_Q_function(*args,
                                                    goal_keys=None,
                                                    name='feedforward_Q',
                                                    **kwargs):
-    goal_keys = goal_keys or observation_keys or env.observation_keys
+    goal_keys = goal_keys or env.goal_keys
     goal_shapes = OrderedDict((
         (key, value)
         for key, value in env.observation_shape.items()
