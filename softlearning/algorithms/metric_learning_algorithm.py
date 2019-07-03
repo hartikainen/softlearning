@@ -9,9 +9,17 @@ from gym.envs.mujoco.hopper_v3 import HopperEnv
 from gym.envs.mujoco.walker2d_v3 import Walker2dEnv
 
 from softlearning.algorithms.sac import SAC, td_target
-from softlearning.environments.gym.mujoco.goal_environment import (
-    GoalEnvironment)
 from softlearning.environments.utils import is_point_2d_env
+
+
+GYM_LOCOMOTION_ENVS = (
+    HopperEnv,
+    Walker2dEnv,
+    HalfCheetahEnv,
+    SwimmerEnv,
+    AntEnv,
+    HumanoidEnv,
+)
 
 
 class MetricLearningAlgorithm(SAC):
@@ -329,11 +337,69 @@ class MetricLearningAlgorithm(SAC):
             for key, value in target_proposer_diagnostics.items()
         ))
 
-        if type(self._training_environment.unwrapped).__name__ == 'DClawTurnFixed':
+        environment = self._training_environment.unwrapped
+        environment_class_name = type(environment).__name__
+
+        if environment_class_name == 'DClawTurnFixed-v0':
             diagnostics['_current_distance_goal/object_angle'] = np.arctan2(
                 self._current_distance_goal['object_angle_sin'],
                 self._current_distance_goal['object_angle_cos']
             ).item()
+        elif isinstance(environment, GYM_LOCOMOTION_ENVS):
+            assert not environment._exclude_current_positions_from_observation
+            position_slice = slice(*{
+                SwimmerEnv: (0, 2),
+                AntEnv: (0, 2),
+                HumanoidEnv: (0, 2),
+                HalfCheetahEnv: (0, 1),
+                HopperEnv: (0, 1),
+                Walker2dEnv: (0, 1),
+            }[type(environment)])
+
+            qpos_size = environment.sim.data.qpos.size
+            velocity_slice = slice(
+                position_slice.start + qpos_size,
+                position_slice.stop + qpos_size,
+                position_slice.step)
+
+            positions = (
+                self._current_distance_goal['observations'][position_slice])
+            velocities = (
+                self._current_distance_goal['observations'][velocity_slice])
+
+            diagnostics[f'_current_distance_goal/position_l2'] = (
+                np.linalg.norm(positions, ord=2))
+            diagnostics.update({
+                f'_current_distance_goal/position[{i}]': value.item()
+                for i, value in enumerate(positions)
+            })
+            diagnostics[f'_current_distance_goal/velocity_l2'] = (
+                np.linalg.norm(velocities, ord=2))
+            diagnostics.update({
+                f'_current_distance_goal/velocity[{i}]': value.item()
+                for i, value in enumerate(velocities)
+            })
+        elif environment_class_name == 'Reacher-v2':
+            fingertip_to_target_xy = self._current_distance_goal[
+                'observations'][-3:-1]
+            diagnostics['_current_distance_goal/fingertip_to_target_x'] = (
+                fingertip_to_target_xy[0])
+            diagnostics['_current_distance_goal/fingertip_to_target_y'] = (
+                fingertip_to_target_xy[1])
+
+            reacher_joint_velocities = self._current_distance_goal[
+                'observations'][-5:-3]
+            for i, joint_velocity in enumerate(reacher_joint_velocities):
+                diagnostics[
+                    f'_current_distance_goal/reacher_joint_velocity[{i}]'
+                ] = joint_velocity
+            diagnostics[
+                    f'_current_distance_goal/reacher_joint_velocity-mean'
+                ] = np.mean(np.abs(reacher_joint_velocities))
+        elif environment_class_name == 'InvertedDoublePendulum-v2':
+            raise NotImplementedError(environment_class_name)
+        elif environment_class_name == 'Pendulum-v0':
+            raise NotImplementedError(environment_class_name)
 
         if self._plot_distances:
             env = self._training_environment.unwrapped
