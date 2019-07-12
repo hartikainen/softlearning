@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import os.path as osp
 
 import numpy as np
@@ -70,13 +71,16 @@ class Pusher2dEnv(Serializable, MujocoEnv):
 
     def compute_reward(self, observations, actions):
         is_batch = True
-        if observations.ndim == 1:
-            observations = observations[None]
+        if observations[next(iter(observations.keys()))].ndim == 1:
+            observations = type(observations)((
+                (key, value[None])
+                for key, value in observations.items()
+            ))
             actions = actions[None]
             is_batch = False
 
-        arm_pos = observations[:, -6:-3]
-        obj_pos = observations[:, -3:]
+        arm_pos = observations['fork_position'][:, :2]
+        obj_pos = observations['object_position'][:, :2]
         obj_pos_masked = obj_pos[:, :2][:, self._goal_mask]
 
         goal_object_distances = np.linalg.norm(
@@ -138,13 +142,13 @@ class Pusher2dEnv(Serializable, MujocoEnv):
         return self._get_obs()
 
     def _get_obs(self):
-        return np.concatenate([
-            np.sin(self.sim.data.qpos.flat[self.JOINT_INDS]),
-            np.cos(self.sim.data.qpos.flat[self.JOINT_INDS]),
-            self.sim.data.qvel.flat[self.JOINT_INDS],
-            self.get_body_com("distal_4"),
-            self.get_body_com("object"),
-        ]).reshape(-1)
+        return OrderedDict((
+            ('joint_position_sin', np.sin(self.sim.data.qpos.flat[self.JOINT_INDS])),
+            ('joint_position_cos', np.cos(self.sim.data.qpos.flat[self.JOINT_INDS])),
+            ('joint_velocity', self.sim.data.qvel.flat[self.JOINT_INDS]),
+            ('fork_position', self.get_body_com("distal_4")),
+            ('object_position', self.get_body_com("object")),
+        ))
 
 
 class ForkReacherEnv(Pusher2dEnv):
@@ -162,16 +166,20 @@ class ForkReacherEnv(Pusher2dEnv):
 
     def compute_reward(self, observations, actions):
         is_batch = True
-        if observations.ndim == 1:
-            observations = observations[None]
+        if observations[next(iter(observations.keys()))].ndim == 1:
+            observations = type(observations)((
+                (key, value[None])
+                for key, value in observations.items()
+            ))
+            # observations = observations[None]
             actions = actions[None]
             is_batch = False
         else:
             raise NotImplementedError('Might be broken.')
 
-        arm_pos = observations[:, -8:-6]
-        goal_pos = observations[:, -2:]
-        object_pos = observations[:, -5:-3]
+        arm_pos = observations['fork_position'][:, :2]
+        goal_pos = observations['goal_position'][:, :2]
+        object_pos = observations['object_position'][:, :2]
 
         arm_goal_dists = np.linalg.norm(arm_pos - goal_pos, axis=1)
         arm_object_dists = np.linalg.norm(arm_pos - object_pos, axis=1)
@@ -242,8 +250,6 @@ class ForkReacherEnv(Pusher2dEnv):
         return self._get_obs()
 
     def _get_obs(self):
-        super_observation = super(ForkReacherEnv, self)._get_obs()
-        observation = np.concatenate([
-            super_observation, self.get_body_com('goal')[:2]
-        ])
+        observation = super(ForkReacherEnv, self)._get_obs()
+        observation['goal_position'] = self.get_body_com('goal')[:2]
         return observation

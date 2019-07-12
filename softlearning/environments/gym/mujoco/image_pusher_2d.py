@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import numpy as np
 
 from softlearning.environments.helpers import random_point_in_circle
@@ -12,14 +13,14 @@ class ImagePusher2dEnv(Pusher2dEnv):
 
     def _get_obs(self):
         width, height = self.image_shape[:2]
-        image = self.render(mode='rgb_array', width=width, height=height)
-        image = ((2.0 / 255.0) * image - 1.0)
+        pixels = self.render(
+            mode='rgb_array', width=width, height=height, camera_id=-1)
 
-        return np.concatenate([
-            image.reshape(-1),
-            self.sim.data.qpos.flat[self.JOINT_INDS],
-            self.sim.data.qvel.flat[self.JOINT_INDS],
-        ]).reshape(-1)
+        return OrderedDict((
+            ('pixels', pixels),
+            ('joint_position', self.sim.data.qpos.flat[self.JOINT_INDS]),
+            ('joint_velocity', self.sim.data.qvel.flat[self.JOINT_INDS]),
+        ))
 
     def step(self, action):
         """Step, computing reward from 'true' observations and not images."""
@@ -58,24 +59,24 @@ class ImageForkReacher2dEnv(ImagePusher2dEnv):
 
     def compute_reward(self, observations, actions):
         is_batch = True
-        if observations.ndim == 1:
-            observations = observations[None]
+        if observations[next(iter(observations.keys()))].ndim == 1:
+            observations = type(observations)((
+                (key, value[None])
+                for key, value in observations.items()
+            ))
             actions = actions[None]
             is_batch = False
         else:
             raise NotImplementedError('Might be broken.')
 
-        arm_pos = observations[:, -6:-4]
+        arm_pos = observations['fork_position'][:, :2]
         goal_pos = self.get_body_com('goal')[:2][None]
-        object_pos = observations[:, -3:-1]
 
         arm_goal_dists = np.linalg.norm(arm_pos - goal_pos, axis=1)
-        arm_object_dists = np.linalg.norm(arm_pos - object_pos, axis=1)
         ctrl_costs = np.sum(actions**2, axis=1)
 
         costs = (
             + self._arm_goal_distance_cost_coeff * arm_goal_dists
-            + self._arm_object_distance_cost_coeff * arm_object_dists
             + self._ctrl_cost_coeff * ctrl_costs)
 
         rewards = -costs
@@ -83,11 +84,9 @@ class ImageForkReacher2dEnv(ImagePusher2dEnv):
         if not is_batch:
             rewards = rewards.squeeze()
             arm_goal_dists = arm_goal_dists.squeeze()
-            arm_object_dists = arm_object_dists.squeeze()
 
         return rewards, {
             'arm_goal_distance': arm_goal_dists,
-            'arm_object_distance': arm_object_dists,
         }
 
     def reset_model(self):
@@ -133,11 +132,3 @@ class ImageForkReacher2dEnv(ImagePusher2dEnv):
         self.set_state(qpos, qvel)
 
         return self._get_obs()
-
-
-class BlindForkReacher2dEnv(ImageForkReacher2dEnv):
-    def _get_obs(self):
-        return np.concatenate([
-            self.sim.data.qpos.flat[self.JOINT_INDS],
-            self.sim.data.qvel.flat[self.JOINT_INDS],
-        ]).reshape(-1)
