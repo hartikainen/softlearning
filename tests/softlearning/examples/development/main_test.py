@@ -383,8 +383,7 @@ class TestExperimentRunner(tf.test.TestCase):
         self.assertFalse(tf.compat.v1.trainable_variables())
 
         config = copy.deepcopy(CONFIG)
-
-        self.assertNotIn('evaluation', config['environment_params'])
+        del config['evaluation']
 
         config['run_params']['checkpoint_replay_pool'] = True
         experiment_runner = ExperimentRunner(config=config)
