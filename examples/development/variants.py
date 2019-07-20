@@ -400,12 +400,12 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                 'n_epochs': 200,
                 'target_entropy': {
                     'Walker2d': tune.grid_search(
-                        ['auto', 0, 2, 3],
+                        np.linspace(-6, 3, 10).tolist(),
                         # np.round(np.linspace(-6, 4, 6), 2).tolist()
                     ),
                     'Hopper': tune.grid_search(
                         # np.round(np.linspace(-3, 2, 6), 2).tolist()
-                        ['auto', 0, 1, 2],
+                        np.linspace(-3, 2, 6).tolist(),
                     ),
                     'humanoid': tune.grid_search(
                         # np.round(np.linspace(1, 5, 11), 2).tolist()
@@ -456,7 +456,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             'type': 'SimpleReplayPool',
             'kwargs': {
                 'max_size': tune.grid_search([
-                    int(1e5), int(3e5), int(1e6)
+                    int(1e6)
                 ]),
             }
         },
