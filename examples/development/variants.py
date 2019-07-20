@@ -24,9 +24,9 @@ GAUSSIAN_POLICY_PARAMS_BASE = {
 }
 
 TOTAL_STEPS_PER_DOMAIN = {
-    'Hopper': int(1e6),
+    'Hopper': int(5e6),
     'HalfCheetah': int(3e6),
-    'Walker2d': int(3e6),
+    'Walker2d': int(5e6),
     'Ant': int(3e6),
     'Humanoid': int(2e7),
 }
@@ -455,9 +455,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
         'replay_pool_params': {
             'type': 'SimpleReplayPool',
             'kwargs': {
-                'max_size': tune.grid_search([
-                    int(1e6)
-                ]),
+                'max_size': int(1e6),
             }
         },
         'sampler_params': {
