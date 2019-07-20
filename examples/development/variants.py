@@ -392,7 +392,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     for offset in (-10, -3, -1, 0, 1, 3, 10)
                 ]),
             },
-            'TurnFreeValve3Fixed-0v': {
+            'TurnFreeValve3Fixed-v0': {
                 'use_dict_obs': True,
                 'camera_settings': {
                     'azimuth': 0,
