@@ -101,7 +101,8 @@ def simulate_trial_in_environments(experiment_path,
 
     desired_checkpoint = 45
 
-    if np.max(checkpoint_ids) <= desired_checkpoint:
+    # if np.max(checkpoint_ids) < desired_checkpoint:
+    if desired_checkpoint not in checkpoint_ids:
         return
 
     checkpoint_dirs = [checkpoint_dirs[np.flatnonzero(np.equal(
