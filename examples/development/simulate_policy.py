@@ -7,7 +7,8 @@ import pickle
 import tensorflow as tf
 import pandas as pd
 
-from softlearning.environments.utils import get_environment_from_params
+from softlearning.environments.utils import (
+    get_environment_from_params, get_environment)
 from softlearning.policies.utils import get_policy_from_variant
 from softlearning.samplers import rollouts
 from softlearning.misc.utils import save_video
@@ -70,7 +71,7 @@ def load_checkpoint(checkpoint_path, session=None):
 
 def load_policy_and_environment(picklable, variant):
     environment_params = (
-        variant['environment_params']['evaluation']
+        variant['environment_params']['training']
         if 'evaluation' in variant['environment_params']
         else variant['environment_params']['training'])
     environment = get_environment_from_params(environment_params)
@@ -90,6 +91,33 @@ def simulate_policy(checkpoint_path,
     picklable, variant, progress, metadata = load_checkpoint(checkpoint_path)
     policy, environment = load_policy_and_environment(picklable, variant)
     render_kwargs = {**DEFAULT_RENDER_KWARGS, **render_kwargs}
+
+    environment_params = variant['environment_params']['training']
+    domain, task = environment_params['domain'], environment_params['task']
+
+    assert domain in ('Humanoid', 'Hopper', 'Walker2d'), domain
+    assert task in ('MaxVelocity-v3', 'v3'), task
+
+    if task == 'MaxVelocity-v3':
+        environment_params['kwargs'].pop('max_velocity')
+
+    pothole_depth = 0.3
+    environment = get_environment(
+        'gym', domain, 'Pothole-v0', {
+            **environment_params['kwargs'],
+            'pothole_depth': pothole_depth,
+            'pothole_length': 0.25,
+            'pothole_distance': 5.0,
+            # 'healthy_z_range': (1.0 - pothole_depth, 2.0 + pothole_depth)
+        })
+
+    # environment = get_environment(
+    #     'gym', domain, 'v3', {
+    #         **environment_params['kwargs'],
+    #         'perturb_action_kwargs': {
+    #             'perturbation_probability': 0.0
+    #         },
+    #     })
 
     with policy.set_deterministic(deterministic):
         paths = rollouts(num_rollouts,
