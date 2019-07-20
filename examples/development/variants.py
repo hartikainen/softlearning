@@ -341,6 +341,24 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             'TurnFixed-v0': {
                 'use_dict_obs': True,
                 'reward_keys': ('object_to_target_angle_dist_cost', ),
+                'pixel_wrapper_kwargs': {
+                    'observation_key': 'pixels',
+                    'pixels_only': False,
+                    'render_kwargs': {
+                        'width': 32,
+                        'height': 32,
+                        'camera_id': -1,
+                        # 'camera_name': 'track',
+                    },
+                },
+                'camera_settings': {
+                    'azimuth': 0,
+                    'elevation': -45,
+                    'distance': 0.25,
+                    'lookat': (0, 0, 1.25e-1),
+                },
+                'observation_keys': ('claw_qpos', 'last_action', 'pixels'),
+                'reward_keys': ('object_to_target_angle_dist_cost', ),
             },
             'TurnRandom-v0': {},
             'TurnRandomResetSingleGoal-v0': {
