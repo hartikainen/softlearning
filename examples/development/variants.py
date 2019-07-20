@@ -32,7 +32,12 @@ ALGORITHM_PARAMS_BASE = {
         'epoch_length': 1000,
         'train_every_n_steps': 1,
         'n_train_repeat': 1,
-        'eval_render_kwargs': {},
+        # 'eval_render_kwargs': {},
+        'eval_render_kwargs': {
+            'width': 150,
+            'height': 150,
+            'camera_id': 1,
+        },
         'eval_n_episodes': 1,
         'eval_deterministic': True,
 
@@ -136,6 +141,12 @@ NUM_EPOCHS_PER_UNIVERSE_DOMAIN_TASK = {
         'Humanoid': {
             DEFAULT_KEY: int(1e4),
         },
+        'InvertedPendulum': {
+            DEFAULT_KEY: int(200),
+        },
+        'InvertedDoublePendulum': {
+            DEFAULT_KEY: int(3e3),
+        },
         'Pusher2d': {
             DEFAULT_KEY: int(2e3),
         },
@@ -169,7 +180,7 @@ NUM_EPOCHS_PER_UNIVERSE_DOMAIN_TASK = {
             'ImageScrewV2-v0': 200,
         },
         'DClaw': {
-            DEFAULT_KEY: 200,
+            DEFAULT_KEY: 300,
             'TurnFreeValve3ResetFree-0v': int(500),
         },
     },
@@ -325,7 +336,10 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
         'DClaw': {
             'PoseStatic-v0': {},
             'PoseDynamic-v0': {},
-            'TurnFixed-v0': {},
+            'TurnFixed-v0': {
+                'use_dict_obs': True,
+                'reward_keys': ('object_to_target_angle_dist_cost', ),
+            },
             'TurnRandom-v0': {},
             'TurnRandomResetSingleGoal-v0': {
                 'use_dict_obs': True,
@@ -353,7 +367,56 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             'ScrewFixed-v0': {},
             'ScrewRandom-v0': {},
             'ScrewRandomDynamics-v0': {},
-            'TurnFreeValve3ResetFree-0v': {},
+            'TurnFreeValve3ResetFree-v0': {},
+            'TurnRandomGoalResetFree-v0': {
+                'use_dict_obs': True,
+                'observation_keys': ('claw_qpos', 'last_action', 'pixels'),
+                # 'observation_keys': (
+                #     'claw_qpos',
+                #     'object_angle_cos',
+                #     'object_angle_sin',
+                #     'last_action',
+                #     'object_to_target_angle_dist'),
+                'reward_keys': ('object_to_target_angle_dist_cost', ),
+                'camera_settings': {
+                    'azimuth': 0,
+                    'elevation': -45,
+                    'distance': 0.25,
+                    'lookat': (0, 0, 1.25e-1),
+                },
+                'object_to_target_angle_dist_cost_fn': tune.grid_search([
+                    NegativeLogLossFn(eps, offset)
+                    for eps in (1e-3, 1e-6, 1e-9)
+                    for offset in (-10, -3, -1, 0, 1, 3, 10)
+                ]),
+            },
+            'TurnFreeValve3Fixed-0v': {
+                'use_dict_obs': True,
+                'camera_settings': {
+                    'azimuth': 0,
+                    'elevation': -45,
+                    'distance': 0.25,
+                    'lookat': (0, 0, 0.02),
+                    # 'track_body_name': 'valve',
+                },
+                'pixel_wrapper_kwargs': {
+                    'observation_key': 'pixels',
+                    'pixels_only': False,
+                    'render_kwargs': {
+                        'width': 32,
+                        'height': 32,
+                        'camera_id': -1,
+                        # 'camera_name': 'track',
+                    },
+                },
+                'position_reward_weight': tune.grid_search([
+                    0.03, 0.1, 0.3, 1.0, 3.0]),
+                'reward_keys': (
+                    'object_to_target_position_distance_cost',
+                    'object_to_target_orientation_distance_cost',
+                ),
+                'observation_keys': ('claw_qpos', 'last_action', 'pixels'),
+            },
         },
     },
     'dm_control': {
@@ -557,6 +620,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
 
 IMAGE_ENVS = (
     ('robosuite', 'InvisibleArm', 'FreeFloatManipulation'),
+    # ('robosuite', 'InvisibleArm', 'FreeFloatManipulation'),
 )
 
 
