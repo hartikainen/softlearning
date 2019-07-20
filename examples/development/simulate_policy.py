@@ -41,7 +41,10 @@ def parse_args():
 
 
 def simulate_policy(args):
-    session = tf.keras.backend.get_session()
+    gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
+    session = tf.compat.v1.Session(
+        config=tf.compat.v1.ConfigProto(gpu_options=gpu_options))
+    tf.keras.backend.set_session(session)
     checkpoint_path = args.checkpoint_path.rstrip('/')
     experiment_path = os.path.dirname(checkpoint_path)
 
