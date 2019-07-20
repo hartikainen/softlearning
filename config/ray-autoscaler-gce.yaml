@@ -85,6 +85,10 @@ worker_nodes:
     scheduling:
       - preemptible: true
       - onHostMaintenance: TERMINATE
+    metadata:
+      items:
+        - key: shutdown-script
+          value: "#!/bin/bash\n\nsleep 5m"
 
     # Additional options can be found in in the compute docs at
     # https://cloud.google.com/compute/docs/reference/rest/v1/instances/insert

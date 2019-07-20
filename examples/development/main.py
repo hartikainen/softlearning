@@ -17,6 +17,7 @@ from softlearning.samplers.utils import get_sampler_from_variant
 from softlearning.value_functions.utils import get_Q_function_from_variant
 
 from softlearning.misc.utils import set_seed, initialize_tf_variables
+from softlearning.utils.gcp import instance_preempted
 from examples.instrument import run_example_local
 
 from ray.tune.logger import _SafeFallbackEncoder
@@ -115,6 +116,12 @@ class ExperimentRunner(tune.Trainable):
 
         diagnostics = next(self.train_generator)
 
+        if (self._variant['run_params'].get('mode') == 'cluster'
+            and instance_preempted()):
+            print("The instance is being preempted, checkpointing trial.")
+            self.preempted = True
+            diagnostics[tune.result.SHOULD_CHECKPOINT] = True
+
         return diagnostics
 
     def _pickle_path(self, checkpoint_dir):
@@ -189,7 +196,8 @@ class ExperimentRunner(tune.Trainable):
 
         self._save_value_functions(checkpoint_dir)
 
-        if self._variant['run_params'].get('checkpoint_replay_pool', False):
+        if (self._variant['run_params'].get('checkpoint_replay_pool', False)
+            or getattr(self, 'preempted', False)):
             self._save_replay_pool(checkpoint_dir)
 
         tf_checkpoint = self._get_tf_checkpoint()
@@ -208,11 +216,10 @@ class ExperimentRunner(tune.Trainable):
     def _restore_replay_pool(self, current_checkpoint_dir):
         experiment_root = os.path.dirname(current_checkpoint_dir)
 
-        experience_paths = [
-            self._replay_pool_pickle_path(checkpoint_dir)
-            for checkpoint_dir in sorted(glob.iglob(
-                os.path.join(experiment_root, 'checkpoint_*')))
-        ]
+        experience_paths = list(sorted(glob.iglob(
+            self._replay_pool_pickle_path(
+                os.path.join(experiment_root, 'checkpoint_*'))
+        )))
 
         for experience_path in experience_paths:
             self.replay_pool.load_experience(experience_path)
@@ -235,8 +242,7 @@ class ExperimentRunner(tune.Trainable):
         replay_pool = self.replay_pool = (
             get_replay_pool_from_variant(self._variant, training_environment))
 
-        if self._variant['run_params'].get('checkpoint_replay_pool', False):
-            self._restore_replay_pool(checkpoint_dir)
+        self._restore_replay_pool(checkpoint_dir)
 
         sampler = self.sampler = picklable['sampler']
         Qs = self.Qs = get_Q_function_from_variant(

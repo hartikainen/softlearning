@@ -178,6 +178,7 @@ def run_example_dry(example_module_name, example_argv):
     variant_spec = example_module.get_variant_spec(example_args)
 
     experiment_kwargs = generate_experiment_kwargs(variant_spec, example_args)
+    experiment_kwargs['config']['run_params']['mode'] = 'dry'
 
     experiments_info = get_experiments_info([experiment_kwargs])
     number_of_trials = experiments_info["number_of_trials"]
@@ -207,6 +208,7 @@ def run_example_local(example_module_name, example_argv, local_mode=False):
     trainable_class = example_module.get_trainable_class(example_args)
 
     experiment_kwargs = generate_experiment_kwargs(variant_spec, example_args)
+    experiment_kwargs['config']['run_params']['mode'] = 'local'
 
     ray.init(
         num_cpus=example_args.cpus,
@@ -264,6 +266,7 @@ def run_example_cluster(example_module_name, example_argv):
     trainable_class = example_module.get_trainable_class(example_args)
 
     experiment_kwargs = generate_experiment_kwargs(variant_spec, example_args)
+    experiment_kwargs['config']['run_params']['mode'] = 'cluster'
 
     redis_address = ray.services.get_node_ip_address() + ':6379'
 
