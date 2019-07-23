@@ -59,14 +59,29 @@ MUJOCO_ENVIRONMENT_SPECS = (
                         '.humanoid_pothole:HumanoidPotholeEnv'),
     },
     {
+        'id': 'Humanoid-HeightField-v0',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.height_field_env:HumanoidHeightFieldEnv'),
+    },
+    {
         'id': 'Hopper-Pothole-v0',
         'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
                         '.hopper_pothole:HopperPotholeEnv'),
     },
     {
+        'id': 'Hopper-HeightField-v0',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.height_field_env:HopperHeightFieldEnv'),
+    },
+    {
         'id': 'Walker2d-Pothole-v0',
         'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
                         '.walker2d_pothole:Walker2dPotholeEnv'),
+    },
+    {
+        'id': 'Walker2d-HeightField-v0',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.height_field_env:Walker2dHeightFieldEnv'),
     },
     {
         'id': 'Pusher2d-Default-v0',
