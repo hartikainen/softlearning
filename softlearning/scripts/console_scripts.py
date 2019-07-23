@@ -56,7 +56,20 @@ def cli():
     context_settings={'ignore_unknown_options': True})
 @click.argument("example_module_name", required=True, type=str)
 @click.argument('example_argv', nargs=-1, type=click.UNPROCESSED)
-def run_example_dry_cmd(example_module_name, example_argv):
+@click.option(
+    "--override-cluster-name",
+    required=False,
+    type=str,
+    help="Override the configured cluster name.")
+@click.option(
+    "--stop/--no-stop",
+    is_flag=True,
+    default=True,
+    help="Stop the cluster after the command finishes running.")
+def run_example_dry_cmd(example_module_name,
+                        example_argv,
+                        override_cluster_name,
+                        stop):
     """Print the variant spec and related information of an example."""
     return run_example_dry(example_module_name, example_argv)
 
@@ -76,7 +89,20 @@ def run_example_local_cmd(example_module_name, example_argv):
     context_settings={'ignore_unknown_options': True})
 @click.argument("example_module_name", required=True, type=str)
 @click.argument('example_argv', nargs=-1, type=click.UNPROCESSED)
-def run_example_debug_cmd(example_module_name, example_argv):
+@click.option(
+    "--override-cluster-name",
+    required=False,
+    type=str,
+    help="Override the configured cluster name.")
+@click.option(
+    "--stop/--no-stop",
+    is_flag=True,
+    default=True,
+    help="Stop the cluster after the command finishes running.")
+def run_example_debug_cmd(example_module_name,
+                          example_argv,
+                          override_cluster_name,
+                          stop):
     """The debug mode limits tune trial runs to enable use of debugger."""
     return run_example_debug(example_module_name, example_argv)
 
