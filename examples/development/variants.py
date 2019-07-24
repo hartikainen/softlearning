@@ -24,6 +24,7 @@ GAUSSIAN_POLICY_PARAMS_BASE = {
 }
 
 TOTAL_STEPS_PER_DOMAIN = {
+    'Swimmer': int(1e5),
     'Hopper': int(5e6),
     'HalfCheetah': int(3e6),
     'Walker2d': int(5e6),
@@ -131,13 +132,13 @@ NUM_EPOCHS_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: int(3e2),
         },
         'Hopper': {
-            DEFAULT_KEY: int(1e3),
+            DEFAULT_KEY: int(5e3),
         },
         'HalfCheetah': {
             DEFAULT_KEY: int(3e3),
         },
         'Walker2d': {
-            DEFAULT_KEY: int(3e3),
+            DEFAULT_KEY: int(5e3),
         },
         'Ant': {
             DEFAULT_KEY: int(3e3),
@@ -194,14 +195,16 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'Hopper': {  # 3 DoF
             'MaxVelocity-v3': {
-                'max_velocity': tune.grid_search([0.5, 1.0, 2.0]),
+                'max_velocity': tune.grid_search([
+                    0.5, 1.0, 2.0, 3.0, 4.0, float('inf')]),
             },
         },
         'HalfCheetah': {  # 6 DoF
         },
         'Walker2d': {  # 6 DoF
             'MaxVelocity-v3': {
-                'max_velocity': tune.grid_search([0.5, 1.5, 3.0]),
+                'max_velocity': tune.grid_search([
+                    1.0, 2.0, 3.0, 4.0, 5.0, float('inf')]),
             },
         },
         'Ant': {  # 8 DoF
@@ -397,15 +400,17 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
         ALGORITHM_PARAMS_ADDITIONAL.get(algorithm, {}),
         {
             'kwargs': {
-                'n_epochs': 200,
+                'n_epochs': 500,
                 'target_entropy': {
                     'Walker2d': tune.grid_search(
-                        np.linspace(-6, 3, 10).tolist(),
+                        # np.linspace(-6, 3, 10).tolist(),
                         # np.round(np.linspace(-6, 4, 6), 2).tolist()
+                        [-6.0, -3.0, 0.0, 1.0, 2.0, 3.0]
                     ),
                     'Hopper': tune.grid_search(
                         # np.round(np.linspace(-3, 2, 6), 2).tolist()
-                        np.linspace(-3, 2, 6).tolist(),
+                        # np.linspace(-3, 2, 6).tolist(),
+                        [-3.0, -1.0, 0.0, 1.0]
                     ),
                     'humanoid': tune.grid_search(
                         # np.round(np.linspace(1, 5, 11), 2).tolist()
