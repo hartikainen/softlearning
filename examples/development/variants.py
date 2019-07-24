@@ -115,6 +115,7 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'DClaw': {
             DEFAULT_KEY: 100,
+            'TurnFreeValve3ResetFreeSwapGoal-v0': 50,
         },
     },
 }
@@ -182,6 +183,7 @@ NUM_EPOCHS_PER_UNIVERSE_DOMAIN_TASK = {
         'DClaw': {
             DEFAULT_KEY: 300,
             'TurnFreeValve3ResetFree-0v': int(500),
+            'TurnFreeValve3ResetFreeSwapGoal-v0': 1000,
         },
     },
     'dm_control': {
@@ -416,6 +418,35 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'object_to_target_orientation_distance_cost',
                 ),
                 'observation_keys': ('claw_qpos', 'last_action', 'pixels'),
+            },
+            'TurnFreeValve3ResetFreeSwapGoal-v0': {
+                'reward_keys': (
+                    'object_to_target_position_distance_cost',
+                    'object_to_target_orientation_distance_cost',
+                ),
+                'reset_fingers': True,
+                'position_reward_weight': 2,
+                'goals': (
+                    (0.02, 0.02, 0, 0, 0, np.pi/2),
+                    (-0.02, -0.02, 0, 0, 0, -np.pi/2),
+                ),
+                'camera_settings': {
+                    'azimuth': 60,
+                    'elevation': -45,
+                    'distance': 0.35,
+                    'lookat': (0, 0, 0.02),
+                    # 'track_body_name': 'valve',
+                },
+                'pixel_wrapper_kwargs': {
+                    'observation_key': 'pixels',
+                    'pixels_only': False,
+                    'render_kwargs': {
+                        'width': 64,
+                        'height': 64,
+                        'camera_id': -1,
+                        # 'camera_name': 'track',
+                    },
+                },
             },
         },
     },
