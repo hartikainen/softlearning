@@ -36,7 +36,7 @@ ALGORITHM_PARAMS_BASE = {
         'eval_render_kwargs': {
             'width': 150,
             'height': 150,
-            'camera_id': 1,
+            'camera_id': -1,
         },
         'eval_n_episodes': 1,
         'eval_deterministic': True,
@@ -378,7 +378,6 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'elevation': -45,
                     'distance': 0.25,
                     'lookat': (0, 0, 1.25e-1),
-                    'track_body_name': 'valve',
                 },
                 'observation_keys': ('claw_qpos', 'last_action', 'pixels'),
                 'reward_keys': ('object_to_target_angle_dist_cost', ),
