@@ -25,7 +25,7 @@ GAUSSIAN_POLICY_PARAMS_BASE = {
 
 TOTAL_STEPS_PER_DOMAIN = {
     'Swimmer': int(1e5),
-    'Hopper': int(5e6),
+    'Hopper': int(3e6),
     'HalfCheetah': int(3e6),
     'Walker2d': int(5e6),
     'Ant': int(3e6),
@@ -196,7 +196,9 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
         'Hopper': {  # 3 DoF
             'MaxVelocity-v3': {
                 'max_velocity': tune.grid_search([
-                    0.5, 1.0, 2.0, 3.0, 4.0, float('inf')]),
+                    0.5, 1.0, 2.0, 3.0, float('inf'),
+                ]),
+                'terminate_when_unhealthy': tune.grid_search([True, False]),
             },
         },
         'HalfCheetah': {  # 6 DoF
@@ -204,7 +206,9 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
         'Walker2d': {  # 6 DoF
             'MaxVelocity-v3': {
                 'max_velocity': tune.grid_search([
-                    1.0, 2.0, 3.0, 4.0, 5.0, float('inf')]),
+                    0.5, 1.0, 2.0, 3.0, float('inf'),
+                ]),
+                'terminate_when_unhealthy': tune.grid_search([True, False]),
             },
         },
         'Ant': {  # 8 DoF
@@ -368,8 +372,12 @@ def get_checkpoint_frequency(spec):
     return checkpoint_frequency
 
 
-def get_policy_params(universe, domain, task):
+def get_policy_params(universe, domain, task, algorithm='SAC'):
     policy_params = GAUSSIAN_POLICY_PARAMS_BASE.copy()
+    if algorithm.lower() == 'ddpg':
+        policy_params['kwargs']['scale_identity_multiplier'] = (
+            tune.grid_search([0.1, 0.3, 1.0]))
+        policy_params['type'] = 'ConstantScaleGaussianPolicy'
     return policy_params
 
 
@@ -400,7 +408,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
         ALGORITHM_PARAMS_ADDITIONAL.get(algorithm, {}),
         {
             'kwargs': {
-                'n_epochs': 500,
+                'n_epochs': 200,
             },
         },
     )
@@ -410,12 +418,12 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             'Walker2d': tune.grid_search(
                 # np.linspace(-6, 3, 10).tolist(),
                 # np.round(np.linspace(-6, 4, 6), 2).tolist()
-                        [-6.0, -3.0, 0.0, 1.0, 2.0, 3.0]
+                [-6.0, -3.0, 0.0, 1.0, 2.0, 3.0]
             ),
             'Hopper': tune.grid_search(
                 # np.round(np.linspace(-3, 2, 6), 2).tolist()
                 # np.linspace(-3, 2, 6).tolist(),
-                [-3.0, -1.0, 0.0, 1.0]
+                [-3.0, -1.0, 0.0, 1.0, 1.5]
             ),
             'humanoid': tune.grid_search(
                 # np.round(np.linspace(1, 5, 11), 2).tolist()
@@ -439,7 +447,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                 'kwargs': get_environment_params(universe, domain, task),
             },
         },
-        'policy_params': get_policy_params(universe, domain, task),
+        'policy_params': get_policy_params(universe, domain, task, algorithm),
         'exploration_policy_params': {
             'type': 'UniformPolicy',
             'kwargs': {
