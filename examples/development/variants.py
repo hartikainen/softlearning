@@ -30,6 +30,7 @@ TOTAL_STEPS_PER_DOMAIN = {
     'Walker2d': int(5e6),
     'Ant': int(3e6),
     'Humanoid': int(2e7),
+    'Pendulum': int(1e4),
 }
 
 ALGORITHM_PARAMS_BASE = {
@@ -104,7 +105,6 @@ ALGORITHM_PARAMS_ADDITIONAL = {
             'lr': 3e-4,
             'target_update_interval': 1,
             'tau': 5e-3,
-            'store_extra_policy_info': False,
             'n_initial_exploration_steps': int(1e3),
         }
     },
@@ -401,30 +401,33 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
         {
             'kwargs': {
                 'n_epochs': 500,
-                'target_entropy': {
-                    'Walker2d': tune.grid_search(
-                        # np.linspace(-6, 3, 10).tolist(),
-                        # np.round(np.linspace(-6, 4, 6), 2).tolist()
-                        [-6.0, -3.0, 0.0, 1.0, 2.0, 3.0]
-                    ),
-                    'Hopper': tune.grid_search(
-                        # np.round(np.linspace(-3, 2, 6), 2).tolist()
-                        # np.linspace(-3, 2, 6).tolist(),
-                        [-3.0, -1.0, 0.0, 1.0]
-                    ),
-                    'humanoid': tune.grid_search(
-                        # np.round(np.linspace(1, 5, 11), 2).tolist()
-                        np.arange(5, 10).astype(np.float32).tolist()
-                    ),
-                    'Humanoid': tune.grid_search(
-                        ['auto', 0, 3, 6, 9]
-                        # np.round(np.linspace(1, 5, 11), 2).tolist()
-                        # np.arange(5, 10).astype(np.float32).tolist()
-                    ),
-                }.get(domain, 'auto'),
             },
         },
     )
+
+    if algorithm != 'DDPG':
+        algorithm_params['kwargs']['target_entropy'] = {
+            'Walker2d': tune.grid_search(
+                # np.linspace(-6, 3, 10).tolist(),
+                # np.round(np.linspace(-6, 4, 6), 2).tolist()
+                        [-6.0, -3.0, 0.0, 1.0, 2.0, 3.0]
+            ),
+            'Hopper': tune.grid_search(
+                # np.round(np.linspace(-3, 2, 6), 2).tolist()
+                # np.linspace(-3, 2, 6).tolist(),
+                [-3.0, -1.0, 0.0, 1.0]
+            ),
+            'humanoid': tune.grid_search(
+                # np.round(np.linspace(1, 5, 11), 2).tolist()
+                np.arange(5, 10).astype(np.float32).tolist()
+            ),
+            'Humanoid': tune.grid_search(
+                ['auto', 0, 3, 6, 9]
+                # np.round(np.linspace(1, 5, 11), 2).tolist()
+                # np.arange(5, 10).astype(np.float32).tolist()
+            ),
+        }.get(domain, 'auto')
+
     variant_spec = {
         'git_sha': get_git_rev(__file__),
 

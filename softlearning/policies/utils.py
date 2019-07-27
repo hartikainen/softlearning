@@ -12,12 +12,10 @@ def get_gaussian_policy(*args, **kwargs):
     return policy
 
 
-def get_constant_scale_gaussian_policy(env, Q, **kwargs):
+def get_constant_scale_gaussian_policy(*args, **kwargs):
     from .gaussian_policy import ConstantScaleGaussianPolicy
-    policy = ConstantScaleGaussianPolicy(
-        input_shapes=(env.active_observation_shape, ),
-        output_shape=env.action_space.shape,
-        **kwargs)
+
+    policy = ConstantScaleGaussianPolicy(*args, **kwargs)
 
     return policy
 

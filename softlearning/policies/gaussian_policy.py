@@ -167,7 +167,7 @@ class GaussianPolicy(LatentSpacePolicy):
             self.condition_inputs,
             (shift, log_scale_diag, log_pis, raw_actions, actions))
 
-    def _shift_and_log_scale_diag_net(self, input_shapes, output_size):
+    def _shift_and_log_scale_diag_net(self, output_size):
         raise NotImplementedError
 
     def get_weights(self):
@@ -242,7 +242,7 @@ class ConstantScaleGaussianPolicy(FeedforwardGaussianPolicy):
                  output_shape,
                  hidden_layer_sizes,
                  squash=True,
-                 preprocessor=None,
+                 preprocessors=None,
                  name=None,
                  scale_identity_multiplier=1.0,
                  activation='relu',
@@ -259,29 +259,40 @@ class ConstantScaleGaussianPolicy(FeedforwardGaussianPolicy):
         self._output_shape = output_shape
         self._squash = squash
         self._name = name
-        self._preprocessor = preprocessor
 
         super(GaussianPolicy, self).__init__(*args, **kwargs)
 
-        self.condition_inputs = [
-            tf.keras.layers.Input(shape=input_shape)
-            for input_shape in input_shapes
+        inputs_flat = create_inputs(input_shapes)
+        preprocessors_flat = (
+            flatten_input_structure(preprocessors)
+            if preprocessors is not None
+            else tuple(None for _ in inputs_flat))
+
+        assert len(inputs_flat) == len(preprocessors_flat), (
+            inputs_flat, preprocessors_flat)
+
+        preprocessed_inputs = [
+            preprocessor(input_) if preprocessor is not None else input_
+            for preprocessor, input_
+            in zip(preprocessors_flat, inputs_flat)
         ]
 
-        conditions = tf.keras.layers.Lambda(
-            lambda x: tf.concat(x, axis=-1)
-        )(self.condition_inputs)
+        float_inputs = tf.keras.layers.Lambda(
+            lambda inputs: training_utils.cast_if_floating_dtype(inputs)
+        )(preprocessed_inputs)
 
-        if preprocessor is not None:
-            conditions = preprocessor(conditions)
+        conditions = tf.keras.layers.Lambda(
+            lambda inputs: tf.concat(inputs, axis=-1)
+        )(float_inputs)
+
+        self.condition_inputs = inputs_flat
 
         shift = self._shift_and_log_scale_diag_net(
-            input_shapes=(conditions.shape[1:], ),
             output_size=output_shape[0],
         )(conditions)
 
         batch_size = tf.keras.layers.Lambda(
-            lambda x: tf.shape(x)[0])(conditions)
+            lambda x: tf.shape(input=x)[0])(conditions)
 
         base_distribution = tfp.distributions.MultivariateNormalDiag(
             loc=tf.zeros(output_shape),
@@ -292,7 +303,8 @@ class ConstantScaleGaussianPolicy(FeedforwardGaussianPolicy):
         )(batch_size)
 
         self.latents_model = tf.keras.Model(self.condition_inputs, latents)
-        self.latents_input = tf.keras.layers.Input(shape=output_shape)
+        self.latents_input = tf.keras.layers.Input(
+            shape=output_shape, name='latents')
 
         def raw_actions_fn(inputs):
             shift, latents = inputs
@@ -353,7 +365,8 @@ class ConstantScaleGaussianPolicy(FeedforwardGaussianPolicy):
             log_pis = distribution.log_prob(actions)[:, None]
             return log_pis
 
-        self.actions_input = tf.keras.layers.Input(shape=output_shape)
+        self.actions_input = tf.keras.layers.Input(
+            shape=output_shape, name='actions')
 
         log_pis = tf.keras.layers.Lambda(
             log_pis_fn)([shift, actions])
@@ -369,9 +382,8 @@ class ConstantScaleGaussianPolicy(FeedforwardGaussianPolicy):
             self.condition_inputs,
             (shift, log_pis, raw_actions, actions))
 
-    def _shift_and_log_scale_diag_net(self, input_shapes, output_size):
+    def _shift_and_log_scale_diag_net(self, output_size):
         shift_and_log_scale_diag_net = feedforward_model(
-            input_shapes=input_shapes,
             hidden_layer_sizes=self._hidden_layer_sizes,
             output_size=output_size,
             activation=self._activation,
