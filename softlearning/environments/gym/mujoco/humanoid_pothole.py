@@ -134,6 +134,16 @@ class HumanoidPotholeEnv(HumanoidEnv):
 
         return observation
 
+    def step(self, *args, **kwargs):
+        observation, reward, done, info = super(HumanoidPotholeEnv, self).step(
+            *args, **kwargs)
+        info['past_pothole'] = (
+            self._pothole_distance + 3 < self.sim.data.qpos[0])
+        info['distance_after_pothole'] = (
+            self.sim.data.qpos[0] - self._pothole_distance)
+
+        return observation, reward, done, info
+
     def reset_model(self):
         noise_low = -self._reset_noise_scale
         noise_high = self._reset_noise_scale

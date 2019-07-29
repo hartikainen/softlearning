@@ -25,8 +25,8 @@ class Walker2dPotholeEnv(Walker2dEnv):
     def __init__(self,
                  pothole_depth=0.025,
                  pothole_length=0.25,
-                 pothole_distance=5.0,
-                 x_reset_range=(-3, 3),
+                 pothole_distance=1.0,
+                 x_reset_range=(-3, 0),
                  *args,
                  **kwargs):
         self._pothole_depth = pothole_depth
@@ -141,6 +141,16 @@ class Walker2dPotholeEnv(Walker2dEnv):
             observation[0] = self.sim.data.qpos[1] + self._pothole_depth
 
         return observation
+
+    def step(self, *args, **kwargs):
+        observation, reward, done, info = super(Walker2dPotholeEnv, self).step(
+            *args, **kwargs)
+        info['past_pothole'] = (
+            self._pothole_distance + 3 < self.sim.data.qpos[0])
+        info['distance_after_pothole'] = (
+            self.sim.data.qpos[0] - self._pothole_distance)
+
+        return observation, reward, done, info
 
     def reset_model(self):
         noise_low = -self._reset_noise_scale
