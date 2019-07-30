@@ -16,11 +16,12 @@ class HopperMaxVelocityEnv(HopperEnv):
         x_velocity = ((x_position_after - x_position_before)
                       / self.dt)
 
-        ctrl_cost = self.control_cost(action)
+        ctrl_cost = self.control_cost(action) * float(self.is_healthy)
 
         forward_reward = (
             self._forward_reward_weight
-            * np.minimum(x_velocity, self._max_velocity))
+            * np.minimum(x_velocity, self._max_velocity)
+        ) * float(self.is_healthy)
         healthy_reward = self.healthy_reward
 
         rewards = forward_reward + healthy_reward
