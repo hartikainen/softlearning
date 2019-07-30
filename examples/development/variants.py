@@ -196,7 +196,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
         'Hopper': {  # 3 DoF
             'MaxVelocity-v3': {
                 'max_velocity': tune.grid_search([
-                    0.5, 1.0, 2.0, 3.0, float('inf'),
+                    0.5, 1.0, 2.0, float('inf'),
                 ]),
                 'terminate_when_unhealthy': tune.grid_search([True, False]),
             },
