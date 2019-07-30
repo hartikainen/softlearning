@@ -401,6 +401,17 @@ def get_environment_params(universe, domain, task):
     return environment_params
 
 
+ACTION_DIMENSIONS = {
+    'Swimmer': 2,
+    'Hopper': 3,
+    'Walker2d': 6,
+    'HalfCheetah': 6,
+    'Ant': 8,
+    'Humanoid': 17,
+
+}
+
+
 def get_variant_spec_base(universe, domain, task, policy, algorithm):
     algorithm_params = deep_update(
         ALGORITHM_PARAMS_BASE,
@@ -414,27 +425,15 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
     )
 
     if algorithm != 'DDPG':
-        algorithm_params['kwargs']['target_entropy'] = {
-            'Walker2d': tune.grid_search(
-                # np.linspace(-6, 3, 10).tolist(),
-                # np.round(np.linspace(-6, 4, 6), 2).tolist()
-                [-6.0, -3.0, 0.0, 1.0, 2.0, 3.0]
-            ),
-            'Hopper': tune.grid_search(
-                # np.round(np.linspace(-3, 2, 6), 2).tolist()
-                # np.linspace(-3, 2, 6).tolist(),
-                [-3.0, -1.0, 0.0, 1.0, 1.5]
-            ),
-            'humanoid': tune.grid_search(
-                # np.round(np.linspace(1, 5, 11), 2).tolist()
-                np.arange(5, 10).astype(np.float32).tolist()
-            ),
-            'Humanoid': tune.grid_search(
-                ['auto', 0, 3, 6, 9]
-                # np.round(np.linspace(1, 5, 11), 2).tolist()
-                # np.arange(5, 10).astype(np.float32).tolist()
-            ),
-        }.get(domain, 'auto')
+        algorithm_params['entropy_heuristic_multiplier'] = tune.grid_search(
+            np.linspace(-1, 0.5, 7).tolist())
+        algorithm_params['kwargs']['target_entropy'] = tune.sample_from(
+            lambda spec: (
+                ACTION_DIMENSIONS[domain]
+                * (spec.get('config', spec)
+                   ['algorithm_params']
+                   ['entropy_heuristic_multiplier'])
+            ))
 
     variant_spec = {
         'git_sha': get_git_rev(__file__),
