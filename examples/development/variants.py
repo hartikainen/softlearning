@@ -430,7 +430,8 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                 np.arange(5, 10).astype(np.float32).tolist()
             ),
             'Humanoid': tune.grid_search(
-                ['auto', 0, 3, 6, 9]
+                [-17.0, -10.0, -5.0, 0.0, 3.0, 6.0, 9.0]
+                # ['auto', 0, 3, 6, 9]
                 # np.round(np.linspace(1, 5, 11), 2).tolist()
                 # np.arange(5, 10).astype(np.float32).tolist()
             ),
