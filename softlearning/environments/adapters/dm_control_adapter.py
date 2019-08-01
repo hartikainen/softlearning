@@ -74,7 +74,7 @@ class DmControlAdapter(SoftlearningEnv):
                  observation_keys=(),
                  goal_keys=(),
                  unwrap_time_limit=True,
-                 perturb_action_kwargs=None,
+                 perturb_random_action_kwargs=None,
                  pixel_wrapper_kwargs=None,
                  **kwargs):
         assert not args, (
@@ -107,8 +107,8 @@ class DmControlAdapter(SoftlearningEnv):
             np.testing.assert_equal(env.action_spec().minimum, -1)
             np.testing.assert_equal(env.action_spec().maximum, 1)
 
-        if perturb_action_kwargs is not None:
-            env = action_perturbation.Wrapper(env, **perturb_action_kwargs)
+        if perturb_random_action_kwargs is not None:
+            env = action_perturbation.Wrapper(env, **perturb_random_action_kwargs)
 
         if pixel_wrapper_kwargs is not None:
             env = pixels.Wrapper(env, **pixel_wrapper_kwargs)

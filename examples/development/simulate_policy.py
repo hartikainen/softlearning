@@ -114,7 +114,7 @@ def simulate_policy(checkpoint_path,
     # environment = get_environment(
     #     'gym', domain, 'v3', {
     #         **environment_params['kwargs'],
-    #         'perturb_action_kwargs': {
+    #         'perturb_random_action_kwargs': {
     #             'perturbation_probability': 0.0
     #         },
     #     })

@@ -1,3 +1,3 @@
 from .normalize_action import NormalizeActionWrapper
-from .perturb_action import PerturbActionWrapper
+from .perturb_random_action import PerturbRandomActionWrapper
 from .pixel_observation import PixelObservationWrapper

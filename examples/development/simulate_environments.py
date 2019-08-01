@@ -196,9 +196,9 @@ def simulate_perturbations(args):
             for pothole_depth in np.linspace(0.001, 1.0, 100)
         },
         # **{
-        #     f'perturb-action-probability-{perturbation_probability}': {
+        #     f'perturb-random-action-probability-{perturbation_probability}': {
         #         'kwargs': {
-        #             'perturb_action_kwargs': {
+        #             'perturb_random_action_kwargs': {
         #                 'perturbation_probability': perturbation_probability,
         #             },
         #         }

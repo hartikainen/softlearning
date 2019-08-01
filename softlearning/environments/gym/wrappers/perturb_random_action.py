@@ -3,13 +3,13 @@ from gym import spaces
 import numpy as np
 
 
-__all__ = ['PerturbActionWrapper']
+__all__ = ['PerturbRandomActionWrapper']
 
 
-class PerturbActionWrapper(gym.ActionWrapper):
+class PerturbRandomActionWrapper(gym.ActionWrapper):
     """Rescale the action space of the environment."""
     def __init__(self, *args, perturbation_probability=0, **kwargs):
-        super(PerturbActionWrapper, self).__init__(*args, **kwargs)
+        super(PerturbRandomActionWrapper, self).__init__(*args, **kwargs)
         self._perturbation_probability = perturbation_probability
 
     def action(self, action):
@@ -26,4 +26,4 @@ class PerturbActionWrapper(gym.ActionWrapper):
         raise NotImplementedError
 
 
-normalize = PerturbActionWrapper
+normalize = PerturbRandomActionWrapper
