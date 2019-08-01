@@ -35,6 +35,7 @@ class RemoteSampler(BaseSampler):
         assert initialized, initialized
 
     def initialize(self, env, policy, pool):
+        self._env = env
         super(RemoteSampler, self).initialize(env, policy, pool)
         self._create_remote_environment(env, policy)
 
@@ -54,18 +55,24 @@ class RemoteSampler(BaseSampler):
         path_ready = self.wait_for_path(timeout=timeout)
 
         if len(path_ready) or not self.batch_ready():
-            path_samples = ray.get(self._remote_path)
-            self._last_n_paths.appendleft(path_samples)
+            last_path = ray.get(self._remote_path)
+            self._last_n_paths.appendleft(last_path)
 
-            self.pool.add_samples({
+            path_for_pool = {
                 key: value
-                for key, value in path_samples.items()
+                for key, value in last_path.items()
                 if key != 'infos'
-            })
+            }
+            self.pool.add_samples(path_for_pool.copy())
+
+            if self._extra_pools:
+                for pool in self._extra_pools:
+                    pool.add_path(path_for_pool.copy())
 
             self._remote_path = None
-            self._total_samples += path_samples['rewards'].shape[0]
-            self._last_path_return = np.sum(path_samples['rewards'])
+
+            self._last_path_return = np.sum(last_path['rewards'])
+            self._total_samples += last_path['rewards'].size
             self._max_path_return = max(self._max_path_return,
                                         self._last_path_return)
             self._n_episodes += 1
@@ -116,6 +123,7 @@ class _RemoteEnv(object):
 
     def rollout(self, policy_weights, path_length):
         self._policy.set_weights(policy_weights)
-        path = rollout(self._env, self._policy, path_length)
+        path = rollout(
+            self._env, self._policy, path_length, random_sample_after=0.8)
 
         return path

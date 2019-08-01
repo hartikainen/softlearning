@@ -10,7 +10,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.training import training_util
 
-from softlearning.samplers import rollouts
+from softlearning.samplers import rollouts, RemoteSampler, SimpleSampler
 from softlearning.misc.utils import save_video
 
 
@@ -62,8 +62,7 @@ class RLAlgorithm(Checkpointable):
 
         self._n_epochs = n_epochs
         self._n_train_repeat = n_train_repeat
-        self._max_train_repeat_per_timestep = max(
-            max_train_repeat_per_timestep, n_train_repeat)
+        self._max_train_repeat_per_timestep = max_train_repeat_per_timestep
         self._train_every_n_steps = train_every_n_steps
         self._epoch_length = epoch_length
         self._n_initial_exploration_steps = n_initial_exploration_steps
@@ -260,7 +259,9 @@ class RLAlgorithm(Checkpointable):
                 gt.stamp('sample')
 
                 if self.ready_to_train:
-                    self._do_training_repeats(timestep=self._total_timestep)
+                    self._do_training_repeats(
+                        timestep=self._total_timestep,
+                        total_samples=self.sampler._total_samples)
                 gt.stamp('train')
 
                 self._timestep_after_hook()
@@ -337,12 +338,15 @@ class RLAlgorithm(Checkpointable):
         if self._eval_n_episodes < 1: return ()
 
         with policy.set_deterministic(self._eval_deterministic):
+            sampler_class = (type(self.sampler)
+                             if not isinstance(self.sampler, RemoteSampler)
+                             else SimpleSampler)
             paths = rollouts(
                 self._eval_n_episodes,
                 evaluation_env,
                 policy,
                 self.sampler._max_path_length,
-                sampler_class=type(self.sampler),
+                sampler_class=sampler_class,
                 pool_class=type(self._pool),
                 render_kwargs=self._eval_render_kwargs)
 

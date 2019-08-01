@@ -40,8 +40,7 @@ class MetricLearner(object):
 
         self._train_every_n_steps = train_every_n_steps
         self._n_train_repeat = n_train_repeat
-        self._max_train_repeat_per_timestep = max(
-            max_train_repeat_per_timestep, n_train_repeat)
+        self._max_train_repeat_per_timestep = max_train_repeat_per_timestep
 
         self._session = tf.keras.backend.get_session()
         self._num_train_steps = 0
@@ -160,12 +159,10 @@ class MetricLearner(object):
     def _epoch_before_hook(self, *args, **kwargs):
         self._train_steps_this_epoch = 0
 
-    def _do_training_repeats(self, timestep):
-        if timestep % self._train_every_n_steps > 0: return
-
+    def _do_training_repeats(self, timestep, total_samples):
         trained_enough = (
-            self._train_steps_this_epoch
-            > self._max_train_repeat_per_timestep * self._timestep)
+            self._num_train_steps
+            > self._max_train_repeat_per_timestep * total_samples)
 
         if trained_enough:
             return
@@ -176,7 +173,6 @@ class MetricLearner(object):
                 batch=self._training_batch())
 
         self._num_train_steps += self._n_train_repeat
-        self._train_steps_this_epoch += self._n_train_repeat
 
     def _do_training(self, iteration, batch):
         """Runs the operations for updating training and target ops."""
@@ -220,7 +216,11 @@ class MetricLearner(object):
                         evaluation_paths,
                         *args,
                         **kwargs):
-        pass
+        diagnostics = OrderedDict((
+            ('num-train-steps', self._num_train_steps),
+        ))
+
+        return diagnostics
 
 
 class HingeMetricLearner(MetricLearner):

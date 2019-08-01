@@ -52,11 +52,12 @@ def rollout(env,
             pool_class=replay_pools.SimpleReplayPool,
             callback=None,
             render_kwargs=None,
-            break_on_terminal=True):
+            break_on_terminal=True,
+            random_sample_after=1):
     pool = pool_class(env, max_size=path_length)
     sampler = sampler_class(
         max_path_length=path_length,
-        min_pool_size=None,
+        min_pool_size=0,
         batch_size=None)
 
     sampler.initialize(env, policy, pool)
@@ -80,6 +81,8 @@ def rollout(env,
 
     t = 0
     for t in range(path_length):
+        sampler.random_sample = (t / path_length) > random_sample_after
+
         observation, reward, terminal, info = sampler.sample()
         for key, value in info.items():
             infos[key].append(value)

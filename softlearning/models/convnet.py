@@ -65,6 +65,7 @@ def convnet_model(
 
     def preprocess(x):
         """Cast to float, normalize, and concatenate images along last axis."""
+        import tensorflow as tf
         x = nest.map_structure(
             lambda image: tf.image.convert_image_dtype(image, tf.float32), x)
         x = nest.flatten(x)

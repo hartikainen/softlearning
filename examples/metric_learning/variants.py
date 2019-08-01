@@ -2,6 +2,7 @@ from copy import deepcopy
 
 from ray import tune
 import numpy as np
+import tensorflow as tf
 
 from softlearning.misc.utils import get_git_rev
 from examples.development.variants import is_image_env
@@ -317,6 +318,13 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             'TurnFixed-v0': {
                 'use_dict_obs': True,
                 'reward_keys': ('object_to_target_angle_dist_cost', ),
+                'device_path': '/dev/ttyUSB0',
+                'camera_config': {
+                    # 'topic': '/kinect2_001161563647/hd/image_color',
+                    'topic': '/kinect2_001161563647/qhd/image_color',
+                    # 'topic': '/kinect2_001144463747/hd/image_color',
+                    # 'topic': '/front_2/image_raw',
+                },
                 'pixel_wrapper_kwargs': {
                     'observation_key': 'pixels',
                     'pixels_only': False,
@@ -334,7 +342,6 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'lookat': (0, 0, 1.25e-1),
                 },
                 # 'observation_keys': ('claw_qpos', 'last_action', 'pixels'),
-                'reward_keys': ('object_to_target_angle_dist_cost', ),
             },
             'TurnRandom-v0': {},
             'TurnRandomResetSingleGoal-v0': {
@@ -456,7 +463,7 @@ NUM_EPOCHS_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: int(150),
         },
         'DClaw': {
-            DEFAULT_KEY: int(300),
+            DEFAULT_KEY: int(500),
         },
     },
     'dm_control': {
@@ -517,7 +524,7 @@ def get_supervision_schedule_params(domain):
         ),
         'Point2DEnv': ((50, 1), ),
         'DClaw3': ((100, 9), ),
-        'DClaw': ((300, 1), ),
+        'DClaw': ((300, 10), ),
         'HardwareDClaw3': ((100, 9), ),
         'Swimmer': ((int(1e4), int(1e4)), ),
     }[domain]
@@ -572,7 +579,7 @@ def replay_pool_params(spec):
     params = {
         'type': 'GoalReplayPool',
         'kwargs': {
-            'max_size': int(1e6),
+            'max_size': int(5e5),
         }
     }
 
@@ -668,6 +675,7 @@ def get_variant_spec(args):
             kwargs = {
                 **shared_kwargs,
                 **{
+                    'max_train_repeat_per_timestep': 1,
                     'train_every_n_steps': 1,
                     'ground_truth_terminals': False,
                 },
@@ -677,6 +685,7 @@ def get_variant_spec(args):
             kwargs = {
                 **shared_kwargs,
                 **{
+                    'max_train_repeat_per_timestep': 1/8,
                     'train_every_n_steps': (
                         {
                             'GoalHalfCheetah': 64,
@@ -810,6 +819,42 @@ def get_variant_spec(args):
                 'final_exploration_proportion': 0.2,
             }
         },
+        'target_proposer_params': tune.grid_search([
+            # {
+            #     'type': 'UnsupervisedTargetProposer',
+            #     'kwargs': {
+            #         'target_proposal_rule': target_proposal_rule,
+            #         'random_weighted_scale': 1.0,
+            #         'target_candidate_strategy': target_candidate_strategy,
+            #         'target_candidate_window': int(1e4),
+            #     },
+            # }
+            # for target_candidate_strategy in ('all_steps', )
+            # for target_proposal_rule in (
+            #         'farthest_estimate_from_first_observation',
+            #         'random_weighted_estimate_from_first_observation',
+            #         # 'random'
+            # )
+        ] + [
+            {
+                'type': 'SemiSupervisedTargetProposer',
+                'kwargs': {
+                    'supervision_schedule_params': {
+                        'type': 'linear',
+                        'kwargs': {
+                            'start_labels': 1,
+                            'decay_steps': end_labels,
+                            'end_labels': end_labels,
+                        }
+                    },
+                    'target_candidate_strategy': target_candidate_strategy,
+                    'target_candidate_window': target_candidate_window,
+                },
+            }
+            for target_candidate_strategy in ('last_steps', )
+            for target_candidate_window in (int(1e3), )
+            for end_labels in (25, )
+        ]),
         # 'target_proposer_params': {
         #     'type': 'UnsupervisedTargetProposer',
         #     'kwargs': {
@@ -823,6 +868,7 @@ def get_variant_spec(args):
         #             # 'all_steps',
         #             'last_steps'
         #         ]),
+        #         'target_candidate_window': int(1e4),
         #     },
         # },
         # 'target_proposer_params': {
@@ -834,19 +880,29 @@ def get_variant_spec(args):
         #         ]),
         #     }
         # },
-        'target_proposer_params': {
-            'type': 'SemiSupervisedTargetProposer',
-            'kwargs': {
-                'supervision_schedule_params': get_supervision_schedule_params(
-                    domain),
-                'target_candidate_strategy': 'last_steps',
-                'target_candidate_window': int(1e3),
-            },
-        },
+        # 'target_proposer_params': {
+        #     'type': 'SemiSupervisedTargetProposer',
+        #     'kwargs': {
+        #         'supervision_schedule_params': get_supervision_schedule_params(
+        #             domain),
+        #         'target_candidate_strategy': 'last_steps',
+        #     },
+        # },
         'replay_pool_params': tune.sample_from(replay_pool_params),
-        'distance_pool_params': tune.sample_from(distance_pool_params),
+        # 'distance_pool_params': tune.sample_from(distance_pool_params),
+        'distance_pool_params': tune.grid_search([
+            {
+                'type': 'DistancePool',
+                'kwargs': {
+                    'max_size': max_size,
+                    'max_pair_distance': None,
+                },
+            }
+            for max_size in (int(1e5), )
+        ]),
         'sampler_params': {
-            'type': 'SimpleSampler',
+            'type': 'RemoteSampler',
+            # 'type': 'SimpleSampler',
             'kwargs': {
                 'max_path_length': max_path_length,
                 'min_pool_size': max_path_length,
@@ -867,9 +923,10 @@ def get_variant_spec(args):
             ]),
             # 'kwargs': tune.sample_from(metric_learner_kwargs),
             'kwargs': {
-                'train_every_n_steps': tune.grid_search([8, 16, 32, 64]),
+                # 'train_every_n_steps': tune.grid_search([8, 16, 32, 64]),
                 'distance_learning_rate': 3e-4,
                 'n_train_repeat': 1,
+                'max_train_repeat_per_timestep': 1/8,
             }
         },
         'distance_estimator_params': {
@@ -895,8 +952,8 @@ def get_variant_spec(args):
                     ['type']
                     == 'TemporalDifferenceMetricLearner')),
                 'target_input_type': tune.grid_search([
-                    # 'full',
-                    'xy_coordinates',
+                    'full',
+                    # 'xy_coordinates',
                     # 'xy_velocities',
                 ]),
             }
@@ -931,16 +988,20 @@ def get_variant_spec(args):
     }
 
     if is_image_env(universe, domain, task, variant_spec):
-        preprocessor_params = {
-            'type': 'convnet_preprocessor',
-            'kwargs': {
-                'conv_filters': (64, ) * 3,
-                'conv_kernel_sizes': (3, ) * 3,
-                'conv_strides': (2, ) * 3,
-                'normalization_type': 'layer',
-                'downsampling_type': 'conv',
-            },
-        }
+        preprocessor_params = tune.grid_search([
+            {
+                'type': 'convnet_preprocessor',
+                'kwargs': {
+                    'conv_filters': (64, ) * num_layers,
+                    'conv_kernel_sizes': (3, ) * num_layers,
+                    'conv_strides': (2, ) * num_layers,
+                    'normalization_type': normalization_type,
+                    'downsampling_type': 'conv',
+                },
+            }
+            for num_layers in (4, )
+            for normalization_type in ('layer', )
+        ])
 
         variant_spec['policy_params']['kwargs'][
             'observation_preprocessors_params'] = {

@@ -306,7 +306,14 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
             new_observations_distances = new_observations[
                 'object_to_target_angle_dist']
 
-            best_observation_index = np.argmin(new_observations_distances)
+            if np.any(new_observations_distances < 0.1):
+                candidate_indices = np.flatnonzero(new_observations_distances < 0.1)
+                candidate_actions = new_observations['last_action'][candidate_indices]
+                best_observation_index = candidate_indices[np.argmin(
+                    np.mean(candidate_actions, axis=-1))]
+            else:
+                best_observation_index = np.argmin(new_observations_distances)
+
             if (-new_observations_distances[best_observation_index]
                 > self._best_observation_value):
                 best_observation = type(new_observations)(

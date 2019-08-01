@@ -1,7 +1,3 @@
-from multiworld.envs.pygame.point2d import Point2DEnv, Point2DWallEnv
-from multiworld.core.image_env import ImageEnv
-
-
 from .adapters.gym_adapter import GymAdapter
 
 
@@ -47,6 +43,12 @@ def get_environment_from_params(environment_params):
 
 
 def is_point_2d_env(env):
+    try:
+        from multiworld.envs.pygame.point2d import Point2DEnv, Point2DWallEnv
+        from multiworld.core.image_env import ImageEnv
+    except Exception as e:
+        return False
+
     return (isinstance(env, (Point2DEnv, Point2DWallEnv))
             or (isinstance(env, ImageEnv)
                 and isinstance(env.wrapped_env,

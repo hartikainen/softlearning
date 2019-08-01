@@ -172,6 +172,11 @@ class MetricLearningAlgorithm(SAC):
         self._previous_training_paths = training_paths
 
     def _epoch_before_hook(self, *args, **kwargs):
+        if 'pixels' in self._pool.last_n_batch(1)['observations']:
+            last_observations = self._pool.last_n_batch(100)['observations']['pixels']
+            if np.all(last_observations == last_observations[0]):
+                raise ValueError("Camera seems to be frozen.")
+
         self._update_goal()
         self._metric_learner._epoch_before_hook(*args, **kwargs)
         return super(MetricLearningAlgorithm, self)._epoch_before_hook(
@@ -187,44 +192,44 @@ class MetricLearningAlgorithm(SAC):
             'succeeded_this_episode',
             False)
 
-        if (self.sampler._path_length >= random_explore_after
-            or succeeded_this_episode):
-            self.sampler.initialize(
-                self._training_environment,
-                self._initial_exploration_policy,
-                self._pool)
-            # self.sampler.initialize(
-            #     self._training_environment,
-            #     self._training_environment.unwrapped.optimal_policy,
-            #     self._pool)
-        else:
-            # self.sampler.initialize(
-            #     self._training_environment,
-            #     self._initial_exploration_policy,
-            #     self._pool)
-            self.sampler.initialize(
-                self._training_environment,
-                self._policy,
-                self._pool)
-            # self.sampler.initialize(
-            #     self._training_environment,
-            #     self._training_environment.unwrapped.optimal_policy,
-            #     self._pool)
-            if self.sampler.policy is not self._policy:
-                assert is_point_2d_env(self._training_environment.unwrapped)
+        succeeded_this_episode = False
+
+        # if succeeded_this_episode:
+        #     self.sampler.initialize(
+        #         self._training_environment,
+        #         self._initial_exploration_policy,
+        #         self._pool)
+        #     # self.sampler.initialize(
+        #     #     self._training_environment,
+        #     #     self._training_environment.unwrapped.optimal_policy,
+        #     #     self._pool)
+        # else:
+        #     # self.sampler.initialize(
+        #     #     self._training_environment,
+        #     #     self._initial_exploration_policy,
+        #     #     self._pool)
+        #     self.sampler.initialize(
+        #         self._training_environment,
+        #         self._policy,
+        #         self._pool)
+        #     # self.sampler.initialize(
+        #     #     self._training_environment,
+        #     #     self._training_environment.unwrapped.optimal_policy,
+        #     #     self._pool)
+        #     if self.sampler.policy is not self._policy:
+        #         assert is_point_2d_env(self._training_environment.unwrapped)
 
     def _timestep_after_hook(self, *args, **kwargs):
         if hasattr(self._metric_learner, '_update_target'):
             self._metric_learner._update_target(tau=self._tau)
 
-    def _do_training_repeats(self, timestep):
+    def _do_training_repeats(self, timestep, total_samples):
         """Repeat training _n_train_repeat times every _train_every_n_steps"""
-        self._metric_learner._do_training_repeats(timestep)
+        self._metric_learner._do_training_repeats(timestep, total_samples)
 
-        if timestep % self._train_every_n_steps > 0: return
         trained_enough = (
-            self._train_steps_this_epoch
-            > self._max_train_repeat_per_timestep * self._timestep)
+            self._num_train_steps
+            > self._max_train_repeat_per_timestep * total_samples)
 
         if trained_enough:
             return
@@ -318,7 +323,7 @@ class MetricLearningAlgorithm(SAC):
         environment = self._training_environment.unwrapped
         environment_class_name = type(environment).__name__
 
-        if environment_class_name == 'DClawTurnFixed-v0':
+        if 'DClawTurnFixed' in environment_class_name:
             diagnostics['_current_distance_goal/object_angle'] = np.arctan2(
                 self._current_distance_goal['object_angle_sin'],
                 self._current_distance_goal['object_angle_cos']
