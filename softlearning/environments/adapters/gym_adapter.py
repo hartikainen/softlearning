@@ -10,7 +10,10 @@ from gym.envs.mujoco.mujoco_env import MujocoEnv
 from .softlearning_env import SoftlearningEnv
 from softlearning.environments.gym import register_environments
 from softlearning.environments.gym.wrappers import (
-    NormalizeActionWrapper, PerturbRandomActionWrapper, PixelObservationWrapper)
+    NormalizeActionWrapper,
+    PerturbRandomActionWrapper,
+    PerturbNoisyActionWrapper,
+    PixelObservationWrapper)
 
 
 def parse_domain_task(gym_id):
@@ -57,6 +60,7 @@ class GymAdapter(SoftlearningEnv):
                  goal_keys=(),
                  unwrap_time_limit=True,
                  perturb_random_action_kwargs=None,
+                 perturb_noisy_action_kwargs=None,
                  pixel_wrapper_kwargs=None,
                  **kwargs):
         assert not args, (
@@ -93,6 +97,9 @@ class GymAdapter(SoftlearningEnv):
 
         if perturb_random_action_kwargs is not None:
             env = PerturbRandomActionWrapper(env, **perturb_random_action_kwargs)
+
+        if perturb_noisy_action_kwargs is not None:
+            env = PerturbNoisyActionWrapper(env, **perturb_noisy_action_kwargs)
 
         if pixel_wrapper_kwargs is not None:
             env = PixelObservationWrapper(env, **pixel_wrapper_kwargs)
