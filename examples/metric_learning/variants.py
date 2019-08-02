@@ -847,6 +847,7 @@ def get_variant_spec(args):
                             'end_labels': end_labels,
                         }
                     },
+                    'supervision_type': 'human',
                     'target_candidate_strategy': target_candidate_strategy,
                     'target_candidate_window': target_candidate_window,
                 },

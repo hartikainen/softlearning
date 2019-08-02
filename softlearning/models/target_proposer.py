@@ -1,6 +1,11 @@
 from collections import OrderedDict
+import os
+import json
+import time
+import pickle
 
 import numpy as np
+import skimage.io
 
 from gym.envs.mujoco.swimmer_v3 import SwimmerEnv
 from gym.envs.mujoco.ant_v3 import AntEnv
@@ -182,11 +187,228 @@ PREFERENCE_SCHEDULERS = {
 }
 
 
+def synthetic_goal_query(env,
+                         new_observations,
+                         current_target,
+                         previous_best_observation_value):
+
+    best_observation_value = previous_best_observation_value
+    best_observation_index = None
+
+    if is_point_2d_env(env):
+        ultimate_goal = env.ultimate_goal
+        new_positions = new_observations['state_observation']
+        goals = np.tile(ultimate_goal, (new_positions.shape[0], 1))
+        last_observations_distances = env.get_optimal_paths(
+            new_positions, goals)
+
+        best_observation_index = np.argmin(last_observations_distances)
+        if (-last_observations_distances[best_observation_index]
+            > best_observation_value):
+            best_observation = type(new_observations)(
+                (key, values[best_observation_index])
+                for key, values in new_observations.items())
+            best_observation_value = -last_observations_distances[
+                best_observation_index]
+        else:
+            best_observation = current_target
+
+    elif isinstance(
+            env,
+            (SwimmerEnv,
+             AntEnv,
+             HumanoidEnv,
+             HalfCheetahEnv,
+             HopperEnv,
+             Walker2dEnv)):
+        if env._exclude_current_positions_from_observation:
+            raise NotImplementedError
+
+        last_observations_x_positions = new_observations[
+            'observations'][:, 0:1]
+        new_observations_distances = last_observations_x_positions
+
+        best_observation_index = np.argmax(new_observations_distances)
+        if (new_observations_distances[best_observation_index]
+            > best_observation_value):
+            best_observation = type(new_observations)(
+                (key, values[best_observation_index])
+                for key, values in new_observations.items())
+            best_observation_value = new_observations_distances[
+                best_observation_index]
+        else:
+            best_observation = current_target
+
+    elif 'dclaw3' in type(env).__name__.lower():
+        from sac_envs.utils.unit_circle_math import angle_distance_from_positions
+
+        assert np.unique(env.target_initial_position_range).size == 1, (
+            env.target_initial_position_range)
+
+        object_positions = new_observations['object_position']
+        desired_object_positions = np.array(
+            env.target_initial_position_range[0]).reshape(1, -1)
+        new_observations_distances = angle_distance_from_positions(
+            [np.sin(object_positions), np.cos(object_positions)],
+            [np.sin(desired_object_positions),
+             np.cos(desired_object_positions)])
+
+        best_observation_index = np.argmin(new_observations_distances)
+        if (-new_observations_distances[best_observation_index]
+            > best_observation_value):
+            best_observation = type(new_observations)(
+                (key, values[best_observation_index])
+                for key, values in new_observations.items())
+            best_observation_value = -new_observations_distances[
+                best_observation_index]
+        else:
+            best_observation = current_target
+
+    elif type(env).__name__ == 'DClawTurnFixed':
+        from sac_envs.utils.unit_circle_math import angle_distance_from_positions
+        new_observations_distances = new_observations[
+            'object_to_target_angle_dist']
+
+        if np.any(new_observations_distances < 0.1):
+            candidate_indices = np.flatnonzero(new_observations_distances < 0.1)
+            candidate_actions = new_observations['last_action'][candidate_indices]
+            best_observation_index = candidate_indices[np.argmin(
+                np.mean(candidate_actions, axis=-1))]
+        else:
+            best_observation_index = np.argmin(new_observations_distances)
+
+        if (-new_observations_distances[best_observation_index]
+            > best_observation_value):
+            best_observation = type(new_observations)(
+                (key, values[best_observation_index])
+                for key, values in new_observations.items())
+            best_observation_value = -new_observations_distances[
+                best_observation_index]
+        else:
+            best_observation = current_target
+    else:
+        raise NotImplementedError
+
+    return (best_observation.copy(),
+            best_observation_value,
+            best_observation_index)
+
+
+def human_goal_query(env,
+                     new_observations,
+                     best_observation_value,
+                     current_target):
+    trial_directory = os.getcwd()
+    preference_directory = os.path.join(trial_directory, 'preferences')
+
+    metadata_path = os.path.join(preference_directory, 'metadata.json')
+    with open(metadata_path, 'r') as f:
+        metadata = json.load(f)
+
+    query_id = len(metadata['queries'])
+
+    assert all(query_id != query['query_id'] for query in metadata['queries'])
+
+    (_,
+     synthetic_best_observation_value,
+     synthetic_best_observation_index) = synthetic_goal_query(
+         env, new_observations, current_target, best_observation_value)
+
+    query_directory = os.path.join(preference_directory, f'query-{query_id}')
+
+    assert not os.path.exists(query_directory), query_directory
+    os.makedirs(query_directory)
+
+    print(query_directory)
+
+    pickle_path = os.path.join(query_directory, 'observations.pkl')
+    with open(pickle_path, 'wb') as f:
+        pickle.dump(new_observations, f)
+
+    metadata['queries'].append({
+        'query_id': query_id,
+        'query_time': time.time(),
+        'response_time': None,
+        'best_observation_index': 'PENDING',
+        'best_observation_value': 'PENDING',
+        'pickle_path': pickle_path,
+        'num_observations': (
+            new_observations[next(iter(new_observations))].shape[0]),
+        'syntetic_query': {
+            'best_observation_index': synthetic_best_observation_index.item(),
+            'best_observation_value': synthetic_best_observation_value.item(),
+        }
+    })
+
+    with open(metadata_path, 'w') as f:
+        json.dump(metadata, f, indent=2, sort_keys=True)
+
+    image_key = next(
+        key for key, values in new_observations.items()
+        if values.ndim == 4 and values.dtype == np.uint8)
+
+    images = np.concatenate((
+        new_observations[image_key],
+        current_target['pixels'][None, ...],
+    ), axis=0)
+    image_row = np.transpose(np.concatenate(np.transpose(images, axes=(0, 2, 1, 3))), axes=(1, 0, 2))
+
+    query_images_path = os.path.join(query_directory, 'query_images.png')
+    preferred_height = 320
+    repeat_times = int(np.ceil(preferred_height / image_row.shape[0]))
+    skimage.io.imsave(query_images_path, image_row.repeat(10, axis=0).repeat(10, axis=1))
+
+    for i, image in enumerate(images):
+        image_path = os.path.join(query_directory, f'query_image_{i}.png')
+        skimage.io.imsave(image_path, image)
+
+
+def evaluate_human_response(env,
+                            current_target,
+                            best_observation_value):
+    trial_directory = os.getcwd()
+    preference_directory = os.path.join(trial_directory, 'preferences')
+
+    metadata_path = os.path.join(preference_directory, 'metadata.json')
+    with open(metadata_path, 'r') as f:
+        metadata = json.load(f)
+
+    query_id = len(metadata['queries']) - 1
+
+    query = metadata['queries'][-1]
+    assert query_id == query['query_id'], (query_id, query['query_id'])
+
+    if query['best_observation_index'] == 'PENDING':
+        assert query['best_observation_value'] == 'PENDING', query
+        return (current_target, 'PENDING', 'PENDING')
+
+    best_observation_index = query['best_observation_index']
+    best_observation_value = query['best_observation_value']
+
+    if best_observation_index is not None:
+        query_directory = os.path.join(preference_directory, f'query-{query_id}')
+        pickle_path = os.path.join(query_directory, 'observations.pkl')
+        with open(pickle_path, 'rb') as f:
+            new_observations = pickle.load(f)
+
+        best_observation = type(new_observations)((
+            (key, value[best_observation_index].copy())
+            for key, value in new_observations.items()
+        ))
+    else:
+        best_observation = current_target.copy()
+
+    return (best_observation,
+            best_observation_value,
+            best_observation_index)
+
+
 class SemiSupervisedTargetProposer(BaseTargetProposer):
     def __init__(self,
                  supervision_schedule_params,
                  epoch_length,
                  max_path_length,
+                 supervision_type='synthetic',
                  *args,
                  **kwargs):
         super(SemiSupervisedTargetProposer, self).__init__(*args, **kwargs)
@@ -196,6 +418,19 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
         self._supervision_scheduler = PREFERENCE_SCHEDULERS[
             supervision_schedule_params['type']](
                 **supervision_schedule_params['kwargs'])
+        self._supervision_type = supervision_type
+
+        if self._supervision_type == 'human':
+            trial_directory = os.getcwd()
+            preference_directory = os.path.join(trial_directory, 'preferences')
+            if not os.path.exists(preference_directory):
+                os.makedirs(preference_directory)
+
+            metadata_path = os.path.join(preference_directory, 'metadata.json')
+            if not os.path.exists(metadata_path):
+                with open(metadata_path, 'w') as f:
+                    json.dump({'queries': []}, f)
+
         self._supervision_labels_used = 0
         self._observations_seen = 0
         self._last_supervision_epoch = -1
@@ -203,6 +438,19 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
 
         self._epoch_length = epoch_length
         self._max_path_length = max_path_length
+
+    def evaluate_human_response(self):
+        (current_target,
+         best_observation_value,
+         best_observation_index) = evaluate_human_response(
+             self._env.unwrapped,
+             self._current_target,
+             self._best_observation_value)
+
+        if (best_observation_index != 'PENDING'
+            and best_observation_index is not None):
+            (self._current_target, self._best_observation_value) = (
+                 current_target, best_observation_value)
 
     def propose_target(self, epoch):
         env = self._env.unwrapped
@@ -223,7 +471,11 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
             epoch - self._last_supervision_epoch)
 
         if (not should_supervise) or num_epochs_since_last_supervision < 1:
+            if self._supervision_type == 'human':
+                self.evaluate_human_response()
+
             return self._current_target.copy()
+
 
         self._last_supervision_epoch = epoch
         self._supervision_labels_used += 1
@@ -233,102 +485,36 @@ class SemiSupervisedTargetProposer(BaseTargetProposer):
         self._observations_seen += new_observations[
             next(iter(new_observations.keys()))].shape[0]
 
-        if is_point_2d_env(env):
-            ultimate_goal = env.ultimate_goal
-            new_positions = new_observations['state_observation']
-            goals = np.tile(ultimate_goal, (new_positions.shape[0], 1))
-            last_observations_distances = env.get_optimal_paths(
-                new_positions, goals)
-
-            best_observation_index = np.argmin(last_observations_distances)
-            if (-last_observations_distances[best_observation_index]
-                > self._best_observation_value):
-                best_observation = type(new_observations)(
-                    (key, values[best_observation_index])
-                    for key, values in new_observations.items())
-                self._best_observation_value = -last_observations_distances[
-                    best_observation_index]
-            else:
-                best_observation = self._current_target
-
-        elif isinstance(
+        if self._supervision_type == 'synthetic':
+            (current_target,
+             best_observation_value,
+             best_observation_index) = synthetic_goal_query(
                 env,
-                (SwimmerEnv,
-                 AntEnv,
-                 HumanoidEnv,
-                 HalfCheetahEnv,
-                 HopperEnv,
-                 Walker2dEnv)):
-            if env._exclude_current_positions_from_observation:
-                raise NotImplementedError
+                new_observations,
+                self._current_target,
+                self._best_observation_value)
 
-            last_observations_x_positions = new_observations[
-                'observations'][:, 0:1]
-            new_observations_distances = last_observations_x_positions
+            if best_observation_index is not None:
+                (self._current_target,
+                 self._best_observation_value,
+                 best_observation_index) = (
+                     current_target,
+                     best_observation_value,
+                     best_observation_index)
 
-            best_observation_index = np.argmax(new_observations_distances)
-            if (new_observations_distances[best_observation_index]
-                > self._best_observation_value):
-                best_observation = type(new_observations)(
-                    (key, values[best_observation_index])
-                    for key, values in new_observations.items())
-                self._best_observation_value = new_observations_distances[
-                    best_observation_index]
-            else:
-                best_observation = self._current_target
+        elif self._supervision_type == 'human':
+            human_goal_query(
+                env,
+                new_observations,
+                self._best_observation_value,
+                self._current_target)
+            time.sleep(30)  # Sleep for a moment in to get the query
+            self.evaluate_human_response()
 
-        elif 'dclaw3' in type(env).__name__.lower():
-            from sac_envs.utils.unit_circle_math import angle_distance_from_positions
-
-            assert np.unique(env.target_initial_position_range).size == 1, (
-                env.target_initial_position_range)
-
-            object_positions = new_observations['object_position']
-            desired_object_positions = np.array(
-                env.target_initial_position_range[0]).reshape(1, -1)
-            new_observations_distances = angle_distance_from_positions(
-                [np.sin(object_positions), np.cos(object_positions)],
-                [np.sin(desired_object_positions),
-                 np.cos(desired_object_positions)])
-
-            best_observation_index = np.argmin(new_observations_distances)
-            if (-new_observations_distances[best_observation_index]
-                > self._best_observation_value):
-                best_observation = type(new_observations)(
-                    (key, values[best_observation_index])
-                    for key, values in new_observations.items())
-                self._best_observation_value = -new_observations_distances[
-                    best_observation_index]
-            else:
-                best_observation = self._current_target
-        elif type(env).__name__ == 'DClawTurnFixed':
-            from sac_envs.utils.unit_circle_math import angle_distance_from_positions
-            new_observations_distances = new_observations[
-                'object_to_target_angle_dist']
-
-            if np.any(new_observations_distances < 0.1):
-                candidate_indices = np.flatnonzero(new_observations_distances < 0.1)
-                candidate_actions = new_observations['last_action'][candidate_indices]
-                best_observation_index = candidate_indices[np.argmin(
-                    np.mean(candidate_actions, axis=-1))]
-            else:
-                best_observation_index = np.argmin(new_observations_distances)
-
-            if (-new_observations_distances[best_observation_index]
-                > self._best_observation_value):
-                best_observation = type(new_observations)(
-                    (key, values[best_observation_index])
-                    for key, values in new_observations.items())
-                self._best_observation_value = -new_observations_distances[
-                    best_observation_index]
-            else:
-                best_observation = self._current_target
         else:
-            raise NotImplementedError
+            raise NotImplementedError(self._supervision_type)
 
-        self._current_target = best_observation.copy()
-
-        return best_observation
+        return self._current_target
 
     def get_diagnostics(self):
         return OrderedDict((
