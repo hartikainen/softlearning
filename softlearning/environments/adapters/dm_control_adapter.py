@@ -11,7 +11,7 @@ from gym import spaces
 
 from .softlearning_env import SoftlearningEnv
 from softlearning.environments.dm_control.suite.wrappers import (
-    action_perturbation)
+    action_perturbation, action_scale)
 
 
 DM_CONTROL_ENVIRONMENTS = {}
@@ -102,8 +102,8 @@ class DmControlAdapter(SoftlearningEnv):
             assert not kwargs
             assert domain is None and task is None, (domain, task)
 
-        # Ensure action space is already normalized.
         if normalize:
+            env = action_scale.Wrapper(env, minimum=-1.0, maximum=1.0)
             np.testing.assert_equal(env.action_spec().minimum, -1)
             np.testing.assert_equal(env.action_spec().maximum, 1)
 
