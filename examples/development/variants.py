@@ -23,32 +23,137 @@ GAUSSIAN_POLICY_PARAMS_BASE = {
     }
 }
 
-TOTAL_STEPS_PER_DOMAIN = {
-    'Swimmer': int(1e5),
-    'Hopper': int(3e6),
-    'HalfCheetah': int(3e6),
-    'Walker2d': int(5e6),
-    'Ant': int(3e6),
-    'Humanoid': int(2e7),
-    'Pendulum': int(1e4),
+TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
+    DEFAULT_KEY: 1e4,
+    'gym': {
+        'Swimmer': {
+            DEFAULT_KEY: int(1e5),
+            'v3': int(1e5),
+        },
+        'Hopper': {
+            DEFAULT_KEY: int(3e6),
+            'v3': int(3e6),
+        },
+        'HalfCheetah': {
+            DEFAULT_KEY: int(3e6),
+            'v3': int(3e6),
+        },
+        'Walker2d': {
+            DEFAULT_KEY: int(3e6),
+            'v3': int(3e6),
+        },
+        'Ant': {
+            DEFAULT_KEY: int(3e6),
+            'v3': int(3e6),
+        },
+        'Humanoid': {
+            DEFAULT_KEY: int(3e6),
+            'v3': int(3e6),
+        },
+        'Pendulum': {
+            DEFAULT_KEY: int(1e4),
+            'v3': int(1e4),
+        },
+    },
+    'dm_control': {
+        # BENCHMARKING
+        DEFAULT_KEY: int(3e6),
+        'acrobot': {
+            DEFAULT_KEY: int(3e6),
+            # 'swingup': int(None),
+            # 'swingup_sparse': int(None),
+        },
+        'ball_in_cup': {
+            DEFAULT_KEY: int(3e6),
+            # 'catch': int(None),
+        },
+        'cartpole': {
+            DEFAULT_KEY: int(3e6),
+            # 'balance': int(None),
+            # 'balance_sparse': int(None),
+            # 'swingup': int(None),
+            # 'swingup_sparse': int(None),
+            # 'three_poles': int(None),
+            # 'two_poles': int(None),
+        },
+        'cheetah': {
+            DEFAULT_KEY: int(3e6),
+            'run': int(1e7),
+        },
+        'finger': {
+            DEFAULT_KEY: int(3e6),
+            # 'spin': int(None),
+            # 'turn_easy': int(None),
+            # 'turn_hard': int(None),
+        },
+        'fish': {
+            DEFAULT_KEY: int(3e6),
+            # 'upright': int(None),
+            # 'swim': int(None),
+        },
+        'hopper': {
+            DEFAULT_KEY: int(3e6),
+            # 'stand': int(None),
+            'hop': int(1e7),
+        },
+        'humanoid': {
+            DEFAULT_KEY: int(1e7),
+            'stand': int(1e7),
+            'walk': int(1e7),
+            'run': int(1e7),
+            # 'run_pure_state': int(1e7),
+        },
+        'manipulator': {
+            DEFAULT_KEY: int(3e6),
+            'bring_ball': int(1e7),
+            # 'bring_peg': int(None),
+            # 'insert_ball': int(None),
+            # 'insert_peg': int(None),
+        },
+        'pendulum': {
+            DEFAULT_KEY: int(3e6),
+            # 'swingup': int(None),
+        },
+        'point_mass': {
+            DEFAULT_KEY: int(3e6),
+            # 'easy': int(None),
+            # 'hard': int(None),
+        },
+        'reacher': {
+            DEFAULT_KEY: int(3e6),
+            # 'easy': int(None),
+            # 'hard': int(None),
+        },
+        'swimmer': {
+            DEFAULT_KEY: int(3e6),
+            # 'swimmer6': int(None),
+            # 'swimmer15': int(None),
+        },
+        'walker': {
+            DEFAULT_KEY: int(3e6),
+            # 'stand': int(None),
+            'walk': int(1e7),
+            'run': int(1e7),
+        },
+        # EXTRA
+        'humanoid_CMU': {
+            DEFAULT_KEY: int(3e6),
+            'run': int(1e7),
+            # 'stand': int(None),
+        },
+        'quadruped': {
+            DEFAULT_KEY: int(3e6),
+            'run': int(1e7),
+            'walk': int(1e7),
+        },
+    },
 }
+
 
 ALGORITHM_PARAMS_BASE = {
     'type': 'SAC',
 
     'kwargs': {
-        'epoch_length': tune.sample_from(lambda spec: (
-            TOTAL_STEPS_PER_DOMAIN[
-                spec.get('config', spec)
-                ['environment_params']
-                ['training']
-                ['domain']
-            ] // (
-                spec.get('config', spec)
-                ['algorithm_params']
-                ['kwargs']
-                ['n_epochs'])
-        )),
         'train_every_n_steps': 1,
         'n_train_repeat': 1,
         'eval_render_kwargs': {},
@@ -381,12 +486,28 @@ def get_policy_params(universe, domain, task, algorithm='SAC'):
     return policy_params
 
 
+def get_total_timesteps(universe, domain, task):
+    level_result = TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK.copy()
+    for level_key in (universe, domain, task):
+        if isinstance(level_result, (int, float)):
+            return level_result
+
+        level_result = (
+            level_result.get(level_key)
+            or level_result[DEFAULT_KEY])
+
+    return level_result
+
+
 def get_algorithm_params(universe, domain, task):
     algorithm_params = {
         'kwargs': {
             'n_epochs': get_num_epochs(universe, domain, task),
             'n_initial_exploration_steps': tune.sample_from(
                 get_initial_exploration_steps),
+            'epoch_length': (
+                get_total_timesteps(universe, domain, task)
+                // get_num_epochs(universe, domain, task)),
         }
     }
 
