@@ -316,13 +316,16 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             'PoseStatic-v0': {},
             'PoseDynamic-v0': {},
             'TurnFixed-v0': {
+                'init_object_pos_range': (0, 0),
+                'target_pos_range': (np.pi, np.pi),
                 'use_dict_obs': True,
                 'reward_keys': ('object_to_target_angle_dist_cost', ),
                 'device_path': '/dev/ttyUSB0',
                 'camera_config': {
                     # 'topic': '/kinect2_001161563647/hd/image_color',
-                    'topic': '/kinect2_001161563647/qhd/image_color',
+                    # 'topic': '/kinect2_001161563647/qhd/image_color',
                     # 'topic': '/kinect2_001144463747/hd/image_color',
+                    'topic': '/kinect2_001144463747/qhd/image_color',
                     # 'topic': '/front_2/image_raw',
                 },
                 'pixel_wrapper_kwargs': {
@@ -463,7 +466,7 @@ NUM_EPOCHS_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: int(150),
         },
         'DClaw': {
-            DEFAULT_KEY: int(500),
+            DEFAULT_KEY: int(200),
         },
     },
     'dm_control': {
@@ -843,7 +846,7 @@ def get_variant_spec(args):
                         'type': 'linear',
                         'kwargs': {
                             'start_labels': 1,
-                            'decay_steps': end_labels,
+                            'decay_steps': 200,
                             'end_labels': end_labels,
                         }
                     },
@@ -854,7 +857,7 @@ def get_variant_spec(args):
             }
             for target_candidate_strategy in ('last_steps', )
             for target_candidate_window in (int(1e3), )
-            for end_labels in (25, )
+            for end_labels in (20, )
         ]),
         # 'target_proposer_params': {
         #     'type': 'UnsupervisedTargetProposer',
@@ -899,7 +902,7 @@ def get_variant_spec(args):
                     'max_pair_distance': None,
                 },
             }
-            for max_size in (int(1e5), )
+            for max_size in (int(3e5), )
         ]),
         'sampler_params': {
             'type': 'RemoteSampler',
