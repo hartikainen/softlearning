@@ -237,8 +237,6 @@ def synthetic_goal_query(env,
             best_observation_index]
 
     elif 'dclaw3' in type(env).__name__.lower():
-        from sac_envs.utils.unit_circle_math import angle_distance_from_positions
-
         assert np.unique(env.target_initial_position_range).size == 1, (
             env.target_initial_position_range)
 

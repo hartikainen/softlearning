@@ -34,7 +34,6 @@ services:
        - ..:/root/softlearning
        - ~/ray_results/softlearning-dev-gpu:/root/ray_results
        - ~/github/google/dsuite:/root/dsuite
-       - ~/github/vikashplus/sac_envs:/root/sac_envs
     command:
       - bash
     stdin_open: true

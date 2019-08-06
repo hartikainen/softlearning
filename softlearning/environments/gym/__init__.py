@@ -197,13 +197,6 @@ def register_multiworld_environments():
 
 def register_environments():
     try:
-        from sac_envs.envs.dclaw import (
-            register_environments as register_dclaw_environments)
-        register_dclaw_environments()
-    except ImportError as e:
-        print(e)
-
-    try:
         import dsuite
     except ImportError as e:
         print(e)
