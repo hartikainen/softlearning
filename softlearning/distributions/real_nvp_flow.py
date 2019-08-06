@@ -18,11 +18,7 @@ def _use_static_shape(input_tensor, ndims):
     return input_tensor.shape.is_fully_defined() and isinstance(ndims, int)
 
 
-class ConditionalChain(bijectors.ConditionalBijector, bijectors.Chain):
-    pass
-
-
-class ConditionalRealNVPFlow(bijectors.ConditionalBijector):
+class ConditionalRealNVPFlow(bijectors.Bijector):
     """TODO"""
 
     def __init__(self,
