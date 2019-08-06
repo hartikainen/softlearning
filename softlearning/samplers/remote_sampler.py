@@ -105,6 +105,7 @@ class RemoteSampler(BaseSampler):
 @ray.remote
 class _RemoteEnv(object):
     def __init__(self, env_pkl, policy_pkl):
+        import tensorflow as tf
         gpu_options = tf.GPUOptions(allow_growth=True)
         self._session = tf.Session(
             config=tf.ConfigProto(gpu_options=gpu_options))
