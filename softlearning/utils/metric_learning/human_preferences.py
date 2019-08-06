@@ -104,7 +104,8 @@ def view_all_queries(trial_directory):
         image_row = create_image_row(images, best_observation_index, height=480)
         image_grid.append(image_row)
 
-        if best_observation_index < new_observations['pixels'].shape[0]:
+        if (isinstance(best_observation_index, int)
+            and best_observation_index < new_observations['pixels'].shape[0]):
             current_target = type(new_observations)(
                 (key, values[best_observation_index])
                 for key, values in new_observations.items()
