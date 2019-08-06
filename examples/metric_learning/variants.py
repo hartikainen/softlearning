@@ -7,7 +7,6 @@ import tensorflow as tf
 from softlearning.misc.utils import get_git_rev
 from examples.development.variants import is_image_env
 from examples.utils import variant_equals
-from sac_envs.envs.dclaw.dclaw3_screw_v2 import LinearLossFn, NegativeLogLossFn
 
 
 DEFAULT_KEY = "__DEFAULT_KEY__"
@@ -202,115 +201,6 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'PickPlaceSingle',
                     'Stack',
             )
-        },
-        'DClaw3': {
-            'ScrewV2-v0': {
-                'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
-                'hand_position_cost_coeff': 0,
-                'hand_velocity_cost_coeff': 0,
-                'hand_acceleration_cost_coeff': 0,
-                'target_initial_velocity_range': (0, 0),
-                'target_initial_position_range': (0, 0),
-                'object_initial_velocity_range': (0, 0),
-                'object_initial_position_range': (0, 0),
-                'goal_keys': (
-                    'desired_hand_position',
-                    'desired_hand_velocity',
-                    'desired_hand_acceleration',
-                    'desired_object_position',
-                    'desired_object_position_sin',
-                    'desired_object_position_cos',
-                    'desired_object_velocity',
-                ),
-            },
-            'ImageScrewV2-v0': {
-                'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
-                'hand_position_cost_coeff': 0,
-                'hand_velocity_cost_coeff': 0,
-                'hand_acceleration_cost_coeff': 0,
-                'target_initial_velocity_range': (0, 0),
-                'target_initial_position_range': (np.pi, np.pi),
-                'object_initial_velocity_range': (0, 0),
-                'object_initial_position_range': (0, 0),
-                'pixel_wrapper_kwargs': {
-                    'observation_key': 'pixels',
-                    'pixels_only': False,
-                    'render_kwargs': {
-                        'width': 32,
-                        'height': 32,
-                        'camera_id': -1
-                    },
-                },
-                'observation_keys': (
-                    'pixels',
-
-                    'hand_position',
-                    'hand_velocity',
-                    'hand_acceleration',
-
-                    # These are supposed to not be fed to the models,
-                    # but they are here just for the reward computation
-                    # when we set the goal from outside of the environment.
-                    'object_position',
-                    'object_position_sin',
-                    'object_position_cos',
-                    'object_velocity',
-
-                    'desired_hand_position',
-                    'desired_hand_velocity',
-                    'desired_pixels',
-                ),
-                'goal_keys': (
-                    'desired_hand_position',
-                    'desired_hand_velocity',
-                    'desired_pixels',
-                ),
-            },
-        },
-        'HardwareDClaw3': {
-            'ScrewV2-v0': {
-                'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
-                'hand_position_cost_coeff': 0,
-                'hand_velocity_cost_coeff': 0,
-                'hand_acceleration_cost_coeff': 0,
-                'target_initial_velocity_range': (0, 0),
-                'target_initial_position_range': (0, 0),
-                'object_initial_velocity_range': (0, 0),
-                'object_initial_position_range': (0, 0),
-                'goal_keys': (
-                    'desired_hand_position',
-                    'desired_hand_velocity',
-                    'desired_hand_acceleration',
-                    'desired_object_position',
-                    'desired_object_position_sin',
-                    'desired_object_position_cos',
-                    'desired_object_velocity',
-                ),
-            },
-            'ImageScrewV2-v0': {
-                'object_target_distance_reward_fn': NegativeLogLossFn(1e-10),
-                'hand_position_cost_coeff': 0,
-                'hand_velocity_cost_coeff': 0,
-                'hand_acceleration_cost_coeff': 0,
-                'target_initial_velocity_range': (0, 0),
-                'target_initial_position_range': (np.pi, np.pi),
-                'object_initial_velocity_range': (0, 0),
-                'object_initial_position_range': (0, 0),
-                'pixel_wrapper_kwargs': {
-                    'observation_key': 'pixels',
-                    'pixels_only': False,
-                    'render_kwargs': {
-                        'width': 32,
-                        'height': 32,
-                        'camera_id': -1
-                    },
-                },
-                'observation_keys': (
-                    'hand_position',
-                    'hand_velocity',
-                    'pixels'
-                ),
-            },
         },
         'DClaw': {
             'PoseStatic-v0': {},
