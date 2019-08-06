@@ -502,12 +502,13 @@ def get_total_timesteps(universe, domain, task):
 def get_algorithm_params(universe, domain, task):
     algorithm_params = {
         'kwargs': {
-            'n_epochs': get_num_epochs(universe, domain, task),
+            'n_epochs': 200, # get_num_epochs(universe, domain, task),
             'n_initial_exploration_steps': tune.sample_from(
                 get_initial_exploration_steps),
             'epoch_length': (
                 get_total_timesteps(universe, domain, task)
-                // get_num_epochs(universe, domain, task)),
+                // 200
+            ),
         }
     }
 
