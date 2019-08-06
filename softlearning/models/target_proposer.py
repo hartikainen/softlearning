@@ -14,6 +14,7 @@ from gym.envs.mujoco.half_cheetah_v3 import HalfCheetahEnv
 from gym.envs.mujoco.hopper_v3 import HopperEnv
 from gym.envs.mujoco.walker2d_v3 import Walker2dEnv
 
+from softlearning.utils.unit_circle_math import angle_distance_from_positions
 from softlearning.utils.numpy import softmax
 from softlearning.environments.utils import is_point_2d_env
 
@@ -257,7 +258,6 @@ def synthetic_goal_query(env,
             best_observation_index]
 
     elif type(env).__name__ == 'DClawTurnFixed':
-        from sac_envs.utils.unit_circle_math import angle_distance_from_positions
         new_observations_distances = new_observations[
             'object_to_target_angle_dist']
 
