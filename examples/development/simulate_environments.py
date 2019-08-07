@@ -25,6 +25,10 @@ def parse_args():
     parser.add_argument('experiment_path',
                         type=str,
                         help='Path to the experiment root.')
+    parser.add_argument('--evaluation-task',
+                        type=str,
+                        default='PerturbAction-v0')
+    parser.add_argument('--desired-checkpoint', type=int)
     parser.add_argument('--max-path-length', '-l', type=int, default=1000)
     parser.add_argument('--num-rollouts', '-n', type=int, default=1)
     parser.add_argument('--deterministic', '-d',
@@ -83,6 +87,7 @@ def simulate_trial_in_environments(experiment_path,
                                    trial_dirname,
                                    environments_params,
                                    output_dir,
+                                   desired_checkpoint,
                                    deterministic,
                                    num_rollouts,
                                    max_path_length):
@@ -99,8 +104,6 @@ def simulate_trial_in_environments(experiment_path,
         for checkpoint_dir in checkpoint_dirs
     ]
 
-    desired_checkpoint = 45
-
     # if np.max(checkpoint_ids) < desired_checkpoint:
     if desired_checkpoint not in checkpoint_ids:
         return
@@ -110,7 +113,7 @@ def simulate_trial_in_environments(experiment_path,
     ))[0]]]
 
     dataframe_parts = []
-    assert checkpoint_dirs
+    assert checkpoint_dirs and str(desired_checkpoint) in checkpoint_dirs[0]
     for checkpoint_dir in checkpoint_dirs:
         print(f"checkpoint_dir: {checkpoint_dir}")
 
@@ -183,34 +186,61 @@ def simulate_perturbations(args):
     deterministic = args.deterministic
     max_path_length = args.max_path_length
     num_rollouts = args.num_rollouts
+    evaluation_task = args.evaluation_task
 
-    environments_params = {
-        **{
+    if evaluation_task == 'Pothole-v0':
+        environments_params = {
             f'pothole-depth-{pothole_depth}': {
-                'task': 'Pothole-v0',
+                'task': evaluation_task,
                 'kwargs': {
                     'pothole_depth': pothole_depth,
                 }
             }
             # for pothole_depth in (0.1, 0.2, 0.4, 0.8)
             for pothole_depth in np.linspace(0.001, 1.0, 100)
-        },
-        # **{
-        #     f'perturb-random-action-probability-{perturbation_probability}': {
-        #         'kwargs': {
-        #             'perturb_random_action_kwargs': {
-        #                 'perturbation_probability': perturbation_probability,
-        #             },
-        #         }
-        #     }
-        #     for perturbation_probability in np.linspace(0, 1.0, 100)
-        # }
-    }
+        }
+    elif evaluation_task == 'HeightField-v0':
+        environments_params = {
+            f'height-field-height-{field_z_max}': {
+                'task': evaluation_task,
+                'kwargs': {
+                    'field_z_max': field_z_max,
+                    'field_z_range': (0, field_z_max),
+                }
+            }
+            for field_z_max in np.linspace(0, 0.5, 50)
+        }
+    elif evaluation_task == 'PerturbRandomAction-v0':
+        environments_params = {
+            f'perturbation-probability-{perturbation_probability}': {
+                'kwargs': {
+                    'perturb_random_action_kwargs': {
+                        'perturbation_probability': perturbation_probability,
+                    },
+                }
+            }
+            for perturbation_probability in np.linspace(0, 1.0, 50)
+        }
+    elif evaluation_task == 'PerturbNoisyAction-v0':
+        environments_params = {
+            f'noise-scale-{noise_scale}': {
+                'kwargs': {
+                    'perturb_noisy_action_kwargs': {
+                        'noise_scale': noise_scale,
+                    },
+                }
+            }
+            for noise_scale in np.linspace(0, 2.0, 50)
+        }
+    else:
+        raise NotImplementedError(evaluation_task)
 
     output_dir = os.path.join(
         '/tmp',
         'perturbations',
-        experiment_path.split('ray_results/gs/')[-1])
+        experiment_path.split('ray_results/gs/')[-1],
+        evaluation_task,
+    )
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -218,12 +248,14 @@ def simulate_perturbations(args):
     ray.init(local_mode=False)
 
     trial_dirnames = tuple(os.walk(experiment_path))[0][1]
+
     results = ray.get([
         simulate_trial_in_environments.remote(
             experiment_path,
             trial_dirname,
             environments_params,
             output_dir,
+            args.desired_checkpoint,
             deterministic,
             num_rollouts,
             max_path_length,
