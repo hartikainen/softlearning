@@ -28,19 +28,19 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
     'gym': {
         'Swimmer': {
             DEFAULT_KEY: int(1e5),
-            'v3': int(1e5),
+            'v3': int(5e5),
         },
         'Hopper': {
-            DEFAULT_KEY: int(3e6),
-            'v3': int(3e6),
+            DEFAULT_KEY: int(5e6),
+            'v3': int(5e6),
         },
         'HalfCheetah': {
             DEFAULT_KEY: int(3e6),
             'v3': int(3e6),
         },
         'Walker2d': {
-            DEFAULT_KEY: int(3e6),
-            'v3': int(3e6),
+            DEFAULT_KEY: int(5e6),
+            'v3': int(5e6),
         },
         'Ant': {
             DEFAULT_KEY: int(3e6),
@@ -303,7 +303,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 'max_velocity': tune.grid_search([
                     0.5, 1.0, 2.0, float('inf'),
                 ]),
-                'terminate_when_unhealthy': tune.grid_search([True, False]),
+                'terminate_when_unhealthy': tune.grid_search([True]),
             },
         },
         'HalfCheetah': {  # 6 DoF
@@ -313,7 +313,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 'max_velocity': tune.grid_search([
                     0.5, 1.0, 2.0, 3.0, float('inf'),
                 ]),
-                'terminate_when_unhealthy': tune.grid_search([True, False]),
+                'terminate_when_unhealthy': tune.grid_search([True]),
             },
         },
         'Ant': {  # 8 DoF
@@ -481,7 +481,7 @@ def get_policy_params(universe, domain, task, algorithm='SAC'):
     policy_params = GAUSSIAN_POLICY_PARAMS_BASE.copy()
     if algorithm.lower() == 'ddpg':
         policy_params['kwargs']['scale_identity_multiplier'] = (
-            tune.grid_search([0.1, 0.3, 1.0]))
+            tune.grid_search([0.1, 0.3]))
         policy_params['type'] = 'ConstantScaleGaussianPolicy'
     return policy_params
 
@@ -682,5 +682,14 @@ def get_variant_spec(args):
     if args.checkpoint_replay_pool is not None:
         variant_spec['run_params']['checkpoint_replay_pool'] = (
             args.checkpoint_replay_pool)
+
+    # total_timesteps = (
+    #     variant_spec['algorithm_params']['kwargs']['epoch_length']
+    #     * variant_spec['algorithm_params']['kwargs']['n_epochs'])
+    # if total_timesteps <= 3e6:
+    #     print("Not running:",
+    #           variant_spec['environment_params']['training']['domain'],
+    #           variant_spec['environment_params']['training']['task'])
+    #     exit(0)
 
     return variant_spec
