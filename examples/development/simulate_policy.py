@@ -96,7 +96,7 @@ def simulate_policy(checkpoint_path,
     domain, task = environment_params['domain'], environment_params['task']
 
     assert domain in ('Humanoid', 'Hopper', 'Walker2d'), domain
-    assert task in ('MaxVelocity-v3', 'v3'), task
+    assert task in ('MaxVelocity-v3', 'Standup-v2', 'Stand-v3', 'v3'), task
 
     if task == 'MaxVelocity-v3':
         environment_params['kwargs'].pop('max_velocity')
@@ -127,7 +127,7 @@ def simulate_policy(checkpoint_path,
                          render_kwargs=render_kwargs)
 
     if render_kwargs.get('mode') == 'rgb_array':
-        fps = 1 // getattr(environment.evaluation_environment, 'dt', 1/30)
+        fps = 1 // getattr(environment, 'dt', 1/30)
         for i, path in enumerate(paths):
             video_save_dir = os.path.expanduser('/tmp/simulate_policy/')
             video_save_path = os.path.join(video_save_dir, f'episode_{i}.mp4')
