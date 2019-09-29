@@ -219,7 +219,7 @@ def simulate_perturbations(args):
                     },
                 }
             }
-            for perturbation_probability in np.linspace(0, 1.0, 50)
+            for perturbation_probability in np.linspace(0, 0.5, 50)
         }
     elif evaluation_task == 'PerturbNoisyAction-v0':
         environments_params = {
@@ -230,7 +230,7 @@ def simulate_perturbations(args):
                     },
                 }
             }
-            for noise_scale in np.linspace(0, 2.0, 50)
+            for noise_scale in np.linspace(0, 1.0, 50)
         }
     else:
         raise NotImplementedError(evaluation_task)
