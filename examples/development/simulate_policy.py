@@ -74,6 +74,7 @@ def load_policy_and_environment(picklable, variant):
         variant['environment_params']['training']
         if 'evaluation' in variant['environment_params']
         else variant['environment_params']['training'])
+
     environment = get_environment_from_params(environment_params)
 
     policy = get_policy_from_variant(variant, environment)
@@ -101,21 +102,44 @@ def simulate_policy(checkpoint_path,
     if task == 'MaxVelocity-v3':
         environment_params['kwargs'].pop('max_velocity')
 
-    pothole_depth = 0.3
-    environment = get_environment(
-        'gym', domain, 'Pothole-v0', {
-            **environment_params['kwargs'],
-            'pothole_depth': pothole_depth,
-            'pothole_length': 0.25,
-            'pothole_distance': 5.0,
-            # 'healthy_z_range': (1.0 - pothole_depth, 2.0 + pothole_depth)
-        })
+    # (TODO):
+    # More granular perturations
+    # Make z to be 0-centered
+
+    # environment = get_environment(
+    #     'gym', domain, 'v3', {
+    #         **environment_params['kwargs'],
+    #     })
+
+    # environment = get_environment(
+    #     'gym', domain, 'HeightField-v0', {
+    #         **environment_params['kwargs'],
+    #         'field_z_range': (0, 0.25),
+    #         # 'healthy_z_range': (1.0 - pothole_depth, 2.0 + pothole_depth)
+    #     })
+
+    # environment = get_environment(
+    #     'gym', domain, 'Pothole-v0', {
+    #         **environment_params['kwargs'],
+    #         'pothole_depth': 1.0,
+    #         # 'pothole_length': 0.25,
+    #         # 'pothole_distance': 5.0,
+    #         # 'healthy_z_range': (1.0 - pothole_depth, 2.0 + pothole_depth)
+    #     })
 
     # environment = get_environment(
     #     'gym', domain, 'v3', {
     #         **environment_params['kwargs'],
     #         'perturb_random_action_kwargs': {
     #             'perturbation_probability': 0.0
+    #         },
+    #     })
+
+    # environment = get_environment(
+    #     'gym', domain, 'v3', {
+    #         **environment_params['kwargs'],
+    #         'perturb_noisy_action_kwargs': {
+    #             'noise_scale': 2.0
     #         },
     #     })
 
