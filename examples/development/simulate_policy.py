@@ -87,7 +87,9 @@ def simulate_policy(checkpoint_path,
                     deterministic,
                     num_rollouts,
                     max_path_length,
-                    render_kwargs):
+                    render_kwargs,
+                    evaluation_environment_params=None,
+                    save_video=False):
     checkpoint_path = checkpoint_path.rstrip('/')
     picklable, variant, progress, metadata = load_checkpoint(checkpoint_path)
     policy, environment = load_policy_and_environment(picklable, variant)
@@ -105,43 +107,66 @@ def simulate_policy(checkpoint_path,
     # (TODO):
     # More granular perturations
     # Make z to be 0-centered
+    if evaluation_environment_params is not None:
+        evaluation_params = evaluation_environment_params
+    else:
+        if evaluation_task == 'Pothole-v0':
+            environments_params = {
+                f'pothole-depth-{pothole_depth}': {
+                    'task': evaluation_task,
+                    'kwargs': {
+                        'pothole_depth': pothole_depth,
+                    }
+                }
+                # for pothole_depth in (0.1, 0.2, 0.4, 0.8)
+                for pothole_depth in np.linspace(0.001, 1.0, 100)
+            }
+        elif evaluation_task == 'HeightField-v0':
+            environments_params = {
+                f'height-field-height-{field_z_max}': {
+                    'task': evaluation_task,
+                    'kwargs': {
+                        'field_z_max': field_z_max,
+                        'field_z_range': (0, field_z_max),
+                    }
+                }
+                for field_z_max in np.linspace(0, 0.5, 50)
+            }
+        elif evaluation_task == 'PerturbRandomAction-v0':
+            environments_params = {
+                f'perturbation-probability-{perturbation_probability}': {
+                    'kwargs': {
+                        'perturb_random_action_kwargs': {
+                            'perturbation_probability': perturbation_probability,
+                        },
+                    }
+                }
+                for perturbation_probability in np.linspace(0, 0.5, 50)
+            }
+        elif evaluation_task == 'PerturbNoisyAction-v0':
+            environments_params = {
+                f'noise-scale-{noise_scale}': {
+                    'kwargs': {
+                        'perturb_noisy_action_kwargs': {
+                            'noise_scale': noise_scale,
+                        },
+                    }
+                }
+                for noise_scale in np.linspace(0, 1.0, 50)
+            }
+        else:
+            raise NotImplementedError(evaluation_task)
 
-    # environment = get_environment(
-    #     'gym', domain, 'v3', {
-    #         **environment_params['kwargs'],
-    #     })
-
-    # environment = get_environment(
-    #     'gym', domain, 'HeightField-v0', {
-    #         **environment_params['kwargs'],
-    #         'field_z_range': (0, 0.25),
-    #         # 'healthy_z_range': (1.0 - pothole_depth, 2.0 + pothole_depth)
-    #     })
-
-    # environment = get_environment(
-    #     'gym', domain, 'Pothole-v0', {
-    #         **environment_params['kwargs'],
-    #         'pothole_depth': 1.0,
-    #         # 'pothole_length': 0.25,
-    #         # 'pothole_distance': 5.0,
-    #         # 'healthy_z_range': (1.0 - pothole_depth, 2.0 + pothole_depth)
-    #     })
-
-    # environment = get_environment(
-    #     'gym', domain, 'v3', {
-    #         **environment_params['kwargs'],
-    #         'perturb_random_action_kwargs': {
-    #             'perturbation_probability': 0.0
-    #         },
-    #     })
-
-    # environment = get_environment(
-    #     'gym', domain, 'v3', {
-    #         **environment_params['kwargs'],
-    #         'perturb_noisy_action_kwargs': {
-    #             'noise_scale': 2.0
-    #         },
-    #     })
+    assert not environment_params['kwargs'], environment_params['kwargs']
+    environment = get_environment(
+        'gym',
+        domain,
+        task,
+        {
+            **environment_params['kwargs'],
+            **evaluation_environment_params,
+        }
+    )
 
     with policy.set_deterministic(deterministic):
         paths = rollouts(num_rollouts,
@@ -150,7 +175,7 @@ def simulate_policy(checkpoint_path,
                          path_length=max_path_length,
                          render_kwargs=render_kwargs)
 
-    if render_kwargs.get('mode') == 'rgb_array':
+    if save_video and render_kwargs.get('mode') == 'rgb_array':
         fps = 1 // getattr(environment, 'dt', 1/30)
         for i, path in enumerate(paths):
             video_save_dir = os.path.expanduser('/tmp/simulate_policy/')
