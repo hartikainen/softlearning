@@ -19,7 +19,7 @@ dask==1.0.0
 decorator==4.3.0
 docutils==0.14
 deepdiff==3.3.0
-git+https://github.com/deepmind/dm_control.git@e681949dda5ef1b05acf4fad99a134101469d8e7
+git+https://github.com/deepmind/dm_control.git@976e5c1c3f1a37cc146b7e5737ff9cc2df1d9eec
 flatbuffers==1.10
 flatten-dict==0.0.3.post1
 funcsigs==1.0.2
