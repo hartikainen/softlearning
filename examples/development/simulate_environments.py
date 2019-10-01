@@ -232,6 +232,17 @@ def simulate_perturbations(args):
             }
             for noise_scale in np.linspace(0, 1.0, 50)
         }
+    elif evaluation_task == 'PerturbBody-v0':
+        environments_params = {
+            f'perturbation-probability-{perturbation_probability}': {
+                'kwargs': {
+                    'perturb_random_action_kwargs': {
+                        'perturbation_probability': perturbation_probability,
+                    },
+                }
+            }
+            for perturbation_probability in np.linspace(0, 1.0, 50)
+        }
     else:
         raise NotImplementedError(evaluation_task)
 

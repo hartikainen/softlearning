@@ -13,6 +13,7 @@ from softlearning.environments.gym.wrappers import (
     NormalizeActionWrapper,
     PerturbRandomActionWrapper,
     PerturbNoisyActionWrapper,
+    PerturbBodyWrapper,
     PixelObservationWrapper)
 
 
@@ -61,6 +62,7 @@ class GymAdapter(SoftlearningEnv):
                  unwrap_time_limit=True,
                  perturb_random_action_kwargs=None,
                  perturb_noisy_action_kwargs=None,
+                 perturb_body_kwargs=None,
                  pixel_wrapper_kwargs=None,
                  **kwargs):
         assert not args, (
@@ -100,6 +102,9 @@ class GymAdapter(SoftlearningEnv):
 
         if perturb_noisy_action_kwargs is not None:
             env = PerturbNoisyActionWrapper(env, **perturb_noisy_action_kwargs)
+
+        if perturb_body_kwargs is not None:
+            env = PerturbBodyWrapper(env, **perturb_body_kwargs)
 
         if pixel_wrapper_kwargs is not None:
             env = PixelObservationWrapper(env, **pixel_wrapper_kwargs)
