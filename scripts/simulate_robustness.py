@@ -108,7 +108,7 @@ def main(algorithm,
          num_rollouts=3,
          deterministic=True):
 
-    trial_dirs = get_trial_dirs(algorithm)[:3]
+    trial_dirs = get_trial_dirs(algorithm)
 
     checkpoint_dirs = [
         os.path.join(trial_dir, f"checkpoint_{checkpoint_id}")
