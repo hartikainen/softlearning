@@ -13,7 +13,7 @@ import numpy as np
 from ray.tune.logger import CSVLogger
 
 from softlearning.samplers import rollouts
-from softlearning.misc.utils import save_video
+from softlearning.utils.video import save_video
 
 
 if LooseVersion(tf.__version__) > LooseVersion("2.00"):

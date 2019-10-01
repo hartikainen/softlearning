@@ -11,7 +11,7 @@ from softlearning.environments.utils import (
     get_environment_from_params, get_environment)
 from softlearning.policies.utils import get_policy_from_variant
 from softlearning.samplers import rollouts
-from softlearning.misc.utils import save_video
+from softlearning.utils.video import save_video
 
 
 DEFAULT_RENDER_KWARGS = {
