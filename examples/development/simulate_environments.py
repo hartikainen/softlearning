@@ -236,7 +236,7 @@ def simulate_perturbations(args):
         environments_params = {
             f'perturbation-probability-{perturbation_probability}': {
                 'kwargs': {
-                    'perturb_random_action_kwargs': {
+                    'perturb_body_kwargs': {
                         'perturbation_probability': perturbation_probability,
                     },
                 }
