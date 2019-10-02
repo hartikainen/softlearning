@@ -119,6 +119,7 @@ def simulate_trial_in_environments(experiment_path,
 
         tf.keras.backend.clear_session()
         session = tf.keras.backend.get_session()
+
         picklable, variant, progress, metadata = load_checkpoint(
             checkpoint_dir, session=session)
         policy, _ = load_policy_and_environment(picklable, variant)
@@ -197,7 +198,7 @@ def simulate_perturbations(args):
                 }
             }
             # for pothole_depth in (0.1, 0.2, 0.4, 0.8)
-            for pothole_depth in np.linspace(0.001, 1.0, 100)
+            for pothole_depth in np.linspace(0.001, 1.0, 51)
         }
     elif evaluation_task == 'HeightField-v0':
         environments_params = {
@@ -208,7 +209,7 @@ def simulate_perturbations(args):
                     'field_z_range': (0, field_z_max),
                 }
             }
-            for field_z_max in np.linspace(0, 0.5, 50)
+            for field_z_max in np.linspace(0, 0.5, 51)
         }
     elif evaluation_task == 'PerturbRandomAction-v0':
         environments_params = {
@@ -219,7 +220,7 @@ def simulate_perturbations(args):
                     },
                 }
             }
-            for perturbation_probability in np.linspace(0, 0.5, 50)
+            for perturbation_probability in np.linspace(0, 0.5, 51)
         }
     elif evaluation_task == 'PerturbNoisyAction-v0':
         environments_params = {
@@ -230,7 +231,7 @@ def simulate_perturbations(args):
                     },
                 }
             }
-            for noise_scale in np.linspace(0, 1.0, 50)
+            for noise_scale in np.linspace(0, 1.0, 51)
         }
     elif evaluation_task == 'PerturbBody-v0':
         environments_params = {
@@ -241,7 +242,7 @@ def simulate_perturbations(args):
                     },
                 }
             }
-            for perturbation_strength in np.linspace(0, 50.0, 50)
+            for perturbation_strength in np.linspace(0, 50.0, 51)
         }
     elif evaluation_task == 'Wind-v0':
         environments_params = {
@@ -252,7 +253,7 @@ def simulate_perturbations(args):
                     },
                 }
             }
-            for wind_strength in np.linspace(0, 20.0, 50)
+            for wind_strength in np.linspace(0, 20.0, 51)
         }
     else:
         raise NotImplementedError(evaluation_task)
