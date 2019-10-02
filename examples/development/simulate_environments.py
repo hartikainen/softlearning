@@ -234,14 +234,14 @@ def simulate_perturbations(args):
         }
     elif evaluation_task == 'PerturbBody-v0':
         environments_params = {
-            f'perturbation-probability-{perturbation_probability}': {
+            f'perturbation-strength-{perturbation_strength}': {
                 'kwargs': {
                     'perturb_body_kwargs': {
-                        'perturbation_probability': perturbation_probability,
+                        'perturbation_strength': perturbation_strength,
                     },
                 }
             }
-            for perturbation_probability in np.linspace(0, 1.0, 50)
+            for perturbation_strength in np.linspace(0, 50.0, 50)
         }
     elif evaluation_task == 'Wind-v0':
         environments_params = {
