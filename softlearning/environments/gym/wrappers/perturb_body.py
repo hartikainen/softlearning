@@ -2,7 +2,7 @@ import gym
 from gym import spaces
 import numpy as np
 
-from softlearning.utils.random import random_three_vector
+from softlearning.utils.random import spherical as random_spherical
 
 
 __all__ = ['PerturbBodyWrapper']
@@ -23,7 +23,7 @@ class PerturbBodyWrapper(gym.Wrapper):
 
         if self._step_counter % 100 == 0:
             torso_index = self.sim.model.body_name2id('torso')
-            perturbation_direction = random_three_vector()
+            perturbation_direction = random_spherical(ndim=3)
             perturbation  = (
                 perturbation_direction * self._perturbation_strength)
             self.sim.data.xfrc_applied[torso_index][0:3] = perturbation
