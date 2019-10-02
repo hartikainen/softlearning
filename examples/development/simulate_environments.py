@@ -243,6 +243,17 @@ def simulate_perturbations(args):
             }
             for perturbation_probability in np.linspace(0, 1.0, 50)
         }
+    elif evaluation_task == 'Wind-v0':
+        environments_params = {
+            f'wind-strength-{wind_strength}': {
+                'kwargs': {
+                    'wind_kwargs': {
+                        'wind_strength': wind_strength,
+                    },
+                }
+            }
+            for wind_strength in np.linspace(0, 20.0, 50)
+        }
     else:
         raise NotImplementedError(evaluation_task)
 

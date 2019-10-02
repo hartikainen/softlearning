@@ -14,6 +14,7 @@ from softlearning.environments.gym.wrappers import (
     PerturbRandomActionWrapper,
     PerturbNoisyActionWrapper,
     PerturbBodyWrapper,
+    WindWrapper,
     PixelObservationWrapper)
 
 
@@ -63,6 +64,7 @@ class GymAdapter(SoftlearningEnv):
                  perturb_random_action_kwargs=None,
                  perturb_noisy_action_kwargs=None,
                  perturb_body_kwargs=None,
+                 wind_kwargs=None,
                  pixel_wrapper_kwargs=None,
                  **kwargs):
         assert not args, (
@@ -105,6 +107,9 @@ class GymAdapter(SoftlearningEnv):
 
         if perturb_body_kwargs is not None:
             env = PerturbBodyWrapper(env, **perturb_body_kwargs)
+
+        if wind_kwargs is not None:
+            env = WindWrapper(env, **wind_kwargs)
 
         if pixel_wrapper_kwargs is not None:
             env = PixelObservationWrapper(env, **pixel_wrapper_kwargs)
