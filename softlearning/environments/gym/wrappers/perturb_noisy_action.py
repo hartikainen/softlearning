@@ -26,5 +26,3 @@ class PerturbNoisyActionWrapper(gym.ActionWrapper):
     def reverse_action(self, action):
         raise NotImplementedError
 
-
-normalize = PerturbNoisyActionWrapper

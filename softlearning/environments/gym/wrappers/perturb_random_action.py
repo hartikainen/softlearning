@@ -25,5 +25,3 @@ class PerturbRandomActionWrapper(gym.ActionWrapper):
     def reverse_action(self, action):
         raise NotImplementedError
 
-
-normalize = PerturbRandomActionWrapper

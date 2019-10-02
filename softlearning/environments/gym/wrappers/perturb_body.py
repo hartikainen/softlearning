@@ -24,7 +24,3 @@ class PerturbBodyWrapper(gym.Wrapper):
         self.sim.data.xfrc_applied[:] = old_xfrc_applied
         return result
 
-
-
-
-normalize = PerturbBodyWrapper
