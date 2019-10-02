@@ -253,7 +253,7 @@ def simulate_perturbations(args):
                     },
                 }
             }
-            for wind_strength in np.linspace(0, 20.0, 51)
+            for wind_strength in np.linspace(0, 15.0, 51)
         }
     else:
         raise NotImplementedError(evaluation_task)
