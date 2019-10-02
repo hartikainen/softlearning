@@ -21,14 +21,11 @@ class PerturbBodyWrapper(gym.Wrapper):
     def step(self, *args, **kwargs):
         self._step_counter += 1
 
-        old_xfrc_applied = self.sim.data.xfrc_applied[:].copy()
-
         if self._step_counter % 100 == 0:
             torso_index = self.sim.model.body_name2id('torso')
             perturbation_direction = random_three_vector()
             perturbation  = (
                 perturbation_direction * self._perturbation_strength)
-            print(perturbation, np.linalg.norm(perturbation))
             self.sim.data.xfrc_applied[torso_index][0:3] = perturbation
 
         if hasattr(self, 'viewer') and self.viewer:
