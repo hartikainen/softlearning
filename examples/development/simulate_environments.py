@@ -125,10 +125,25 @@ def simulate_trial_in_environments(experiment_path,
         policy, _ = load_policy_and_environment(picklable, variant)
 
         for name, environment_params in environments_params.items():
-            environment = get_environment_from_params({
+            print("environment_params")
+            pprint(environment_params)
+            evaluation_environment_params = {
                 **variant['environment_params']['training'],
                 **environment_params,
-            })
+            }
+            if ('terminate_when_unhealthy' in (variant
+                                               ['environment_params']
+                                               ['training'])):
+                (evaluation_environment_params
+                 ['kwargs']
+                 ['terminate_when_unhealthy']) = (
+                     variant
+                     ['environment_params']
+                     ['training']
+                     .get('terminate_when_unhealthy', True))
+
+            environment = get_environment_from_params(
+                evaluation_environment_params)
 
             # updated_variant = {
             #     **variant,
