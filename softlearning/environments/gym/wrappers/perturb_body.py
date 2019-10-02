@@ -2,7 +2,7 @@ import gym
 from gym import spaces
 import numpy as np
 
-from softlearning.utils.math import random_three_vector
+from softlearning.utils.random import random_three_vector
 
 
 __all__ = ['PerturbBodyWrapper']
