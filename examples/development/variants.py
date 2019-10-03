@@ -211,6 +211,12 @@ ALGORITHM_PARAMS_ADDITIONAL = {
             'target_update_interval': 1,
             'tau': 5e-3,
             'n_initial_exploration_steps': int(1e3),
+            'policy_train_every_n_steps': tune.sample_from(lambda spec: (
+                spec.get('config', spec)
+                ['algorithm_params']
+                ['kwargs']
+                ['target_update_interval']
+            ))
         }
     },
 }

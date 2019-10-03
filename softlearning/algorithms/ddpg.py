@@ -35,6 +35,8 @@ class DDPG(RLAlgorithm):
             tau=5e-3,
             target_update_interval=1,
 
+            policy_train_every_n_steps=1,
+
             save_full_state=False,
             **kwargs,
     ):
@@ -77,6 +79,7 @@ class DDPG(RLAlgorithm):
         self._discount = discount
         self._tau = tau
         self._target_update_interval = target_update_interval
+        self._policy_train_every_n_steps = policy_train_every_n_steps
 
         self._save_full_state = save_full_state
 
@@ -231,15 +234,42 @@ class DDPG(RLAlgorithm):
                 for source, target in zip(source_params, target_params)
             ])
 
-    def _do_training(self, iteration, batch):
+    def _do_training(self, iteration, batch, ops):
         """Runs the operations for updating training and target ops."""
 
         feed_dict = self._get_feed_dict(iteration, batch)
-        self._session.run(self._training_ops, feed_dict)
+        self._session.run(ops, feed_dict)
 
         if iteration % self._target_update_interval == 0:
             # Run target ops here.
             self._update_target()
+
+    def _do_training_repeats(self, timestep):
+        """Repeat training _n_train_repeat times every _train_every_n_steps"""
+        if timestep % self._train_every_n_steps > 0: return
+        trained_enough = (
+            self._train_steps_this_epoch
+            > self._max_train_repeat_per_timestep * self._timestep)
+        if trained_enough: return
+
+        if timestep % self._policy_train_every_n_steps > 0:
+            # don't train policy
+            train_ops = type(self._training_ops)((
+                (key, op)
+                for key, op in self._training_ops.items()
+                if 'policy' not in key
+            ))
+        else:
+            train_ops = self._training_ops
+
+        for i in range(self._n_train_repeat):
+            self._do_training(
+                iteration=timestep,
+                batch=self._training_batch(),
+                ops=train_ops)
+
+        self._num_train_steps += self._n_train_repeat
+        self._train_steps_this_epoch += self._n_train_repeat
 
     def _get_feed_dict(self, iteration, batch):
         """Construct a TensorFlow feed dictionary from a sample batch."""
