@@ -8,7 +8,7 @@ from .base_sampler import BaseSampler
 
 
 class SimpleSampler(BaseSampler):
-    def __init__(self, **kwargs):
+    def __init__(self, exploration_noise=None, **kwargs):
         super(SimpleSampler, self).__init__(**kwargs)
 
         self._path_length = 0
@@ -19,6 +19,7 @@ class SimpleSampler(BaseSampler):
         self._n_episodes = 0
         self._current_observation = None
         self._total_samples = 0
+        self._exploration_noise = exploration_noise
 
     @property
     def _policy_input(self):
@@ -51,7 +52,23 @@ class SimpleSampler(BaseSampler):
         if self._current_observation is None:
             self._current_observation = self.env.reset()
 
-        action = self.policy.actions_np(self._policy_input)[0]
+        if self._exploration_noise is None:
+            action = self.policy.actions_np(self._policy_input)[0]
+        else:
+            with self.policy.set_deterministic(True):
+                action = self.policy.actions_np(self._policy_input)[0]
+            noise_shift = 0
+            noise_scale = self._exploration_noise * (
+                self.env.action_space.high - self.env.action_space.low
+            )
+            noise = np.random.normal(
+                noise_shift,
+                noise_scale,
+                size=self.env.action_space.shape)
+            action = np.clip(
+                action + noise,
+                self.env.action_space.low,
+                self.env.action_space.high)
 
         next_observation, reward, terminal, info = self.env.step(action)
         self._path_length += 1

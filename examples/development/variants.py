@@ -565,6 +565,18 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             ),
         }.get(domain, 'auto')
 
+    sampler_params = {
+        'type': 'SimpleSampler',
+        'kwargs': {
+            'max_path_length': get_max_path_length(universe, domain, task),
+            'min_pool_size': get_max_path_length(universe, domain, task),
+            'batch_size': 256,
+        },
+    }
+    if algorithm == 'DDPG':
+        sampler_params['kwargs']['exploration_noise'] = tune.grid_search([
+            0.003, 0.01, 0.03, 0.1, 0.3, 1.0
+        ])
     variant_spec = {
         'git_sha': get_git_rev(__file__),
 
@@ -603,14 +615,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                 'max_size': int(1e6),
             }
         },
-        'sampler_params': {
-            'type': 'SimpleSampler',
-            'kwargs': {
-                'max_path_length': get_max_path_length(universe, domain, task),
-                'min_pool_size': get_max_path_length(universe, domain, task),
-                'batch_size': 256,
-            }
-        },
+        'sampler_params': sampler_params,
         'run_params': {
             'seed': tune.sample_from(
                 lambda spec: np.random.randint(0, 10000)),
