@@ -48,7 +48,9 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'Humanoid': {
             DEFAULT_KEY: int(3e6),
-            'v3': int(3e6),
+            'Stand-v3': int(1e8),
+            'SimpleStand-v3': int(1e8),
+            'v3': int(1e8),
         },
         'Pendulum': {
             DEFAULT_KEY: int(1e4),
@@ -256,6 +258,9 @@ NUM_EPOCHS_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'Humanoid': {
             DEFAULT_KEY: int(1e4),
+            'v3': 2000,
+            'Stand-v3': 2000,
+            'SimpleStand-v3': 2000,
         },
         'Pusher2d': {
             DEFAULT_KEY: int(2e3),

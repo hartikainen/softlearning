@@ -46,13 +46,13 @@ MUJOCO_ENVIRONMENT_SPECS = (
         'id': 'Humanoid-Parameterizable-v3',
         'entry_point': (f'gym.envs.mujoco.humanoid_v3:HumanoidEnv'),
     },
-    # {
-    #     'id': 'Humanoid-Stand-v3',
-    #     'entry_point': (f'gym.envs.mujoco.humanoid_v3:HumanoidEnv'),
-    #     'kwargs': {
-    #         'forward_reward_weight': 0.0,
-    #     },
-    # },
+    {
+        'id': 'Humanoid-SimpleStand-v3',
+        'entry_point': (f'gym.envs.mujoco.humanoid_v3:HumanoidEnv'),
+        'kwargs': {
+            'forward_reward_weight': 0.0,
+        },
+    },
     {
         'id': 'Humanoid-Pothole-v0',
         'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
