@@ -51,6 +51,7 @@ MUJOCO_ENVIRONMENT_SPECS = (
         'entry_point': (f'gym.envs.mujoco.humanoid_v3:HumanoidEnv'),
         'kwargs': {
             'forward_reward_weight': 0.0,
+            'terminate_when_unhealthy': False,
         },
     },
     {
