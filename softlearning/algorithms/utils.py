@@ -9,6 +9,14 @@ def create_SAC_algorithm(variant, *args, **kwargs):
     return algorithm
 
 
+def create_VIREL_algorithm(variant, *args, **kwargs):
+    from .virel import VIREL
+
+    algorithm = VIREL(*args, **kwargs)
+
+    return algorithm
+
+
 def create_SQL_algorithm(variant, *args, **kwargs):
     from .sql import SQL
 
@@ -19,6 +27,7 @@ def create_SQL_algorithm(variant, *args, **kwargs):
 
 ALGORITHM_CLASSES = {
     'SAC': create_SAC_algorithm,
+    'VIREL': create_VIREL_algorithm,
     'SQL': create_SQL_algorithm,
 }
 
