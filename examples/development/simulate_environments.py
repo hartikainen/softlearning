@@ -254,6 +254,19 @@ def simulate_perturbations(args):
                 'kwargs': {
                     'perturb_body_kwargs': {
                         'perturbation_strength': perturbation_strength,
+                        'perturbation_length': 5,
+                    },
+                }
+            }
+            for perturbation_strength in np.linspace(0, 150.0, 51)
+        }
+    elif evaluation_task == 'PerturbBody-v1':
+        environments_params = {
+            f'perturbation-strength-{perturbation_strength}': {
+                'kwargs': {
+                    'perturb_body_kwargs': {
+                        'perturbation_strength': perturbation_strength,
+                        'perturbation_length': 1,
                     },
                 }
             }
