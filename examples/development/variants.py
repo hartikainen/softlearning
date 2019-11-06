@@ -24,8 +24,9 @@ GAUSSIAN_POLICY_PARAMS_BASE = {
 }
 
 TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
-    DEFAULT_KEY: 1e4,
+    DEFAULT_KEY: int(1e4),
     'gym': {
+        DEFAULT_KEY: int(1e4),
         'Swimmer': {
             DEFAULT_KEY: int(1e5),
             'v3': int(5e5),
@@ -56,6 +57,9 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: int(1e4),
             'v3': int(1e4),
         },
+        'Point2DEnv': {
+            DEFAULT_KEY: int(5e4),
+        }
     },
     'dm_control': {
         # BENCHMARKING
@@ -278,7 +282,7 @@ NUM_EPOCHS_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: int(1e4),
         },
         'Point2DEnv': {
-            DEFAULT_KEY: int(200),
+            DEFAULT_KEY: int(50),
         },
         'Reacher': {
             DEFAULT_KEY: int(200),
@@ -371,9 +375,17 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             'Default-v0': {
                 'observation_keys': ('observation', 'desired_goal'),
             },
-            'Wall-v0': {
-                'observation_keys': ('observation', 'desired_goal'),
-            },
+            'Wall-v0': tune.grid_search([
+                {
+                    'observation_keys': ('observation', ),
+                    'wall_shape': '-',
+                    'observation_bounds': ((-wall_width//2 - 2.5, -5), (wall_width//2 + 2.5, 5)),
+                    'inner_wall_max_dist': wall_width//2,
+                    'reset_positions': ((0, -5), ),
+                    'fixed_goal': (0, 5),
+                }
+                for wall_width in [5, 10, 20, 40, 80, 160]
+            ])
         },
         'Sawyer': {
             task_name: {
@@ -492,7 +504,7 @@ def get_policy_params(universe, domain, task, algorithm='SAC'):
     policy_params = GAUSSIAN_POLICY_PARAMS_BASE.copy()
     if algorithm.lower() == 'ddpg':
         policy_params['kwargs']['scale_identity_multiplier'] = (
-            tune.grid_search([0.1, 0.3]))
+            tune.grid_search([0.2]))
         policy_params['type'] = 'ConstantScaleGaussianPolicy'
     return policy_params
 
@@ -513,12 +525,12 @@ def get_total_timesteps(universe, domain, task):
 def get_algorithm_params(universe, domain, task):
     algorithm_params = {
         'kwargs': {
-            'n_epochs': 200, # get_num_epochs(universe, domain, task),
+            'n_epochs': get_num_epochs(universe, domain, task),
             'n_initial_exploration_steps': tune.sample_from(
                 get_initial_exploration_steps),
             'epoch_length': (
                 get_total_timesteps(universe, domain, task)
-                // 200
+                // get_num_epochs(universe, domain, task)
             ),
         }
     }
@@ -568,6 +580,9 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                 # np.round(np.linspace(1, 5, 11), 2).tolist()
                 # np.arange(5, 10).astype(np.float32).tolist()
             ),
+            'Point2DEnv': tune.grid_search(
+                np.linspace(-2, 20, 12).tolist()
+            )
         }.get(domain, 'auto')
 
     sampler_params = {
@@ -580,7 +595,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
     }
     if algorithm == 'DDPG':
         sampler_params['kwargs']['exploration_noise'] = tune.grid_search([
-            0.003, 0.01, 0.03, 0.1, 0.3, 1.0
+            0.03, 0.1, 0.3, 1.0, 3.0, 10.0
         ])
     variant_spec = {
         'git_sha': get_git_rev(__file__),
