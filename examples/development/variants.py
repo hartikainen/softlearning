@@ -384,7 +384,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'reset_positions': ((0, -5), ),
                     'fixed_goal': (0, 5),
                 }
-                for wall_width in np.arange(4, 16)
+                for wall_width in np.arange(4, 16, 2)
             ])
         },
         'Sawyer': {
@@ -535,14 +535,15 @@ def get_total_timesteps(universe, domain, task):
 
 
 def get_algorithm_params(universe, domain, task):
+    n_epochs = get_num_epochs(universe, domain, task)
     algorithm_params = {
         'kwargs': {
-            'n_epochs': get_num_epochs(universe, domain, task),
+            'n_epochs': n_epochs,
             'n_initial_exploration_steps': tune.sample_from(
                 get_initial_exploration_steps),
             'epoch_length': (
                 get_total_timesteps(universe, domain, task)
-                // get_num_epochs(universe, domain, task)
+                // n_epochs
             ),
         }
     }
