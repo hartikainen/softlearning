@@ -384,7 +384,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'reset_positions': ((0, -5), ),
                     'fixed_goal': (0, 5),
                 }
-                for wall_width in [5, 10, 20, 30, 40, 50]
+                for wall_width in np.arange(4, 16)
             ])
         },
         'Sawyer': {
@@ -588,8 +588,8 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                 # np.arange(5, 10).astype(np.float32).tolist()
             ),
             'Point2DEnv': tune.grid_search(
-                np.linspace(-10, 50, 13).tolist()
-            )
+                [-5, -2] + np.linspace(0, 2, 9).tolist()
+            ),
         }.get(domain, 'auto')
 
     sampler_params = {
