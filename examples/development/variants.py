@@ -384,7 +384,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'reset_positions': ((0, -5), ),
                     'fixed_goal': (0, 5),
                 }
-                for wall_width in [5, 10, 20, 40, 80, 160]
+                for wall_width in [5, 10, 20, 30, 40, 50]
             ])
         },
         'Sawyer': {
@@ -478,7 +478,19 @@ def get_max_path_length(universe, domain, task):
 
 def get_initial_exploration_steps(spec):
     config = spec.get('config', spec)
-    initial_exploration_steps = 10 * (
+    exploration_episodes = (
+        0 if (
+            (config
+            ['environment_params']
+            ['training']
+            ['domain'] == 'Point2DEnv')
+            and (config
+            ['environment_params']
+            ['training']
+            ['task'] == 'Wall-v0')
+        ) else 10
+    )
+    initial_exploration_steps = exploration_episodes * (
         config
         ['sampler_params']
         ['kwargs']
@@ -549,13 +561,8 @@ def get_environment_params(universe, domain, task):
 def get_variant_spec_base(universe, domain, task, policy, algorithm):
     algorithm_params = deep_update(
         ALGORITHM_PARAMS_BASE,
-        get_algorithm_params(universe, domain, task),
         ALGORITHM_PARAMS_ADDITIONAL.get(algorithm, {}),
-        {
-            'kwargs': {
-                'n_epochs': 200,
-            },
-        },
+        get_algorithm_params(universe, domain, task),
     )
 
     if algorithm != 'DDPG':
@@ -581,7 +588,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                 # np.arange(5, 10).astype(np.float32).tolist()
             ),
             'Point2DEnv': tune.grid_search(
-                np.linspace(-2, 20, 12).tolist()
+                np.linspace(-10, 50, 13).tolist()
             )
         }.get(domain, 'auto')
 
