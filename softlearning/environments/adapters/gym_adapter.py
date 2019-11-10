@@ -11,6 +11,8 @@ from .softlearning_env import SoftlearningEnv
 from softlearning.environments.gym import register_environments
 from softlearning.environments.gym.wrappers import (
     NormalizeActionWrapper, PixelObservationWrapper)
+from softlearning.environments.gym.wrappers.diayn_skill import (
+    DiaynSkillWrapper)
 
 
 def parse_domain_task(gym_id):
@@ -57,6 +59,7 @@ class GymAdapter(SoftlearningEnv):
                  goal_keys=(),
                  unwrap_time_limit=True,
                  pixel_wrapper_kwargs=None,
+                 diayn_skill_wrapper_kwargs=None,
                  **kwargs):
         assert not args, (
             "Gym environments don't support args. Use kwargs instead.")
@@ -92,6 +95,9 @@ class GymAdapter(SoftlearningEnv):
 
         if pixel_wrapper_kwargs is not None:
             env = PixelObservationWrapper(env, **pixel_wrapper_kwargs)
+
+        if diayn_skill_wrapper_kwargs is not None:
+            env = DiaynSkillWrapper(env, **diayn_skill_wrapper_kwargs)
 
         self._env = env
 
