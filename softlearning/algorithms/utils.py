@@ -17,9 +17,18 @@ def create_SQL_algorithm(variant, *args, **kwargs):
     return algorithm
 
 
+def create_DIAYN_algorithm(variant, *args, **kwargs):
+    from .diayn import DIAYN
+
+    algorithm = DIAYN(*args, **kwargs)
+
+    return algorithm
+
+
 ALGORITHM_CLASSES = {
     'SAC': create_SAC_algorithm,
     'SQL': create_SQL_algorithm,
+    'DIAYN': create_DIAYN_algorithm,
 }
 
 
