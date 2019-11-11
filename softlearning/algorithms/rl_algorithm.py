@@ -354,6 +354,12 @@ class RLAlgorithm(Checkpointable):
                     evaluation_env,
                     policy,
                     self.sampler._max_path_length,
+                    sampler_class=lambda *args, **kwargs: ((
+                        type(self.sampler)(
+                            *args,
+                            exploration_noise=self.sampler._exploration_noise,
+                            **kwargs)
+                    )),
                     render_kwargs=self._eval_render_kwargs)
 
             should_save_video = (
