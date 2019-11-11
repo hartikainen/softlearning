@@ -387,7 +387,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'reset_positions': ((0, -5), ),
                     'fixed_goal': (0, 5),
                 }
-                for wall_width in np.arange(4, 16, 2)
+                for wall_width in np.linspace(4, 8, 9)
             ])
         },
         'Sawyer': {
