@@ -379,7 +379,10 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 {
                     'observation_keys': ('observation', ),
                     'wall_shape': '-',
-                    'observation_bounds': ((-wall_width/2 - 2.5, -5), (wall_width/2 + 2.5, 5)),
+                    'observation_bounds': (
+                        (np.floor(-wall_width/2) - 2, -5),
+                        (np.ceil(wall_width/2) + 2, 5),
+                    ),
                     'inner_wall_max_dist': wall_width/2,
                     'reset_positions': ((0, -5), ),
                     'fixed_goal': (0, 5),
