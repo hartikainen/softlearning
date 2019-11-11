@@ -274,11 +274,17 @@ class RLAlgorithm(Checkpointable):
             gt.stamp('evaluation_paths')
 
             training_metrics = self._evaluate_rollouts(
-                training_paths, training_environment, self._total_timestep)
+                training_paths,
+                training_environment,
+                self._total_timestep,
+                evaluation_type='training')
             gt.stamp('training_metrics')
             if evaluation_paths:
                 evaluation_metrics = self._evaluate_rollouts(
-                    evaluation_paths, evaluation_environment, self._total_timestep)
+                    evaluation_paths,
+                    evaluation_environment,
+                    self._total_timestep,
+                    evaluation_type='evaluation')
                 gt.stamp('evaluation_metrics')
             else:
                 evaluation_metrics = {}
@@ -368,7 +374,7 @@ class RLAlgorithm(Checkpointable):
 
         return all_paths
 
-    def _evaluate_rollouts_2(self, episodes, env, timestep):
+    def _evaluate_rollouts_2(self, episodes, env, timestep, evaluation_type):
         episodes_rewards = [episode['rewards'] for episode in episodes]
         episodes_reward = [np.sum(episode_rewards)
                            for episode_rewards in episodes_rewards]
@@ -388,20 +394,20 @@ class RLAlgorithm(Checkpointable):
             ('total_timestep', timestep),
         ))
 
-        env_infos = env.get_path_infos(episodes)
+        env_infos = env.get_path_infos(episodes, evaluation_type=evaluation_type)
         for key, value in env_infos.items():
             diagnostics[f'env_infos/{key}'] = value
 
         return diagnostics
 
-    def _evaluate_rollouts(self, paths, envs, timestep):
+    def _evaluate_rollouts(self, paths, envs, timestep, evaluation_type):
         """Compute evaluation metrics for the given rollouts."""
 
         if not isinstance(envs, (tuple, list)):
             paths, envs = [paths], [envs]
 
         diagnostics = [
-            self._evaluate_rollouts_2(path, env, timestep)
+            self._evaluate_rollouts_2(path, env, timestep, evaluation_type)
             for path, env in zip(paths, envs)
         ]
 
