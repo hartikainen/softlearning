@@ -350,7 +350,7 @@ class ConstantScaleGaussianPolicy(FeedforwardGaussianPolicy):
                     scale_identity_multiplier=scale_identity_multiplier),
             ))
             distribution = (
-                tfp.distributions.ConditionalTransformedDistribution(
+                tfp.distributions.TransformedDistribution(
                     distribution=base_distribution,
                     bijector=bijector))
 
