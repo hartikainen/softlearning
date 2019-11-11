@@ -28,6 +28,7 @@ tf.compat.v1.disable_eager_execution()
 class ExperimentRunner(tune.Trainable):
     def _setup(self, variant):
         set_seed(variant['run_params']['seed'])
+        os.chdir(self.logdir)
 
         self._variant = variant
 
