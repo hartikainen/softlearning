@@ -219,9 +219,10 @@ class DIAYN(SAC):
             self._placeholders['observations'],
             self._placeholders['actions'])
         discriminator_logits = self._discriminator(discriminator_inputs)
-        self._discriminator_losses = tf.nn.softmax_cross_entropy_with_logits(
-            labels=self._placeholders['observations']['active_skill'],
-            logits=discriminator_logits)
+        self._discriminator_losses = (
+            tf.nn.softmax_cross_entropy_with_logits_v2(
+                labels=self._placeholders['observations']['active_skill'],
+                logits=discriminator_logits))
 
         self._discriminator_optimizer = tf.compat.v1.train.AdamOptimizer(
             learning_rate=self._discriminator_lr,
