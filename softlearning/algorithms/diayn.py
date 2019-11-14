@@ -78,10 +78,11 @@ class DIAYN(SAC):
 
         num_skills = self._training_environment._num_skills
         p_z = tf.reduce_sum(
-            np.full(num_skills, 1.0/num_skills)
+            np.full((1, num_skills), 1.0/num_skills)
             * self._placeholders['observations']['active_skill'],
             axis=1,
             keepdims=True)
+
         EPS = 1e-8
         log_p_z = tf.log(p_z + EPS)
 
