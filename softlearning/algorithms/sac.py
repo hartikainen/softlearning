@@ -36,6 +36,7 @@ class SAC(RLAlgorithm):
 
             lr=3e-4,
             reward_scale=1.0,
+            entropy_scale=1.0,
             target_entropy='auto',
             discount=0.99,
             tau=5e-3,
@@ -80,6 +81,7 @@ class SAC(RLAlgorithm):
         self._Q_lr = lr
 
         self._reward_scale = reward_scale
+        self._entropy_scale = entropy_scale
         self._target_entropy = (
             -np.prod(self._training_environment.action_space.shape)
             if target_entropy == 'auto'
@@ -191,7 +193,7 @@ class SAC(RLAlgorithm):
         log_alpha = self._log_alpha = tf.compat.v1.get_variable(
             'log_alpha',
             dtype=tf.float32,
-            initializer=0.0)
+            initializer=np.log(self._entropy_scale))
         alpha = tf.exp(log_alpha)
 
         if isinstance(self._target_entropy, Number):

@@ -158,7 +158,7 @@ class DIAYN(SAC):
         log_alpha = self._log_alpha = tf.compat.v1.get_variable(
             'log_alpha',
             dtype=tf.float32,
-            initializer=0.0)
+            initializer=np.log(self._entropy_scale, dtype=np.float32))
         alpha = tf.exp(log_alpha)
 
         if isinstance(self._target_entropy, Number):
