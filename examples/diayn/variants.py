@@ -14,11 +14,16 @@ def get_variant_spec(args):
     variant_spec = deep_update(base_variant_spec, {
         'discriminator_params': {
             'kwargs': {
-                'num_skills': 50,
+                'num_skills': 20,
             },
         },
         'algorithm_params': {
             'type': 'DIAYN',
+            'kwargs': {
+                'target_entropy': None,
+                'reward_scale': 1.0,
+                'entropy_scale': 1/10,
+            },
         },
         'environment_params': {
             'training': {
