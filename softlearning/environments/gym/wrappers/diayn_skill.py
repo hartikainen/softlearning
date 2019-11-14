@@ -44,6 +44,7 @@ class DiaynSkillWrapper(ObservationWrapper):
         self.observation_space.spaces['active_skill'] = skills_space
 
         self._active_skill = np.random.randint(0, self._num_skills)
+        self._fixed_skill = None
         self._env = env
 
     def observation(self, observation):
@@ -64,5 +65,11 @@ class DiaynSkillWrapper(ObservationWrapper):
         return dict_observation
 
     def reset(self, *args, **kwargs):
-        self._active_skill = np.random.randint(0, self._num_skills)
+        if self._fixed_skill is not None:
+            self._active_skill = self._fixed_skill
+        else:
+            self._active_skill = np.random.randint(0, self._num_skills)
         return super(DiaynSkillWrapper, self).reset(*args, **kwargs)
+
+    def fix_skill(self, skill_id):
+        self._fixed_skill = skill_id
