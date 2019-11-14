@@ -14,7 +14,7 @@ def get_variant_spec(args):
     variant_spec = deep_update(base_variant_spec, {
         'discriminator_params': {
             'kwargs': {
-                'num_skills': 20,
+                'num_skills': tune.grid_search([10, 20]),
             },
         },
         'algorithm_params': {

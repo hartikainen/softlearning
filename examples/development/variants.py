@@ -91,20 +91,20 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
             'v3': int(5e5),
         },
         'Hopper': {
-            DEFAULT_KEY: int(5e6),
-            'v3': int(5e6),
+            DEFAULT_KEY: int(1e7),
+            'v3': int(1e7),
         },
         'HalfCheetah': {
-            DEFAULT_KEY: int(3e6),
-            'v3': int(3e6),
+            DEFAULT_KEY: int(1e7),
+            'v3': int(1e7),
         },
         'Walker2d': {
             DEFAULT_KEY: int(5e6),
             'v3': int(5e6),
         },
         'Ant': {
-            DEFAULT_KEY: int(3e6),
-            'v3': int(3e6),
+            DEFAULT_KEY: int(1e7),
+            'v3': int(1e7),
         },
         'Humanoid': {
             DEFAULT_KEY: int(3e6),
