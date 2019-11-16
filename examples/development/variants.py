@@ -602,9 +602,13 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                 # np.round(np.linspace(1, 5, 11), 2).tolist()
                 # np.arange(5, 10).astype(np.float32).tolist()
             ),
-            'Point2DEnv': tune.grid_search(
-                [-5, -2] + np.linspace(0, 2, 9).tolist()
-            ),
+            'Point2DEnv': tune.grid_search([
+                -2,
+                0,
+                *np.arange(1, 2 * np.log(2.0), 0.1).tolist(),
+                2 * np.log(2.0),
+            ]),
+            # 'Point2DEnv': None,
         }.get(domain, 'auto')
 
     sampler_params = {
@@ -617,7 +621,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
     }
     if algorithm == 'DDPG':
         sampler_params['kwargs']['exploration_noise'] = tune.grid_search([
-            0.03, 0.1, 0.3, 1.0, 3.0, 10.0
+            0.03, 0.1, 0.2, 0.3, 0.4, 0.6, 8.0, 1.0
         ])
     variant_spec = {
         'git_sha': get_git_rev(__file__),
