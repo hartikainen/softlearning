@@ -59,8 +59,7 @@ class SimpleSampler(BaseSampler):
                 action = self.policy.actions_np(self._policy_input)[0]
             noise_shift = 0
             noise_scale = self._exploration_noise * (
-                self.env.action_space.high - self.env.action_space.low
-            )
+                (self.env.action_space.high - self.env.action_space.low) / 2)
             noise = np.random.normal(
                 noise_shift,
                 noise_scale,
