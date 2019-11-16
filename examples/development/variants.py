@@ -388,7 +388,18 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'fixed_goal': (0, 5),
                 }
                 for wall_width in np.linspace(4, 8, 9)
-            ])
+            ]),
+            'Bridge-v0': tune.grid_search([
+                {
+                    'observation_keys': ('observation', ),
+                    'bridge_width': 1.0,
+                    'bridge_length': 10.0,
+                    'wall_width': wall_width,
+                    'wall_length': 0.1,
+                    'scale': 1.0,
+                }
+                for wall_width in [1.0, 2.0, 4.0, 6.0, 8.0, 10.0]
+            ]),
         },
         'Sawyer': {
             task_name: {

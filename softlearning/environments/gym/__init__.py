@@ -128,6 +128,16 @@ MULTIWORLD_ENVIRONMENT_SPECS = (
         'id': 'Point2DEnv-Wall-v0',
         'entry_point': 'multiworld.envs.pygame.point2d:Point2DWallEnv'
     },
+    {
+        'id': 'Point2DEnv-Bridge-v0',
+        'entry_point': 'multiworld.envs.pygame.point2d:Point2DBridgeEnv',
+        'tags': {
+            'author': 'Kristian Hartikainen'
+        },
+        'kwargs': {
+            'terminate_on_success': True,
+        },
+    },
 )
 
 MUJOCO_ENVIRONMENTS = tuple(
