@@ -397,6 +397,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'wall_width': wall_width,
                     'wall_length': 0.1,
                     'scale': 1.0,
+                    'terminate_on_success': True,
                 }
                 for wall_width in [1.0, 2.0, 4.0, 6.0, 8.0, 10.0]
             ]),
