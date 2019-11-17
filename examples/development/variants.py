@@ -394,12 +394,13 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'observation_keys': ('observation', ),
                     'bridge_width': 1.0,
                     'bridge_length': 10.0,
-                    'wall_width': wall_width,
+                    'wall_width': 0.1,
                     'wall_length': 0.1,
                     'scale': 1.0,
                     'terminate_on_success': True,
+                    'fixed_goal': (7.0, fixed_goal_y),
                 }
-                for wall_width in [1.0, 2.0, 4.0, 6.0, 8.0, 10.0]
+                for fixed_goal_y in [0.0, 1.0, 2.0, 4.0, 6.0, 8.0, 10.0]
             ]),
         },
         'Sawyer': {
