@@ -138,6 +138,16 @@ MULTIWORLD_ENVIRONMENT_SPECS = (
             'terminate_on_success': True,
         },
     },
+    {
+        'id': 'Point2DEnv-BridgeRun-v0',
+        'entry_point': 'multiworld.envs.pygame.point2d:Point2DBridgeRunEnv',
+        'tags': {
+            'author': 'Kristian Hartikainen'
+        },
+        'kwargs': {
+            'terminate_on_success': False,
+        },
+    }
 )
 
 MUJOCO_ENVIRONMENTS = tuple(

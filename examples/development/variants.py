@@ -402,6 +402,16 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 }
                 for fixed_goal_y in [0.0, 1.0, 2.0, 4.0, 6.0, 8.0, 10.0]
             ]),
+            'BridgeRun-v0': tune.grid_search([
+                {
+                    'observation_keys': ('observation', ),
+                    'bridge_width': bridge_width,
+                    'bridge_length': 10.0,
+                    'scale': 1.0,
+                    'terminate_on_success': False,
+                }
+                for bridge_width in [0.3, 1.0, 2.0, 3.0, 4.0, 5.0]
+            ]),
         },
         'Sawyer': {
             task_name: {
