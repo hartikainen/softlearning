@@ -147,6 +147,16 @@ MULTIWORLD_ENVIRONMENT_SPECS = (
         'kwargs': {
             'terminate_on_success': False,
         },
+    },
+    {
+        'id': 'Point2DEnv-Pond-v0',
+        'entry_point': 'multiworld.envs.pygame.point2d:Point2DPondEnv',
+        'tags': {
+            'author': 'Kristian Hartikainen'
+        },
+        'kwargs': {
+            'terminate_on_success': True,
+        },
     }
 )
 
