@@ -17,6 +17,11 @@ MUJOCO_ENVIRONMENT_SPECS = (
         'entry_point': (f'gym.envs.mujoco.swimmer_v3:SwimmerEnv'),
     },
     {
+        'id': 'Hopper-NoTermination-v3',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.hopper_no_termination:HopperNoTerminationEnv'),
+    },
+    {
         'id': 'Hopper-Parameterizable-v3',
         'entry_point': (f'gym.envs.mujoco.hopper_v3:HopperEnv'),
     },
@@ -24,6 +29,11 @@ MUJOCO_ENVIRONMENT_SPECS = (
         'id': 'Hopper-MaxVelocity-v3',
         'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
                         '.hopper_max_velocity:HopperMaxVelocityEnv'),
+    },
+    {
+        'id': 'Walker2d-NoTermination-v3',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.walker2d_no_termination:Walker2dNoTerminationEnv'),
     },
     {
         'id': 'Walker2d-Parameterizable-v3',
