@@ -124,6 +124,9 @@ class ExperimentRunner(tune.Trainable):
             self.preempted = True
             diagnostics[tune.result.SHOULD_CHECKPOINT] = True
 
+        diagnostics[tune.result.SHOULD_CHECKPOINT] = (
+            20 <= self.iteration % 25)
+
         return diagnostics
 
     def _pickle_path(self, checkpoint_dir):
