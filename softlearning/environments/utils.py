@@ -15,15 +15,15 @@ except ModuleNotFoundError as e:
           " `pip install git+https://github.com/deepmind/dm_control.git`"
           " to use dm_control environments.")
 
-try:
-    from .adapters.robosuite_adapter import RobosuiteAdapter
-    ADAPTERS['robosuite'] = RobosuiteAdapter
-except ModuleNotFoundError as e:
-    if 'robosuite' not in e.msg:
-        raise
+# try:
+#     from .adapters.robosuite_adapter import RobosuiteAdapter
+#     ADAPTERS['robosuite'] = RobosuiteAdapter
+# except ModuleNotFoundError as e:
+#     if 'robosuite' not in e.msg:
+#         raise
 
-    print("Warning: robosuite package not found. Run `pip install robosuite`"
-          " to use robosuite environments.")
+#     print("Warning: robosuite package not found. Run `pip install robosuite`"
+#           " to use robosuite environments.")
 
 UNIVERSES = set(ADAPTERS.keys())
 

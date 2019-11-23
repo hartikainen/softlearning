@@ -159,7 +159,7 @@ class GaussianPolicy(LatentSpacePolicy):
             self.condition_inputs,
             (shift, log_scale_diag, log_pis, raw_actions, actions))
 
-    def _shift_and_log_scale_diag_net(self, input_shapes, output_size):
+    def _shift_and_log_scale_diag_net(self, output_size):
         raise NotImplementedError
 
     def get_weights(self):
@@ -226,3 +226,186 @@ class FeedforwardGaussianPolicy(GaussianPolicy):
             output_activation=self._output_activation)
 
         return shift_and_log_scale_diag_net
+
+
+class ConstantScaleGaussianPolicy(FeedforwardGaussianPolicy):
+    def __init__(self,
+                 input_shapes,
+                 output_shape,
+                 hidden_layer_sizes,
+                 squash=True,
+                 preprocessors=None,
+                 name=None,
+                 scale_identity_multiplier=1.0,
+                 activation='relu',
+                 output_activation='linear',
+                 *args, **kwargs):
+        self._hidden_layer_sizes = hidden_layer_sizes
+        self._activation = activation
+        self._output_activation = output_activation
+        self._scale_identity_multiplier = scale_identity_multiplier
+
+        self._Serializable__initialize(locals())
+
+        self._input_shapes = input_shapes
+        self._output_shape = output_shape
+        self._squash = squash
+        self._name = name
+
+        super(GaussianPolicy, self).__init__(*args, **kwargs)
+
+        inputs_flat = create_inputs(input_shapes)
+        preprocessors_flat = (
+            flatten_input_structure(preprocessors)
+            if preprocessors is not None
+            else tuple(None for _ in inputs_flat))
+
+        assert len(inputs_flat) == len(preprocessors_flat), (
+            inputs_flat, preprocessors_flat)
+
+        preprocessed_inputs = [
+            preprocessor(input_) if preprocessor is not None else input_
+            for preprocessor, input_
+            in zip(preprocessors_flat, inputs_flat)
+        ]
+
+        float_inputs = tf.keras.layers.Lambda(
+            lambda inputs: training_utils.cast_if_floating_dtype(inputs)
+        )(preprocessed_inputs)
+
+        conditions = tf.keras.layers.Lambda(
+            lambda inputs: tf.concat(inputs, axis=-1)
+        )(float_inputs)
+
+        self.condition_inputs = inputs_flat
+
+        shift = self._shift_and_log_scale_diag_net(
+            output_size=output_shape[0],
+        )(conditions)
+
+        batch_size = tf.keras.layers.Lambda(
+            lambda x: tf.shape(input=x)[0])(conditions)
+
+        base_distribution = tfp.distributions.MultivariateNormalDiag(
+            loc=tf.zeros(output_shape),
+            scale_diag=tf.ones(output_shape))
+
+        latents = tf.keras.layers.Lambda(
+            lambda batch_size: base_distribution.sample(batch_size)
+        )(batch_size)
+
+        self.latents_model = tf.keras.Model(self.condition_inputs, latents)
+        self.latents_input = tf.keras.layers.Input(
+            shape=output_shape, name='latents')
+
+        def raw_actions_fn(inputs):
+            shift, latents = inputs
+            bijector = tfp.bijectors.Affine(
+                shift=shift,
+                scale_identity_multiplier=scale_identity_multiplier)
+            actions = bijector.forward(latents)
+            return actions
+
+        raw_actions = tf.keras.layers.Lambda(
+            raw_actions_fn
+        )((shift, latents))
+
+        raw_actions_for_fixed_latents = tf.keras.layers.Lambda(
+            raw_actions_fn
+        )((shift, self.latents_input))
+
+        squash_bijector = (
+            SquashBijector()
+            if self._squash
+            else tfp.bijectors.Identity())
+
+        actions = tf.keras.layers.Lambda(
+            lambda raw_actions: squash_bijector.forward(raw_actions)
+        )(raw_actions)
+        self.actions_model = tf.keras.Model(self.condition_inputs, actions)
+
+        actions_for_fixed_latents = tf.keras.layers.Lambda(
+            lambda raw_actions: squash_bijector.forward(raw_actions)
+        )(raw_actions_for_fixed_latents)
+        self.actions_model_for_fixed_latents = tf.keras.Model(
+            (*self.condition_inputs, self.latents_input),
+            actions_for_fixed_latents)
+
+        deterministic_actions = tf.keras.layers.Lambda(
+            lambda shift: squash_bijector.forward(shift)
+        )(shift)
+
+        self.deterministic_actions_model = tf.keras.Model(
+            self.condition_inputs, deterministic_actions)
+
+        def log_pis_fn(inputs):
+            shift, actions = inputs
+            base_distribution = tfp.distributions.MultivariateNormalDiag(
+                loc=tf.zeros(output_shape),
+                scale_diag=tf.ones(output_shape))
+            bijector = tfp.bijectors.Chain((
+                squash_bijector,
+                tfp.bijectors.Affine(
+                    shift=shift,
+                    scale_identity_multiplier=scale_identity_multiplier),
+            ))
+            distribution = (
+                tfp.distributions.TransformedDistribution(
+                    distribution=base_distribution,
+                    bijector=bijector))
+
+            log_pis = distribution.log_prob(actions)[:, None]
+            return log_pis
+
+        self.actions_input = tf.keras.layers.Input(
+            shape=output_shape, name='actions')
+
+        log_pis = tf.keras.layers.Lambda(
+            log_pis_fn)([shift, actions])
+
+        log_pis_for_action_input = tf.keras.layers.Lambda(
+            log_pis_fn)([shift, self.actions_input])
+
+        self.log_pis_model = tf.keras.Model(
+            (*self.condition_inputs, self.actions_input),
+            log_pis_for_action_input)
+
+        self.diagnostics_model = tf.keras.Model(
+            self.condition_inputs,
+            (shift, log_pis, raw_actions, actions))
+
+    def _shift_and_log_scale_diag_net(self, output_size):
+        shift_and_log_scale_diag_net = feedforward_model(
+            hidden_layer_sizes=self._hidden_layer_sizes,
+            output_size=output_size,
+            activation=self._activation,
+            output_activation=self._output_activation)
+
+        return shift_and_log_scale_diag_net
+
+    def get_diagnostics(self, conditions):
+        """Return diagnostic information of the policy.
+
+        Returns the mean, min, max, and standard deviation of means and
+        covariances.
+        """
+        (shifts_np,
+         log_pis_np,
+         raw_actions_np,
+         actions_np) = self.diagnostics_model.predict(conditions)
+
+        return OrderedDict((
+            ('shifts-mean', np.mean(shifts_np)),
+            ('shifts-std', np.std(shifts_np)),
+
+            ('-log-pis-mean', np.mean(-log_pis_np)),
+            ('-log-pis-std', np.std(-log_pis_np)),
+
+            ('raw-actions-mean', np.mean(raw_actions_np)),
+            ('raw-actions-std', np.std(raw_actions_np)),
+
+            ('actions-mean', np.mean(actions_np)),
+            ('actions-std', np.std(actions_np)),
+            ('actions-min', np.min(actions_np)),
+            ('actions-max', np.max(actions_np)),
+        ))

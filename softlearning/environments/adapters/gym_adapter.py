@@ -5,12 +5,16 @@ import copy
 
 import gym
 from gym import spaces, wrappers
-from gym.envs.mujoco.mujoco_env import MujocoEnv
 
 from .softlearning_env import SoftlearningEnv
 from softlearning.environments.gym import register_environments
 from softlearning.environments.gym.wrappers import (
-    NormalizeActionWrapper, PixelObservationWrapper)
+    NormalizeActionWrapper,
+    PerturbRandomActionWrapper,
+    PerturbNoisyActionWrapper,
+    PerturbBodyWrapper,
+    WindWrapper,
+    PixelObservationWrapper)
 
 
 def parse_domain_task(gym_id):
@@ -56,6 +60,10 @@ class GymAdapter(SoftlearningEnv):
                  observation_keys=(),
                  goal_keys=(),
                  unwrap_time_limit=True,
+                 perturb_random_action_kwargs=None,
+                 perturb_noisy_action_kwargs=None,
+                 perturb_body_kwargs=None,
+                 wind_kwargs=None,
                  pixel_wrapper_kwargs=None,
                  **kwargs):
         assert not args, (
@@ -89,6 +97,18 @@ class GymAdapter(SoftlearningEnv):
 
         if normalize:
             env = NormalizeActionWrapper(env)
+
+        if perturb_random_action_kwargs is not None:
+            env = PerturbRandomActionWrapper(env, **perturb_random_action_kwargs)
+
+        if perturb_noisy_action_kwargs is not None:
+            env = PerturbNoisyActionWrapper(env, **perturb_noisy_action_kwargs)
+
+        if perturb_body_kwargs is not None:
+            env = PerturbBodyWrapper(env, **perturb_body_kwargs)
+
+        if wind_kwargs is not None:
+            env = WindWrapper(env, **wind_kwargs)
 
         if pixel_wrapper_kwargs is not None:
             env = PixelObservationWrapper(env, **pixel_wrapper_kwargs)
@@ -137,10 +157,7 @@ class GymAdapter(SoftlearningEnv):
         observation = self._filter_observation(observation)
         return observation
 
-    def render(self, *args, width=100, height=100, **kwargs):
-        if isinstance(self._env.unwrapped, MujocoEnv):
-            self._env.render(*args, width=width, height=height, **kwargs)
-
+    def render(self, *args, **kwargs):
         return self._env.render(*args, **kwargs)
 
     def seed(self, *args, **kwargs):

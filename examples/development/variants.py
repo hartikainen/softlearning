@@ -16,7 +16,6 @@ NUM_COUPLING_LAYERS = 2
 
 ALGORITHM_PARAMS_BASE = {
     'kwargs': {
-        'epoch_length': 1000,
         'train_every_n_steps': 1,
         'n_train_repeat': 1,
         'eval_render_kwargs': {},
@@ -33,7 +32,6 @@ ALGORITHM_PARAMS_ADDITIONAL = {
             'lr': 3e-4,
             'target_update_interval': 1,
             'tau': 5e-3,
-            'target_entropy': 'auto',
             'action_prior': 'uniform',
             'n_initial_exploration_steps': int(1e3),
 
@@ -67,7 +65,22 @@ ALGORITHM_PARAMS_ADDITIONAL = {
                     1.0
                 ),
             )),
-        },
+        }
+    },
+    'DDPG': {
+        'type': 'DDPG',
+        'kwargs': {
+            'lr': 3e-4,
+            'target_update_interval': 1,
+            'tau': 5e-3,
+            'n_initial_exploration_steps': int(1e3),
+            'policy_train_every_n_steps': tune.sample_from(lambda spec: (
+                spec.get('config', spec)
+                ['algorithm_params']
+                ['kwargs']
+                ['target_update_interval']
+            ))
+        }
     },
 }
 
@@ -238,10 +251,22 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
         'Swimmer': {  # 2 DoF
         },
         'Hopper': {  # 3 DoF
+            'MaxVelocity-v3': {
+                'max_velocity': tune.grid_search([
+                    0.5, 1.0, 2.0, float('inf'),
+                ]),
+                'terminate_when_unhealthy': tune.grid_search([True]),
+            },
         },
         'HalfCheetah': {  # 6 DoF
         },
         'Walker2d': {  # 6 DoF
+            'MaxVelocity-v3': {
+                'max_velocity': tune.grid_search([
+                    0.5, 1.0, 2.0, 3.0, float('inf'),
+                ]),
+                'terminate_when_unhealthy': tune.grid_search([True]),
+            },
         },
         'Ant': {  # 8 DoF
             'Parameterizable-v3': {
@@ -287,9 +312,49 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             'Default-v0': {
                 'observation_keys': ('observation', 'desired_goal'),
             },
-            'Wall-v0': {
-                'observation_keys': ('observation', 'desired_goal'),
-            },
+            'Wall-v0': tune.grid_search([
+                {
+                    'observation_keys': ('observation', ),
+                    'wall_shape': '-',
+                    'observation_bounds': (
+                        (np.floor(-wall_width/2) - 2, -5),
+                        (np.ceil(wall_width/2) + 2, 5),
+                    ),
+                    'inner_wall_max_dist': wall_width/2,
+                    'reset_positions': ((0, -5), ),
+                    'fixed_goal': (0, 5),
+                }
+                for wall_width in np.linspace(4, 8, 9)
+            ]),
+            'Bridge-v0': tune.grid_search([
+                {
+                    'observation_keys': ('observation', ),
+                    'bridge_width': 1.0,
+                    'bridge_length': 10.0,
+                    'wall_width': 0.1,
+                    'wall_length': 0.1,
+                    'scale': 1.0,
+                    'terminate_on_success': True,
+                    'fixed_goal': (7.0, fixed_goal_y),
+                }
+                for fixed_goal_y in [0.0, 1.0, 2.0, 4.0, 6.0, 8.0, 10.0]
+            ]),
+            'BridgeRun-v0': tune.grid_search([
+                {
+                    'observation_keys': ('observation', ),
+                    'bridge_width': bridge_width,
+                    'bridge_length': 10.0,
+                    'scale': 1.0,
+                    'terminate_on_success': False,
+                }
+                for bridge_width in [0.3, 1.0, 2.0, 3.0, 4.0, 5.0]
+            ]),
+            'Pond-v0': tune.grid_search([
+                {
+                    'pond_radius': pond_radius,
+                }
+                for pond_radius in [2.0, 4.0, 6.0, 8.0, 10.0, 15.0, 20.0]
+            ]),
         },
         'Sawyer': {
             task_name: {
@@ -385,7 +450,19 @@ def get_max_path_length(universe, domain, task):
 
 def get_initial_exploration_steps(spec):
     config = spec.get('config', spec)
-    num_exploration_episodes = 10
+    # num_exploration_episodes = 10
+    num_exploration_episodes = (
+        0 if (
+            (config
+            ['environment_params']
+            ['training']
+            ['domain'] == 'Point2DEnv')
+            and (config
+            ['environment_params']
+            ['training']
+            ['task'] == 'Wall-v0')
+        ) else 10
+    )
     initial_exploration_steps = num_exploration_episodes * (
         config
         ['sampler_params']
@@ -410,8 +487,13 @@ def get_checkpoint_frequency(spec):
 
 
 def get_policy_params(spec):
-    # config = spec.get('config', spec)
+    config = spec.get('config', spec)
+    algorithm = config['algorithm_params']['type']
     policy_params = GAUSSIAN_POLICY_PARAMS_BASE.copy()
+    if algorithm.lower() == 'ddpg':
+        policy_params['kwargs']['scale_identity_multiplier'] = (
+            tune.grid_search([0.2]))
+        policy_params['type'] = 'ConstantScaleGaussianPolicy'
     return policy_params
 
 
@@ -459,6 +541,50 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
         ALGORITHM_PARAMS_ADDITIONAL.get(algorithm, {}),
         get_algorithm_params(universe, domain, task),
     )
+
+    if algorithm != 'DDPG':
+        algorithm_params['kwargs']['target_entropy'] = {
+            'Walker2d': tune.grid_search(
+                # np.linspace(-6, 3, 10).tolist(),
+                # np.round(np.linspace(-6, 4, 6), 2).tolist()
+                [-6.0, -3.0, 0.0, 1.0, 2.0, 3.0]
+            ),
+            'Hopper': tune.grid_search(
+                # np.round(np.linspace(-3, 2, 6), 2).tolist()
+                # np.linspace(-3, 2, 6).tolist(),
+                [-3.0, -1.0, 0.0, 1.0, 1.5]
+            ),
+            'humanoid': tune.grid_search(
+                # np.round(np.linspace(1, 5, 11), 2).tolist()
+                np.arange(5, 10).astype(np.float32).tolist()
+            ),
+            'Humanoid': tune.grid_search(
+                [-17.0, -10.0, -5.0, 0.0, 3.0, 6.0, 9.0]
+                # ['auto', 0, 3, 6, 9]
+                # np.round(np.linspace(1, 5, 11), 2).tolist()
+                # np.arange(5, 10).astype(np.float32).tolist()
+            ),
+            'Point2DEnv': tune.grid_search([
+                -2,
+                0,
+                *np.arange(1, 2 * np.log(2.0), 0.1).tolist(),
+                2 * np.log(2.0),
+            ]),
+            # 'Point2DEnv': None,
+        }.get(domain, 'auto')
+
+    sampler_params = {
+        'type': 'SimpleSampler',
+        'kwargs': {
+            'max_path_length': get_max_path_length(universe, domain, task),
+            'min_pool_size': get_max_path_length(universe, domain, task),
+            'batch_size': 256,
+        },
+    }
+    if algorithm == 'DDPG':
+        sampler_params['kwargs']['exploration_noise'] = tune.grid_search([
+            0.03, 0.1, 0.2, 0.3, 0.4, 0.6, 8.0, 1.0
+        ])
     variant_spec = {
         'git_sha': get_git_rev(__file__),
 
@@ -469,11 +595,6 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                 'universe': universe,
                 'kwargs': get_environment_params(universe, domain, task),
             },
-            'evaluation': tune.sample_from(lambda spec: (
-                spec.get('config', spec)
-                ['environment_params']
-                ['training']
-            )),
         },
         'policy_params': tune.sample_from(get_policy_params),
         'exploration_policy_params': {
@@ -500,16 +621,9 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             'type': 'SimpleReplayPool',
             'kwargs': {
                 'max_size': int(1e6),
-            },
-        },
-        'sampler_params': {
-            'type': 'SimpleSampler',
-            'kwargs': {
-                'max_path_length': get_max_path_length(universe, domain, task),
-                'min_pool_size': get_max_path_length(universe, domain, task),
-                'batch_size': 256,
             }
         },
+        'sampler_params': sampler_params,
         'run_params': {
             'host_name': get_host_name(),
             'seed': tune.sample_from(

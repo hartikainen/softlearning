@@ -9,6 +9,8 @@ import os
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.training import training_util
+import numpy as np
+from ray.tune.logger import CSVLogger
 
 from softlearning.samplers import rollouts
 from softlearning.utils.video import save_video
@@ -272,11 +274,17 @@ class RLAlgorithm(Checkpointable):
             gt.stamp('evaluation_paths')
 
             training_metrics = self._evaluate_rollouts(
-                training_paths, training_environment)
+                training_paths,
+                training_environment,
+                self._total_timestep,
+                evaluation_type='training')
             gt.stamp('training_metrics')
             if evaluation_paths:
                 evaluation_metrics = self._evaluate_rollouts(
-                    evaluation_paths, evaluation_environment)
+                    evaluation_paths,
+                    evaluation_environment,
+                    self._total_timestep,
+                    evaluation_type='evaluation')
                 gt.stamp('evaluation_metrics')
             else:
                 evaluation_metrics = {}
@@ -331,36 +339,51 @@ class RLAlgorithm(Checkpointable):
 
         yield {'done': True, **diagnostics}
 
-    def _evaluation_paths(self, policy, evaluation_env):
+    def _evaluation_paths(self, policy, evaluation_envs):
         if self._eval_n_episodes < 1: return ()
 
-        with policy.set_deterministic(self._eval_deterministic):
-            paths = rollouts(
-                self._eval_n_episodes,
-                evaluation_env,
-                policy,
-                self.sampler._max_path_length,
-                render_kwargs=self._eval_render_kwargs)
+        if not isinstance(evaluation_envs, (list, tuple)):
+            evaluation_envs = [evaluation_envs]
 
-        should_save_video = (
-            self._video_save_frequency > 0
-            and (self._epoch == 0
-                 or (self._epoch + 1) % self._video_save_frequency == 0))
+        all_paths = []
 
-        if should_save_video:
-            fps = 1 // getattr(self._training_environment, 'dt', 1/30)
-            for i, path in enumerate(paths):
-                video_frames = path.pop('images')
-                video_file_name = f'evaluation_path_{self._epoch}_{i}.mp4'
-                video_file_path = os.path.join(
-                    os.getcwd(), 'videos', video_file_name)
-                save_video(video_frames, video_file_path, fps=fps)
+        for env_id, evaluation_env in enumerate(evaluation_envs):
+            with policy.set_deterministic(self._eval_deterministic):
+                paths = rollouts(
+                    self._eval_n_episodes,
+                    evaluation_env,
+                    policy,
+                    self.sampler._max_path_length,
+                    sampler_class=lambda *args, **kwargs: ((
+                        type(self.sampler)(
+                            *args,
+                            exploration_noise=(
+                                None if self._eval_deterministic
+                                else self.sampler._exploration_noise
+                            ),
+                            **kwargs)
+                    )),
+                    render_kwargs=self._eval_render_kwargs)
 
-        return paths
+            should_save_video = (
+                self._video_save_frequency > 0
+                and (self._epoch == 0
+                     or (self._epoch + 1) % self._video_save_frequency == 0))
 
-    def _evaluate_rollouts(self, episodes, env):
-        """Compute evaluation metrics for the given rollouts."""
+            if should_save_video:
+                fps = 1 // getattr(self._training_environment, 'dt', 1/30)
+                for i, path in enumerate(paths):
+                    video_frames = path.pop('images')
+                    video_file_name = f'evaluation_path_{env_id}_{self._epoch}_{i}.mp4'
+                    video_file_path = os.path.join(
+                        os.getcwd(), f'env_{env_id}', 'videos', video_file_name)
+                    save_video(video_frames, video_file_path, fps=fps)
 
+            all_paths.append(paths)
+
+        return all_paths
+
+    def _evaluate_rollouts_2(self, episodes, env, timestep, evaluation_type):
         episodes_rewards = [episode['rewards'] for episode in episodes]
         episodes_reward = [np.sum(episode_rewards)
                            for episode_rewards in episodes_rewards]
@@ -376,13 +399,49 @@ class RLAlgorithm(Checkpointable):
             ('episode-length-min', np.min(episodes_length)),
             ('episode-length-max', np.max(episodes_length)),
             ('episode-length-std', np.std(episodes_length)),
+
+            ('total_timestep', timestep),
         ))
 
-        env_infos = env.get_path_infos(episodes)
+        env_infos = env.get_path_infos(episodes, evaluation_type=evaluation_type)
         for key, value in env_infos.items():
             diagnostics[f'env_infos/{key}'] = value
 
         return diagnostics
+
+    def _evaluate_rollouts(self, paths, envs, timestep, evaluation_type):
+        """Compute evaluation metrics for the given rollouts."""
+
+        if not isinstance(envs, (tuple, list)):
+            paths, envs = [paths], [envs]
+
+        diagnostics = [
+            self._evaluate_rollouts_2(path, env, timestep, evaluation_type)
+            for path, env in zip(paths, envs)
+        ]
+
+        if len(diagnostics) > 1:
+            if not getattr(self, '_env_csv_loggers', None):
+                env_logdirs = [
+                    os.path.join(os.getcwd(), f'env_{i}')
+                    for i in range(len(envs))
+                ]
+                for env_logdir in env_logdirs:
+                    if not os.path.exists(env_logdir):
+                        os.makedirs(env_logdir)
+                self._env_csv_loggers = tuple(
+                    CSVLogger(
+                        config=None,
+                        logdir=logdir,
+                    )
+                    for logdir in env_logdirs
+                )
+
+            for result, logger in zip(diagnostics, self._env_csv_loggers):
+                logger.on_result(result)
+                logger.flush()
+
+        return diagnostics[0]
 
     @abc.abstractmethod
     def get_diagnostics(self,

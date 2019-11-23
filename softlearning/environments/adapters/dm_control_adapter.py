@@ -10,7 +10,8 @@ from dm_control.suite.wrappers import pixels
 from gym import spaces
 
 from .softlearning_env import SoftlearningEnv
-from softlearning.environments.dm_control.suite.wrappers import action_scale
+from softlearning.environments.dm_control.suite.wrappers import (
+    action_perturbation, action_scale)
 
 
 DM_CONTROL_ENVIRONMENTS = {}
@@ -79,6 +80,7 @@ class DmControlAdapter(SoftlearningEnv):
                  observation_keys=(),
                  goal_keys=(),
                  unwrap_time_limit=True,
+                 perturb_random_action_kwargs=None,
                  pixel_wrapper_kwargs=None,
                  **kwargs):
         assert not args, (
@@ -112,6 +114,9 @@ class DmControlAdapter(SoftlearningEnv):
                 env = action_scale.Wrapper(env, minimum=-1.0, maximum=1.0)
             np.testing.assert_equal(env.action_spec().minimum, -1)
             np.testing.assert_equal(env.action_spec().maximum, 1)
+
+        if perturb_random_action_kwargs is not None:
+            env = action_perturbation.Wrapper(env, **perturb_random_action_kwargs)
 
         if pixel_wrapper_kwargs is not None:
             env = pixels.Wrapper(env, **pixel_wrapper_kwargs)

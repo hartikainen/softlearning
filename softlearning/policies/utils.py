@@ -12,6 +12,14 @@ def get_gaussian_policy(*args, **kwargs):
     return policy
 
 
+def get_constant_scale_gaussian_policy(*args, **kwargs):
+    from .gaussian_policy import ConstantScaleGaussianPolicy
+
+    policy = ConstantScaleGaussianPolicy(*args, **kwargs)
+
+    return policy
+
+
 def get_uniform_policy(*args, **kwargs):
     from .uniform_policy import UniformPolicy
 
@@ -23,6 +31,7 @@ def get_uniform_policy(*args, **kwargs):
 POLICY_FUNCTIONS = {
     'GaussianPolicy': get_gaussian_policy,
     'UniformPolicy': get_uniform_policy,
+    'ConstantScaleGaussianPolicy': get_constant_scale_gaussian_policy,
 }
 
 

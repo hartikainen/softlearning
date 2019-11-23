@@ -21,8 +21,18 @@ MUJOCO_ENVIRONMENT_SPECS = (
         'entry_point': (f'gym.envs.mujoco.hopper_v3:HopperEnv'),
     },
     {
+        'id': 'Hopper-MaxVelocity-v3',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.hopper_max_velocity:HopperMaxVelocityEnv'),
+    },
+    {
         'id': 'Walker2d-Parameterizable-v3',
         'entry_point': (f'gym.envs.mujoco.walker2d_v3:Walker2dEnv'),
+    },
+    {
+        'id': 'Walker2d-MaxVelocity-v3',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.walker2d_max_velocity:Walker2dMaxVelocityEnv'),
     },
     {
         'id': 'HalfCheetah-Parameterizable-v3',
@@ -35,6 +45,44 @@ MUJOCO_ENVIRONMENT_SPECS = (
     {
         'id': 'Humanoid-Parameterizable-v3',
         'entry_point': (f'gym.envs.mujoco.humanoid_v3:HumanoidEnv'),
+    },
+    {
+        'id': 'Humanoid-SimpleStand-v3',
+        'entry_point': (f'gym.envs.mujoco.humanoid_v3:HumanoidEnv'),
+        'kwargs': {
+            'forward_reward_weight': 0.0,
+            'terminate_when_unhealthy': False,
+        },
+    },
+    {
+        'id': 'Humanoid-Pothole-v0',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.humanoid_pothole:HumanoidPotholeEnv'),
+    },
+    {
+        'id': 'Humanoid-HeightField-v0',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.height_field_env:HumanoidHeightFieldEnv'),
+    },
+    {
+        'id': 'Hopper-Pothole-v0',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.hopper_pothole:HopperPotholeEnv'),
+    },
+    {
+        'id': 'Hopper-HeightField-v0',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.height_field_env:HopperHeightFieldEnv'),
+    },
+    {
+        'id': 'Walker2d-Pothole-v0',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.walker2d_pothole:Walker2dPotholeEnv'),
+    },
+    {
+        'id': 'Walker2d-HeightField-v0',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.height_field_env:Walker2dHeightFieldEnv'),
     },
     {
         'id': 'Pusher2d-Default-v0',
@@ -80,6 +128,36 @@ MULTIWORLD_ENVIRONMENT_SPECS = (
         'id': 'Point2DEnv-Wall-v0',
         'entry_point': 'multiworld.envs.pygame.point2d:Point2DWallEnv'
     },
+    {
+        'id': 'Point2DEnv-Bridge-v0',
+        'entry_point': 'multiworld.envs.pygame.point2d:Point2DBridgeEnv',
+        'tags': {
+            'author': 'Kristian Hartikainen'
+        },
+        'kwargs': {
+            'terminate_on_success': True,
+        },
+    },
+    {
+        'id': 'Point2DEnv-BridgeRun-v0',
+        'entry_point': 'multiworld.envs.pygame.point2d:Point2DBridgeRunEnv',
+        'tags': {
+            'author': 'Kristian Hartikainen'
+        },
+        'kwargs': {
+            'terminate_on_success': False,
+        },
+    },
+    {
+        'id': 'Point2DEnv-Pond-v0',
+        'entry_point': 'multiworld.envs.pygame.point2d:Point2DPondEnv',
+        'tags': {
+            'author': 'Kristian Hartikainen'
+        },
+        'kwargs': {
+            'terminate_on_success': True,
+        },
+    }
 )
 
 MUJOCO_ENVIRONMENTS = tuple(

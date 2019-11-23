@@ -1,3 +1,4 @@
+import json
 import os
 import copy
 import glob
@@ -17,7 +18,10 @@ from softlearning.value_functions.utils import get_Q_function_from_variant
 
 from softlearning.utils.misc import set_seed
 from softlearning.utils.tensorflow import initialize_tf_variables
+from softlearning.utils.gcp import instance_preempted
 from examples.instrument import run_example_local
+
+from ray.tune.logger import _SafeFallbackEncoder
 
 tf.compat.v1.disable_eager_execution()
 
@@ -25,6 +29,7 @@ tf.compat.v1.disable_eager_execution()
 class ExperimentRunner(tune.Trainable):
     def _setup(self, variant):
         set_seed(variant['run_params']['seed'])
+        os.chdir(self.logdir)
 
         self._variant = variant
 
@@ -46,10 +51,36 @@ class ExperimentRunner(tune.Trainable):
         environment_params = variant['environment_params']
         training_environment = self.training_environment = (
             get_environment_from_params(environment_params['training']))
-        evaluation_environment = self.evaluation_environment = (
-            get_environment_from_params(environment_params['evaluation'])
-            if 'evaluation' in environment_params
-            else training_environment)
+
+        if 'evaluation' in environment_params:
+            evaluation_environment_params = environment_params['evaluation']
+            if not isinstance(evaluation_environment_params, (list, tuple)):
+                evaluation_environment_params = [evaluation_environment_params]
+
+            evaluation_environments = self.evaluation_environments = tuple(map(
+                get_environment_from_params, evaluation_environment_params
+            ))
+            env_logdirs = [
+                os.path.join(os.getcwd(), f'env_{i}')
+                for i in range(len(evaluation_environments))
+            ]
+            for env_logdir, env_variant in zip(env_logdirs,
+                                               evaluation_environment_params):
+                if not os.path.exists(env_logdir):
+                    os.makedirs(env_logdir)
+
+                full_environment_variant = copy.deepcopy(variant)
+                full_environment_variant[
+                    'environment_params']['evaluation'] = env_variant
+
+                env_variant_path = os.path.join(env_logdir,
+                                                'evaluation_params.json')
+                with open(env_variant_path, "w") as f:
+                    json.dump(full_environment_variant, f, cls=_SafeFallbackEncoder)
+
+        else:
+            evaluation_environments = self.evaluation_environments = (
+                [training_environment])
 
         replay_pool = self.replay_pool = (
             get_replay_pool_from_variant(variant, training_environment))
@@ -66,7 +97,7 @@ class ExperimentRunner(tune.Trainable):
         self.algorithm = get_algorithm_from_variant(
             variant=self._variant,
             training_environment=training_environment,
-            evaluation_environment=evaluation_environment,
+            evaluation_environment=evaluation_environments,
             policy=policy,
             initial_exploration_policy=initial_exploration_policy,
             Qs=Qs,
@@ -86,6 +117,12 @@ class ExperimentRunner(tune.Trainable):
             self.train_generator = self.algorithm.train()
 
         diagnostics = next(self.train_generator)
+
+        if (self._variant['run_params'].get('mode') == 'cluster'
+            and instance_preempted()):
+            print("The instance is being preempted, checkpointing trial.")
+            self.preempted = True
+            diagnostics[tune.result.SHOULD_CHECKPOINT] = True
 
         return diagnostics
 
@@ -108,7 +145,7 @@ class ExperimentRunner(tune.Trainable):
         return {
             'variant': self._variant,
             'training_environment': self.training_environment,
-            'evaluation_environment': self.evaluation_environment,
+            'evaluation_environments': self.evaluation_environments,
             'sampler': self.sampler,
             'algorithm': self.algorithm,
             'policy_weights': self.policy.get_weights(),
@@ -161,7 +198,8 @@ class ExperimentRunner(tune.Trainable):
 
         self._save_value_functions(checkpoint_dir)
 
-        if self._variant['run_params'].get('checkpoint_replay_pool', False):
+        if (self._variant['run_params'].get('checkpoint_replay_pool', False)
+            or getattr(self, 'preempted', False)):
             self._save_replay_pool(checkpoint_dir)
 
         tf_checkpoint = self._get_tf_checkpoint()
@@ -180,11 +218,10 @@ class ExperimentRunner(tune.Trainable):
     def _restore_replay_pool(self, current_checkpoint_dir):
         experiment_root = os.path.dirname(current_checkpoint_dir)
 
-        experience_paths = [
-            self._replay_pool_pickle_path(checkpoint_dir)
-            for checkpoint_dir in sorted(glob.iglob(
-                os.path.join(experiment_root, 'checkpoint_*')))
-        ]
+        experience_paths = list(sorted(glob.iglob(
+            self._replay_pool_pickle_path(
+                os.path.join(experiment_root, 'checkpoint_*'))
+        )))
 
         for experience_path in experience_paths:
             self.replay_pool.load_experience(experience_path)
@@ -201,14 +238,13 @@ class ExperimentRunner(tune.Trainable):
 
         training_environment = self.training_environment = picklable[
             'training_environment']
-        evaluation_environment = self.evaluation_environment = picklable[
-            'evaluation_environment']
+        evaluation_environments = self.evaluation_environments = picklable[
+            'evaluation_environments']
 
         replay_pool = self.replay_pool = (
             get_replay_pool_from_variant(self._variant, training_environment))
 
-        if self._variant['run_params'].get('checkpoint_replay_pool', False):
-            self._restore_replay_pool(checkpoint_dir)
+        self._restore_replay_pool(checkpoint_dir)
 
         sampler = self.sampler = picklable['sampler']
         Qs = self.Qs = get_Q_function_from_variant(
@@ -225,7 +261,7 @@ class ExperimentRunner(tune.Trainable):
         self.algorithm = get_algorithm_from_variant(
             variant=self._variant,
             training_environment=training_environment,
-            evaluation_environment=evaluation_environment,
+            evaluation_environment=evaluation_environments,
             policy=policy,
             initial_exploration_policy=initial_exploration_policy,
             Qs=Qs,
