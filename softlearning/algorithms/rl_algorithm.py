@@ -357,7 +357,10 @@ class RLAlgorithm(Checkpointable):
                     sampler_class=lambda *args, **kwargs: ((
                         type(self.sampler)(
                             *args,
-                            exploration_noise=self.sampler._exploration_noise,
+                            exploration_noise=(
+                                None if self._eval_deterministic
+                                else self.sampler._exploration_noise
+                            ),
                             **kwargs)
                     )),
                     render_kwargs=self._eval_render_kwargs)
