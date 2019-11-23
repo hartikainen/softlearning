@@ -545,14 +545,13 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
     if algorithm != 'DDPG':
         algorithm_params['kwargs']['target_entropy'] = {
             'Walker2d': tune.grid_search(
-                # np.linspace(-6, 3, 10).tolist(),
-                # np.round(np.linspace(-6, 4, 6), 2).tolist()
-                [-6.0, -3.0, 0.0, 1.0, 2.0, 3.0]
+                [-12.0] + np.linspace(-6, np.floor(6 * np.log(2)), 6).tolist()
             ),
             'Hopper': tune.grid_search(
-                # np.round(np.linspace(-3, 2, 6), 2).tolist()
-                # np.linspace(-3, 2, 6).tolist(),
-                [-3.0, -1.0, 0.0, 1.0, 1.5]
+                [-6.0, -3.0, -1.5, 0.0, 1.0, 2.0],
+            ),
+            'Ant': tune.grid_search(
+                [-16.0, -8.0, -4.0, -2.0, 0.0, 2.0, 4.0, 5.0]
             ),
             'humanoid': tune.grid_search(
                 # np.round(np.linspace(1, 5, 11), 2).tolist()
