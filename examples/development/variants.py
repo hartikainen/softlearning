@@ -19,7 +19,7 @@ ALGORITHM_PARAMS_BASE = {
         'train_every_n_steps': 1,
         'n_train_repeat': 1,
         'eval_render_kwargs': {},
-        'eval_n_episodes': 1,
+        'eval_n_episodes': 3,
         'eval_deterministic': True,
     }
 }
@@ -104,7 +104,7 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
             'v3': int(5e5),
         },
         'Hopper': {
-            DEFAULT_KEY: int(5e6),
+            DEFAULT_KEY: int(1e7),
             'v3': int(5e6),
         },
         'HalfCheetah': {
@@ -112,11 +112,11 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
             'v3': int(3e6),
         },
         'Walker2d': {
-            DEFAULT_KEY: int(5e6),
+            DEFAULT_KEY: int(1e7),
             'v3': int(5e6),
         },
         'Ant': {
-            DEFAULT_KEY: int(3e6),
+            DEFAULT_KEY: int(1e7),
             'v3': int(3e6),
         },
         'Humanoid': {
@@ -243,6 +243,25 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
 
 EPOCH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
     DEFAULT_KEY: 1000,
+    'gym': {
+        DEFAULT_KEY: int(1e4),
+        'Hopper': {
+            DEFAULT_KEY: int(5e4),
+            'v3': int(5e4),
+        },
+        'HalfCheetah': {
+            DEFAULT_KEY: int(5e4),
+            'v3': int(5e4),
+        },
+        'Walker2d': {
+            DEFAULT_KEY: int(5e4),
+            'v3': int(5e4),
+        },
+        'Ant': {
+            DEFAULT_KEY: int(5e4),
+            'v3': int(5e4),
+        },
+    },
 }
 
 
