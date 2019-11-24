@@ -110,10 +110,7 @@ class PerturbBodyWrapper(gym.Wrapper):
                 0:perturbation.size] = perturbation
 
         if hasattr(self, 'viewer') and self.viewer:
-            self.viewer.vopt.flags[:] = 0
-            self.viewer.vopt.flags[11] = 1
-            self.viewer.vopt.flags[12] = 1
-            self.viewer.vopt.flags[13] = 1
+            self.viewer.vopt.flags[11:13] = 1
 
         result = super(PerturbBodyWrapper, self).step(*args, **kwargs)
 
