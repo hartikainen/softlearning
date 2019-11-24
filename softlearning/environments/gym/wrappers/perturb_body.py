@@ -36,29 +36,68 @@ class PerturbBodyWrapper(gym.Wrapper):
                  *args,
                  perturbation_strength=0.0,
                  perturbation_frequency=100,
+                 perturbation_probability=None,
                  perturbation_length=1,
+                 perturbation_direction='random',
                  **kwargs):
         self._perturbation_strength = perturbation_strength
         self._perturbation_length = perturbation_length
+        if not ((perturbation_frequency is None)
+                or (perturbation_probability is None)):
+            raise ValueError(
+                "Either `perturbation_probability` or `perturbation_frequency`"
+                " should be `None`.")
         self._perturbation_frequency = perturbation_frequency
+        self._perturbation_probability = perturbation_probability
+        self._perturbation_direction = perturbation_direction
+        self._perturbation_started_at = None
         return super(PerturbBodyWrapper, self).__init__(*args, **kwargs)
 
     def reset(self, *args, **kwargs):
         self._step_counter = 0
         return super(PerturbBodyWrapper, self).reset(*args, **kwargs)
 
+    @property
+    def perturbation_direction(self):
+        perturbation_size = num_dimensions(self.unwrapped)
+        if self._perturbation_direction == 'random':
+            return random_spherical(ndim=perturbation_size)
+        elif isinstance(self._perturbation_direction, (tuple, list)):
+            assert len(self._perturbation_direction) == perturbation_size
+            return np.array(self._perturbation_direction)
+        elif isinstance(self._pertrubation_direction, np.ndarray):
+            assert self._perturbation_direction.size == perturbation_size
+            return self._perturbation_direction
+
+    @property
+    def should_start_perturbation(self):
+        if self._perturbation_frequency is not None:
+            return self._step_counter % self._perturbation_frequency == 0
+        elif self._perturbation_probability is not None:
+            return np.random.rand() < self._perturbation_probability
+
+        raise ValueError
+
+    @property
+    def should_end_perturbation(self):
+        if self._perturbation_started_at is None:
+            return True
+
+        return ((self._step_counter - self._perturbation_started_at)
+                > self._perturbation_length - 2)
+
     def step(self, *args, **kwargs):
         self._step_counter += 1
 
-        if self._step_counter % self._perturbation_frequency == 0:
+        if self.should_start_perturbation:
             torso_index = self.sim.model.body_name2id('torso')
-            perturbation_size = num_dimensions(self.unwrapped)
-            perturbation_direction = random_spherical(ndim=perturbation_size)
+            perturbation_direction = self.perturbation_direction
 
             perturbation  = (
                 perturbation_direction * self._perturbation_strength)
+            self._perturbation_started_at = self._step_counter
             self.sim.data.xfrc_applied[torso_index][
-                0:perturbation_size] = perturbation
+                0:perturbation.size] = perturbation
 
         if hasattr(self, 'viewer') and self.viewer:
             self.viewer.vopt.flags[:] = 0
@@ -68,29 +107,8 @@ class PerturbBodyWrapper(gym.Wrapper):
 
         result = super(PerturbBodyWrapper, self).step(*args, **kwargs)
 
-        should_stop_perturbation = (
-            (self._step_counter % self._perturbation_frequency)
-            == self._perturbation_length - 1)
-
-        if should_stop_perturbation:
+        if self.should_end_perturbation:
             self.sim.data.xfrc_applied[:] = 0.0
-
-        return result
-
-
-        if hasattr(self, 'viewer') and self.viewer:
-            self.viewer.vopt.flags[:] = 0
-            self.viewer.vopt.flags[11] = 1
-            self.viewer.vopt.flags[12] = 1
-            self.viewer.vopt.flags[13] = 1
-
-        result = super(PerturbBodyWrapper, self).step(*args, **kwargs)
-
-        should_stop_perturbation = (
-            (self._step_counter % self._perturbation_frequency)
-            == self._perturbation_length - 1)
-
-        if should_stop_perturbation:
-            self.sim.data.xfrc_applied[:] = 0.0
+            self._perturbation_started_at = None
 
         return result
