@@ -47,9 +47,16 @@ class PerturbBodyWrapper(gym.Wrapper):
             raise ValueError(
                 "Either `perturbation_probability` or `perturbation_frequency`"
                 " should be `None`.")
+
         self._perturbation_frequency = perturbation_frequency
         self._perturbation_probability = perturbation_probability
+
+        if isinstance(perturbation_direction, (tuple, list, np.ndarray)):
+            perturbation_direction = np.array(perturbation_direction)
+            assert perturbation_direction.size == 3, perturbation_direction
+
         self._perturbation_direction = perturbation_direction
+
         self._perturbation_started_at = None
         return super(PerturbBodyWrapper, self).__init__(*args, **kwargs)
 
@@ -59,15 +66,18 @@ class PerturbBodyWrapper(gym.Wrapper):
 
     @property
     def perturbation_direction(self):
-        perturbation_size = num_dimensions(self.unwrapped)
-        if self._perturbation_direction == 'random':
-            return random_spherical(ndim=perturbation_size)
-        elif isinstance(self._perturbation_direction, (tuple, list)):
-            assert len(self._perturbation_direction) == perturbation_size
-            return np.array(self._perturbation_direction)
-        elif isinstance(self._pertrubation_direction, np.ndarray):
-            assert self._perturbation_direction.size == perturbation_size
+        if isinstance(self._perturbation_direction, np.ndarray):
             return self._perturbation_direction
+
+        elif self._perturbation_direction == 'random':
+            perturbation_size = num_dimensions(self.unwrapped)
+            perturbation = random_spherical(ndim=perturbation_size)
+            if perturbation_size == 2:
+                perturbation = np.array(
+                    (perturbation[0], 0.0, perturbation[1]))
+            return perturbation
+
+        raise NotImplementedError(type(self._perturbation_direction))
 
     @property
     def should_start_perturbation(self):
