@@ -233,7 +233,7 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
     'gym': {
         DEFAULT_KEY: 1000,
         'Point2DEnv': {
-            DEFAULT_KEY: 50,
+            DEFAULT_KEY: 20,
         },
         'Pendulum': {
             DEFAULT_KEY: 200,
@@ -362,11 +362,14 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 {
                     'observation_keys': ('observation', ),
                     'bridge_width': bridge_width,
-                    'bridge_length': 10.0,
+                    'bridge_length': 9.0,
+                    'extra_width_after': 10.0,
+                    'extra_width_before': 2.0,
+                    'water_width': 10.0,
                     'scale': 1.0,
                     'terminate_on_success': False,
                 }
-                for bridge_width in [0.3, 1.0, 2.0, 3.0, 4.0, 5.0]
+                for bridge_width in [0.5, 1.0, 2.0, 3.0, 4.0, 8.0]
             ]),
             'Pond-v0': tune.grid_search([
                 {
