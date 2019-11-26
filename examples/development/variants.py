@@ -369,7 +369,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'scale': 1.0,
                     'terminate_on_success': False,
                 }
-                for bridge_width in [0.5, 1.0, 2.0, 3.0, 4.0, 8.0]
+                for bridge_width in [0.3, 0.5, 1.0, 2.0, 3.0, 4.0, 8.0]
             ]),
             'Pond-v0': tune.grid_search([
                 {
