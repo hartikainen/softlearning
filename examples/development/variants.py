@@ -244,7 +244,7 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
 EPOCH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
     DEFAULT_KEY: 1000,
     'gym': {
-        DEFAULT_KEY: int(1e4),
+        DEFAULT_KEY: int(1e3),
         'Hopper': {
             DEFAULT_KEY: int(5e4),
             'v3': int(5e4),
