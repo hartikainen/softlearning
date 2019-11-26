@@ -374,8 +374,9 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             'Pond-v0': tune.grid_search([
                 {
                     'pond_radius': pond_radius,
+                    'terminate_on_success': False,
                 }
-                for pond_radius in [2.0, 4.0, 6.0, 8.0, 10.0, 15.0, 20.0]
+                for pond_radius in [2.0, 4.0, 6.0, 8.0, 10.0, 15.0]
             ]),
         },
         'Sawyer': {
