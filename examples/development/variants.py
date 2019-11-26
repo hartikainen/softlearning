@@ -586,12 +586,8 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                 # np.arange(5, 10).astype(np.float32).tolist()
             ),
             'Point2DEnv': tune.grid_search([
-                -2,
-                0,
-                *np.arange(1, 2 * np.log(2.0), 0.1).tolist(),
-                2 * np.log(2.0),
+                -2, -1, *np.round(np.linspace(0.0, 1.2, 7).tolist(), 2), 1.3,
             ]),
-            # 'Point2DEnv': None,
         }.get(domain, 'auto')
 
     sampler_params = {
