@@ -2,6 +2,7 @@ from collections import OrderedDict
 from copy import deepcopy
 
 from softlearning.preprocessors.utils import get_preprocessor_from_params
+from softlearning.utils.gym import is_continuous_space, is_discrete_space
 
 
 def get_gaussian_policy(*args, **kwargs):
@@ -12,17 +13,31 @@ def get_gaussian_policy(*args, **kwargs):
     return policy
 
 
-def get_uniform_policy(*args, **kwargs):
+def get_categorical_policy(*args, **kwargs):
+    from .categorical_policy import FeedforwardCategoricalPolicy
+
+    policy = FeedforwardCategoricalPolicy(*args, **kwargs)
+
+    return policy
+
+
+def get_continuous_uniform_policy(*args, **kwargs):
     from .uniform_policy import ContinuousUniformPolicy
-
     policy = ContinuousUniformPolicy(*args, **kwargs)
+    return policy
 
+
+def get_discrete_uniform_policy(*args, **kwargs):
+    from .uniform_policy import DiscreteUniformPolicy
+    policy = DiscreteUniformPolicy(*args, **kwargs)
     return policy
 
 
 POLICY_FUNCTIONS = {
     'GaussianPolicy': get_gaussian_policy,
-    'UniformPolicy': get_uniform_policy,
+    'CategoricalPolicy': get_categorical_policy,
+    'ContinuousUniformPolicy': get_continuous_uniform_policy,
+    'DiscreteUniformPolicy': get_discrete_uniform_policy,
 }
 
 
@@ -54,7 +69,16 @@ def get_policy_from_params(policy_params, env, *args, **kwargs):
         observation_preprocessors[name] = get_preprocessor_from_params(
             env, preprocessor_params)
 
-    action_range = (env.action_space.low, env.action_space.high)
+    if is_continuous_space(env.action_space):
+        action_range = (env.action_space.low, env.action_space.high)
+        if policy_type == 'UniformPolicy':
+            policy_type = 'ContinuousUniformPolicy'
+    elif is_discrete_space(env.action_space):
+        action_range = (0, env.action_space.n)
+        if policy_type == 'UniformPolicy':
+            policy_type = 'DiscreteUniformPolicy'
+    else:
+        raise NotImplementedError(type(env.action_space), env.action_space)
 
     policy = POLICY_FUNCTIONS[policy_type](
         input_shapes=observation_shapes,
