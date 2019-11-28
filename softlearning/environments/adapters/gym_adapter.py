@@ -3,6 +3,7 @@
 from collections import defaultdict, OrderedDict
 import copy
 
+import numpy as np
 import gym
 from gym import spaces, wrappers
 from gym.envs.mujoco.mujoco_env import MujocoEnv
@@ -118,6 +119,13 @@ class GymAdapter(SoftlearningEnv):
         self._action_space = self._env.action_space
 
     def step(self, action, *args, **kwargs):
+        if isinstance(self.action_space, spaces.Discrete):
+            assert np.size(action) == 1, (
+                "TODO(hartikainen): This is a hack to make the actions work"
+                " for discrete action spaces. It's likely an error if the"
+                f" action here has dimension > 1. Got action={action}")
+            action = np.squeeze(action)
+
         observation, reward, terminal, info = self._env.step(
             action, *args, **kwargs)
 
