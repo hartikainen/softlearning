@@ -89,3 +89,40 @@ class ContinuousUniformPolicy(UniformPolicy):
             (self._action_range[1] - self._action_range[0]) / 2.0
         )[None], (tf.shape(input=actions)[0], 1))
         return log_pis
+
+
+class DiscreteUniformPolicy(UniformPolicy):
+    def __init__(self,
+                 *args,
+                 output_shape=None,
+                 action_range=None,
+                 **kwargs):
+        assert (
+            output_shape is not None
+            and np.prod(output_shape) == 1
+        ), output_shape
+        assert (
+            action_range is not None
+            and action_range[0] == 0
+            and 0 < action_range[1]
+        ), action_range
+        return super(DiscreteUniformPolicy, self).__init__(
+            *args,
+            output_shape=output_shape,
+            action_range=action_range,
+            **kwargs)
+
+    def _actions_fn(self, batch_size):
+        actions = tf.random.uniform(
+            (batch_size, np.prod(self._output_shape)),
+            minval=self._action_range[0],
+            maxval=self._action_range[1],
+            dtype=tf.int32,
+        )
+        return actions
+
+    def _log_pis_fn(self, actions):
+        log_pis = tf.fill(
+            (tf.shape(input=actions)[0], 1),
+            1.0 / self._action_range[1])
+        return log_pis
