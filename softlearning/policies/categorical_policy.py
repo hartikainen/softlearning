@@ -74,7 +74,7 @@ class CategoricalPolicy(BasePolicy):
 
         action_distribution = tfp.layers.OneHotCategorical(
             num_actions,
-            sample_dtype=tf.int32,
+            sample_dtype=tf.int64,
         )(action_logits)
         actions_one_hot = action_distribution.sample()
         actions = tf.keras.layers.Lambda(
@@ -84,12 +84,16 @@ class CategoricalPolicy(BasePolicy):
         self.actions_model = tf.keras.Model(self.condition_inputs, actions)
 
         self.actions_input = tf.keras.layers.Input(
-            shape=output_shape, name='actions')
+            shape=(1, ), name='actions', dtype=tf.int64)
 
-        log_pis = action_distribution.log_prob(actions)[..., tf.newaxis]
+        log_pis = action_distribution.log_prob(
+            actions_one_hot)[..., tf.newaxis]
+        log_pis_for_action_input = action_distribution.log_prob(
+            tf.one_hot(self.actions_input[..., 0], depth=num_actions, dtype=tf.int64)
+        )[..., tf.newaxis]
         self.log_pis_model = tf.keras.Model(
             (*self.condition_inputs, self.actions_input),
-            log_pis)
+            log_pis_for_action_input)
 
         self.diagnostics_model = tf.keras.Model(
             self.condition_inputs, (action_logits, log_pis, actions))
@@ -145,7 +149,7 @@ class CategoricalPolicy(BasePolicy):
             ('entropy-std', np.std(-log_pis_np)),
 
             ('actions-mean', np.mean(actions_np)),
-            ('actions-mode', np.squeeze(mode(actions_np).mode)),
+            ('actions-mode', np.asscalar(mode(actions_np).mode)),
             ('actions-min', np.min(actions_np)),
             ('actions-max', np.max(actions_np)),
         ))
