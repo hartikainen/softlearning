@@ -75,6 +75,8 @@ class ContinuousUniformPolicy(UniformPolicy):
                  *args,
                  action_range=np.array(((-1.0, ), (1.0, ))),
                  **kwargs):
+        self._Serializable__initialize(locals())
+
         return super(ContinuousUniformPolicy, self).__init__(
             *args, action_range=action_range, **kwargs)
 
@@ -106,6 +108,9 @@ class DiscreteUniformPolicy(UniformPolicy):
             and action_range[0] == 0
             and 0 < action_range[1]
         ), action_range
+
+        self._Serializable__initialize(locals())
+
         return super(DiscreteUniformPolicy, self).__init__(
             *args,
             output_shape=output_shape,
