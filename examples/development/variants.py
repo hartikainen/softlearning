@@ -364,7 +364,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'bridge_width': bridge_width,
                     'bridge_length': 9.0,
                     'extra_width_after': 10.0,
-                    'extra_width_before': 2.0,
+                    'extra_width_before': 0.0,
                     'water_width': 10.0,
                     'scale': 1.0,
                     'terminate_on_success': False,
