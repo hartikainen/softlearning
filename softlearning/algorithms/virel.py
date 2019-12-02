@@ -141,7 +141,7 @@ class VIREL(RLAlgorithm):
                 labels=Q_target, predictions=Q_value, weights=0.5)
             for Q_value in Q_values)
         self._beta_update = tf.assign(self.beta, tf.reduce_mean(Q_losses))
-        self._training_ops.update({'beta_update': self._beta_update})
+        # self._training_ops.update({'beta_update': self._beta_update})
 
     def _init_critic_update(self):
         """Create minimization operations for Q-function (M-step)."""
@@ -250,6 +250,12 @@ class VIREL(RLAlgorithm):
         """Runs the operations for updating training and target ops."""
         feed_dict = self._get_feed_dict(iteration, batch)
         self._session.run(self._training_ops, feed_dict)
+
+        beta_batch_size = 4096
+        if beta_batch_size < self._pool.size:
+            beta_batch = self._pool.random_batch(beta_batch_size)
+            beta_feed_dict = self._get_feed_dict(iteration, beta_batch)
+            self._session.run(self._beta_update, beta_feed_dict)
 
         if iteration % self._target_update_interval == 0:
             # Run target ops here.
