@@ -363,7 +363,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'observation_keys': ('observation', ),
                     'bridge_width': bridge_width,
                     'bridge_length': 6.0,
-                    'extra_width_after': 15.0,
+                    'extra_width_after': 16.0,
                     'extra_width_before': 0.0,
                     'water_width': 10.0,
                     'scale': 1.0,
