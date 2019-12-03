@@ -4,7 +4,7 @@ from numbers import Number
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
-from flatten_dict import flatten
+from flatten_dict import flatten, unflatten
 
 from softlearning.models.utils import flatten_input_structure
 from .rl_algorithm import RLAlgorithm
@@ -12,6 +12,28 @@ from .rl_algorithm import RLAlgorithm
 
 def td_target(reward, discount, next_value):
     return reward + discount * next_value
+
+
+def stack_paths(paths):
+    if isinstance(paths[0], (list, tuple)):
+        paths = sum(paths, [])
+    try:
+        flattened_paths = [flatten(path) for path in paths]
+        keys = tuple(flattened_paths[0].keys())
+        assert all(set(path.keys()) == set(keys) for path in flattened_paths)
+        flattened_stacked_paths = {
+            key: np.concatenate([
+                path[key]
+                for path in flattened_paths
+            ], axis=0)
+            for key in keys
+        }
+        stacked_paths = unflatten(flattened_stacked_paths)
+    except Exception as e:
+        from pprint import pprint; import ipdb; ipdb.set_trace(context=30)
+        pass
+
+    return stacked_paths
 
 
 class SAC(RLAlgorithm):
@@ -316,16 +338,110 @@ class SAC(RLAlgorithm):
         Also calls the `draw` method of the plotter, if plotter defined.
         """
 
+        stacked_training_paths = stack_paths(training_paths)
+        stacked_evaluation_paths = stack_paths(evaluation_paths)
+
         feed_dict = self._get_feed_dict(iteration, batch)
+
         # TODO(hartikainen): We need to unwrap self._diagnostics_ops from its
         # tensorflow `_DictWrapper`.
         diagnostics = self._session.run({**self._diagnostics_ops}, feed_dict)
+
+        if self._training_environment.unwrapped.__class__.__name__ == 'Point2DBridgeRunEnv':
+            training_env = self._training_environment
+            training_on_bridge_index = np.logical_and.reduce((
+                stacked_training_paths['observations']['observation'][:, 0]
+                <= (training_env.observation_x_bounds[0]
+                    + training_env.extra_width_before
+                    + training_env.wall_length
+                    + training_env.bridge_length),
+                - self._training_environment.bridge_width / 2
+                < stacked_training_paths['observations']['observation'][:, 1],
+                stacked_training_paths['observations']['observation'][:, 1]
+                < self._training_environment.bridge_width / 2
+            ))
+            on_bridge_observations = {
+                key: values[training_on_bridge_index]
+                for key, values in stacked_training_paths['observations'].items()
+            }
+
+            training_after_bridge_index = (
+                training_env.observation_x_bounds[0]
+                + training_env.extra_width_before
+                + training_env.wall_length
+                + training_env.bridge_length
+            ) < stacked_training_paths['observations']['observation'][..., 0]
+
+            after_bridge_observations = {
+                key: values[training_after_bridge_index]
+                for key, values in stacked_training_paths['observations'].items()
+            }
+
+            if 0 < on_bridge_observations['observation'].size:
+                on_bridge_diagnostics = self._policy.get_diagnostics(
+                    flatten_input_structure({
+                        name: on_bridge_observations[name]
+                        for name in self._policy.observation_keys
+                    }))
+                diagnostics.update(OrderedDict([
+                    (f'policy/training-paths/on-bridge-{key}', value)
+                    for key, value in on_bridge_diagnostics.items()
+                ]))
+            else:
+                after_bridge_diagnostics = self._policy.get_diagnostics(
+                    flatten_input_structure({
+                        name: after_bridge_observations[name]
+                    for name in self._policy.observation_keys
+                    }))
+
+                diagnostics.update(OrderedDict([
+                    (f'policy/training-paths/on-bridge-{key}', np.nan)
+                    for key in after_bridge_diagnostics.keys()
+                ]))
+
+            if 0 < after_bridge_observations['observation'].size:
+                after_bridge_diagnostics = self._policy.get_diagnostics(
+                    flatten_input_structure({
+                        name: after_bridge_observations[name]
+                    for name in self._policy.observation_keys
+                    }))
+                diagnostics.update(OrderedDict([
+                    (f'policy/training-paths/after-bridge-{key}', value)
+                    for key, value in
+                    self._policy.get_diagnostics(flatten_input_structure({
+                        name: after_bridge_observations[name]
+                        for name in self._policy.observation_keys
+                    })).items()
+                ]))
+            else:
+                diagnostics.update(OrderedDict([
+                    (f'policy/training-paths/after-bridge-{key}', np.nan)
+                    for key in on_bridge_diagnostics.keys()
+                ]))
 
         diagnostics.update(OrderedDict([
             (f'policy/{key}', value)
             for key, value in
             self._policy.get_diagnostics(flatten_input_structure({
                 name: batch['observations'][name]
+                for name in self._policy.observation_keys
+            })).items()
+        ]))
+
+        diagnostics.update(OrderedDict([
+            (f'policy/training-paths/{key}', value)
+            for key, value in
+            self._policy.get_diagnostics(flatten_input_structure({
+                name: stacked_training_paths['observations'][name]
+                for name in self._policy.observation_keys
+            })).items()
+        ]))
+
+        diagnostics.update(OrderedDict([
+            (f'policy/evaluation-paths/{key}', value)
+            for key, value in
+            self._policy.get_diagnostics(flatten_input_structure({
+                name: stacked_evaluation_paths['observations'][name]
                 for name in self._policy.observation_keys
             })).items()
         ]))
