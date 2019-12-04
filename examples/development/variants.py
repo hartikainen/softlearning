@@ -370,7 +370,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'scale': 1.0,
                     'terminate_on_success': False,
                 }
-                for bridge_width in [0.3, 0.5, 1.0, 2.0, 3.0, 4.0, 8.0]
+                for bridge_width in [0.3, 0.5, 1.0, 2.0, 3.0]
             ]),
             'Pond-v0': tune.grid_search([
                 {
@@ -588,7 +588,13 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                 # np.arange(5, 10).astype(np.float32).tolist()
             ),
             'Point2DEnv': tune.grid_search([
-                -2, -1, *np.round(np.linspace(0.0, 1.2, 7).tolist(), 2), 1.3,
+                # -2, -1, *np.round(np.linspace(0.0, 1.2, 7).tolist(), 2), 1.3,
+                -10.0,
+                -5.0,
+                -3.0,
+                -2.0,
+                *np.round(np.linspace(-1.0, 0.0, 6).tolist(), 2),
+                0.3,
             ]),
         }.get(domain, 'auto')
 
