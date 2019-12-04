@@ -56,6 +56,7 @@ class SAC(RLAlgorithm):
             pool,
             plotter=None,
 
+            alpha_lr=3e-4,
             lr=3e-4,
             reward_scale=1.0,
             target_entropy='auto',
@@ -100,6 +101,7 @@ class SAC(RLAlgorithm):
 
         self._policy_lr = lr
         self._Q_lr = lr
+        self._alpha_lr = alpha_lr
 
         self._reward_scale = reward_scale
         self._target_entropy = (
@@ -221,7 +223,8 @@ class SAC(RLAlgorithm):
                 log_alpha * tf.stop_gradient(log_pis + self._target_entropy))
 
             self._alpha_optimizer = tf.compat.v1.train.AdamOptimizer(
-                self._policy_lr, name='alpha_optimizer')
+                self._alpha_lr, name='alpha_optimizer')
+
             self._alpha_train_op = self._alpha_optimizer.minimize(
                 loss=alpha_loss, var_list=[log_alpha])
 
