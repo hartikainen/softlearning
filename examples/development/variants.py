@@ -377,7 +377,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'pond_radius': pond_radius,
                     'terminate_on_success': False,
                 }
-                for pond_radius in [2.0, 4.0, 6.0, 8.0, 10.0, 15.0]
+                for pond_radius in [5.0, 10.0, 15.0]
             ]),
         },
         'Sawyer': {
@@ -590,11 +590,16 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             'Point2DEnv': tune.grid_search([
                 # -2, -1, *np.round(np.linspace(0.0, 1.2, 7).tolist(), 2), 1.3,
                 -10.0,
-                -5.0,
                 -3.0,
                 -2.0,
-                *np.round(np.linspace(-1.0, 0.0, 6).tolist(), 2),
-                0.3,
+                -1.0,
+                -0.5,
+                0.0,
+                0.5,
+                1.0,
+                # *np.round(np.linspace(-1.0, 0.0, 6).tolist(), 2),
+                # 0.3,
+                # -0.5
             ]),
         }.get(domain, 'auto')
 
