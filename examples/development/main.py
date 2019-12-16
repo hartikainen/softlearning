@@ -79,8 +79,9 @@ class ExperimentRunner(tune.Trainable):
                     json.dump(full_environment_variant, f, cls=_SafeFallbackEncoder)
 
         else:
-            evaluation_environments = self.evaluation_environments = (
-                [training_environment])
+            evaluation_environments = self.evaluation_environments = [
+                get_environment_from_params(environment_params['training'])
+            ]
 
         replay_pool = self.replay_pool = (
             get_replay_pool_from_variant(variant, training_environment))
