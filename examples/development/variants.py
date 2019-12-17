@@ -36,7 +36,23 @@ ALGORITHM_PARAMS_ADDITIONAL = {
             'action_prior': 'uniform',
             'n_initial_exploration_steps': int(1e3),
 
-            'discount': 0.99,
+            # 'discount': tune.grid_search([0.9, 0.99, 0.995, 0.999, 1.0]),
+            'discount': tune.sample_from(lambda spec: (
+                {
+                    ('Point2DEnv', 'Pond-v0'): 0.9,
+                }.get(
+                    (
+                        spec.get('config', spec)
+                        ['environment_params']
+                        ['training']
+                        ['domain'],
+                        spec.get('config', spec)
+                        ['environment_params']
+                        ['training']
+                        ['task']
+                    ),
+                    0.99)
+            )),
             'tau': 5e-3,
             'reward_scale': 1.0,
         },
@@ -238,6 +254,7 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'Point2DEnv': {
             DEFAULT_KEY: 20,
+            'Pond-v0': 100,
         },
         'Pendulum': {
             DEFAULT_KEY: 200,
@@ -386,8 +403,10 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 {
                     'pond_radius': pond_radius,
                     'terminate_on_success': False,
+                    'angular_velocity_max': 1.0,
+                    'velocity_reward_weight': 1.0,
                 }
-                for pond_radius in [5.0, 10.0, 15.0]
+                for pond_radius in [10.0]
             ]),
         },
         'Sawyer': {
