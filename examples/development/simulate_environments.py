@@ -35,7 +35,7 @@ def parse_args():
                         type=lambda x: bool(strtobool(x)),
                         nargs='?',
                         const=True,
-                        default=False,
+                        default=True,
                         help="Evaluate policy deterministically.")
 
     args = parser.parse_args()
@@ -91,8 +91,7 @@ def simulate_trial_in_environments(experiment_path,
                                    deterministic,
                                    num_rollouts,
                                    max_path_length):
-    print(f"trial_dirname: {trial_dirname}, environments_params:")
-    pprint(environments_params)
+    print(f"trial_dirname: {trial_dirname}")
     trial_dir = os.path.join(experiment_path, trial_dirname)
 
     checkpoint_dirs = glob.glob(os.path.join(trial_dir, 'checkpoint_*'))
@@ -142,6 +141,9 @@ def simulate_trial_in_environments(experiment_path,
                      ['training']
                      .get('terminate_when_unhealthy', True))
 
+            if evaluation_environment_params['task'] == 'Stand-v3':
+                evaluation_environment_params['task'] = 'SimpleStand-v3'
+
             environment = get_environment_from_params(
                 evaluation_environment_params)
 
@@ -159,6 +161,7 @@ def simulate_trial_in_environments(experiment_path,
                     policy,
                     path_length=max_path_length,
                     render_kwargs={})
+                    # render_kwargs={'mode': 'human'})
 
             checkpoint_data = evaluate_rollouts(paths, environment)
             checkpoint_data.update(flatten(
@@ -195,6 +198,84 @@ def simulate_trial_in_environments(experiment_path,
         json.dump(variant, f, indent=2, sort_keys=True)
 
     return True
+
+
+def filter_trials(experiment_path, trial_dirnames):
+    if os.path.split(experiment_path.rstrip('/'))[-1] == '2019-10-07T20-04-53-robustness-td3-4':
+        filtered_trial_dirnames = []
+        for trial_dirname in trial_dirnames:
+            variant_path = os.path.join(experiment_path, trial_dirname, 'params.json')
+            with open(variant_path, 'r') as f:
+                variant = json.load(f)
+            if (variant['algorithm_params']['kwargs']['policy_train_every_n_steps'] == 1
+                or variant['run_params']['seed'] in (
+                    402,
+                    9063,
+                    4154,
+                    9939,
+                    1466,
+                    8724,
+                    2598,
+                    7509,
+                )):
+                print(f"ignoring {trial_dirname}")
+                continue
+
+            filtered_trial_dirnames += [trial_dirname]
+        trial_dirnames = filtered_trial_dirnames
+    elif os.path.split(experiment_path.rstrip('/'))[-1] == '2019-10-24T13-52-30-no-termination-1':
+        filtered_trial_dirnames = []
+        for trial_dirname in trial_dirnames:
+            variant_path = os.path.join(experiment_path, trial_dirname, 'params.json')
+            with open(variant_path, 'r') as f:
+                variant = json.load(f)
+            if (variant['algorithm_params']['kwargs']['target_entropy']
+                not in (9.0, 10.0, 11.0)):
+                print(f"ignoring {trial_dirname}")
+                continue
+
+            filtered_trial_dirnames += [trial_dirname]
+        trial_dirnames = filtered_trial_dirnames
+    elif os.path.split(experiment_path.rstrip('/'))[-1] == '2019-10-24T14-35-20-no-termination-ddpg-1':
+        filtered_trial_dirnames = []
+        for trial_dirname in trial_dirnames:
+            variant_path = os.path.join(experiment_path, trial_dirname, 'params.json')
+            with open(variant_path, 'r') as f:
+                variant = json.load(f)
+            if (variant['sampler_params']['kwargs']['exploration_noise']
+                not in (0.2, 0.3)):
+                print(f"ignoring {trial_dirname}")
+                continue
+
+            filtered_trial_dirnames += [trial_dirname]
+        trial_dirnames = filtered_trial_dirnames
+    elif os.path.split(experiment_path.rstrip('/'))[-1] == '2019-06-08T05-35-29-perturbations-final-1':
+        filtered_trial_dirnames = []
+        for trial_dirname in trial_dirnames:
+            variant_path = os.path.join(experiment_path, trial_dirname, 'params.json')
+            with open(variant_path, 'r') as f:
+                variant = json.load(f)
+            if variant['replay_pool_params']['kwargs']['max_size'] != int(1e6):
+                print(f"ignoring {trial_dirname}")
+                continue
+
+            filtered_trial_dirnames += [trial_dirname]
+        trial_dirnames = filtered_trial_dirnames
+    elif os.path.split(experiment_path.rstrip('/'))[-1] == '2019-11-14T17-15-12-robustness-DDPG-sweep-2':
+        filtered_trial_dirnames = []
+        for trial_dirname in trial_dirnames:
+            variant_path = os.path.join(experiment_path, trial_dirname, 'params.json')
+            with open(variant_path, 'r') as f:
+                variant = json.load(f)
+            if (variant['sampler_params']['kwargs']['exploration_noise'] != 0.03
+                or variant['policy_params']['kwargs']['scale_identity_multiplier'] != 0.2):
+                print(f"ignoring {trial_dirname}")
+                continue
+
+            filtered_trial_dirnames += [trial_dirname]
+        trial_dirnames = filtered_trial_dirnames
+
+    return trial_dirnames
 
 
 def simulate_perturbations(args):
@@ -235,7 +316,7 @@ def simulate_perturbations(args):
                     },
                 }
             }
-            for perturbation_probability in np.linspace(0, 0.5, 51)
+            for perturbation_probability in np.linspace(0, 0.9, 21)
         }
     elif evaluation_task == 'PerturbNoisyAction-v0':
         environments_params = {
@@ -246,7 +327,7 @@ def simulate_perturbations(args):
                     },
                 }
             }
-            for noise_scale in np.linspace(0, 1.0, 51)
+            for noise_scale in np.linspace(0, 1.0, 21)
         }
     elif evaluation_task == 'PerturbBody-v0':
         environments_params = {
@@ -258,7 +339,8 @@ def simulate_perturbations(args):
                     },
                 }
             }
-            for perturbation_strength in np.linspace(0, 150.0, 51)
+            # for perturbation_strength in np.linspace(0, 500.0, 51)
+            for perturbation_strength in np.linspace(0, 2000.0, 51)
         }
     elif evaluation_task == 'PerturbBody-v1':
         environments_params = {
@@ -270,7 +352,22 @@ def simulate_perturbations(args):
                     },
                 }
             }
-            for perturbation_strength in np.linspace(0, 50.0, 51)
+            for perturbation_strength in np.linspace(0, 3000.0, 51)
+        }
+    elif evaluation_task == 'PerturbBody-v2':
+        environments_params = {
+            f'perturbation-probability-{perturbation_probability}': {
+                'kwargs': {
+                    'perturb_body_kwargs': {
+                        'perturbation_strength': 125,
+                        'perturbation_direction': (1.0, 0.0, 0.0),
+                        'perturbation_probability': perturbation_probability,
+                        'perturbation_frequency': None,
+                        'perturbation_length': 1,
+                    },
+                }
+            }
+            for perturbation_probability in np.linspace(0.0, 0.6, 51)
         }
     elif evaluation_task == 'Wind-v0':
         environments_params = {
@@ -281,7 +378,7 @@ def simulate_perturbations(args):
                     },
                 }
             }
-            for wind_strength in np.linspace(0, 15.0, 51)
+            for wind_strength in np.linspace(0, 60.0, 51)
         }
     else:
         raise NotImplementedError(evaluation_task)
@@ -289,16 +386,19 @@ def simulate_perturbations(args):
     output_dir = os.path.join(
         '/tmp',
         'perturbations',
-        experiment_path.split('ray_results/gs/')[-1],
+        (f"{experiment_path.split('ray_results/gs/')[-1].rstrip('/')}"
+         f"-{args.desired_checkpoint}"
+         f"{'' if deterministic else '-stochastic'}"),
         evaluation_task,
     )
+
+    trial_dirnames = tuple(os.walk(experiment_path))[0][1]
+    trial_dirnames = filter_trials(experiment_path, trial_dirnames)
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     ray.init(local_mode=False)
-
-    trial_dirnames = tuple(os.walk(experiment_path))[0][1]
 
     results = ray.get([
         simulate_trial_in_environments.remote(
