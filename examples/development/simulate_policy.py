@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import pickle
 
+import numpy as np
 import tensorflow as tf
 import pandas as pd
 
@@ -34,6 +35,10 @@ def parse_args():
     parser.add_argument('--video-save-path',
                         type=Path,
                         default=None)
+    parser.add_argument('--perturbation-strength',
+                        type=float)
+    parser.add_argument('--perturbation-probability',
+                        type=float)
     parser.add_argument('--deterministic', '-d',
                         type=lambda x: bool(strtobool(x)),
                         nargs='?',
@@ -93,6 +98,8 @@ def simulate_policy(checkpoint_path,
                     max_path_length,
                     render_kwargs,
                     video_save_path=None,
+                    perturbation_strength=None,
+                    perturbation_probability=None,
                     evaluation_environment_params=None):
     checkpoint_path = checkpoint_path.rstrip('/')
     picklable, variant, progress, metadata = load_checkpoint(checkpoint_path)
@@ -103,11 +110,12 @@ def simulate_policy(checkpoint_path,
     domain, task = environment_params['domain'], environment_params['task']
 
     assert domain in ('Humanoid', 'Hopper', 'Walker2d'), domain
-    assert task in ('MaxVelocity-v3', 'Standup-v2', 'Stand-v3', 'v3'), task
+    # assert task in ('MaxVelocity-v3', 'Standup-v2', 'Stand-v3', 'SimpleStand-v3', 'v3'), task
 
     if task == 'MaxVelocity-v3':
         environment_params['kwargs'].pop('max_velocity')
 
+    evaluation_task = 'PerturbBody-v2'
     # (TODO):
     # More granular perturations
     # Make z to be 0-centered
@@ -115,7 +123,7 @@ def simulate_policy(checkpoint_path,
         evaluation_params = evaluation_environment_params
     else:
         if evaluation_task == 'Pothole-v0':
-            environments_params = {
+            environment_params = {
                 f'pothole-depth-{pothole_depth}': {
                     'task': evaluation_task,
                     'kwargs': {
@@ -158,6 +166,17 @@ def simulate_policy(checkpoint_path,
                 }
                 for noise_scale in np.linspace(0, 1.0, 50)
             }
+        elif evaluation_task == 'PerturbBody-v2':
+            environments_params = {
+                f'noise-scale-{noise_scale}': {
+                    'kwargs': {
+                        'perturb_noisy_action_kwargs': {
+                            'noise_scale': noise_scale,
+                        },
+                    }
+                }
+                for noise_scale in np.linspace(0, 1.0, 50)
+            }
         else:
             raise NotImplementedError(evaluation_task)
 
@@ -168,7 +187,27 @@ def simulate_policy(checkpoint_path,
         task,
         {
             **environment_params['kwargs'],
-            **evaluation_environment_params,
+            # **evaluation_environment_params,
+            'perturb_random_action_kwargs': {
+                'perturbation_probability': perturbation_probability
+            },
+            # 'wind_kwargs': {
+            #     'wind_strength': perturbation_strength
+            # }
+            # 'perturb_body_kwargs': {
+            #     'perturbation_strength': perturbation_strength,
+            #     'perturbation_length': 5,
+            # },
+            # 'perturb_body_kwargs': {
+            #     'perturbation_strength': perturbation_strength,
+            #     'perturbation_direction': (1.0, 0.0, 0.0),
+            #     'perturbation_probability': perturbation_probability,
+            #     # 'perturbation_probability': 0.5, # 1/10 @ 100, 0/20 @ 125
+            #     # 'perturbation_probability': 0.25, # 2/10 @ 100, 4/10 @ 125
+            #     # 'perturbation_probability': 0.125, # 7/10 @ 100, 4/10 @ 125
+            #     'perturbation_frequency': None,
+            #     'perturbation_length': 1,
+            # }
         }
     )
 
@@ -179,12 +218,23 @@ def simulate_policy(checkpoint_path,
                          path_length=max_path_length,
                          render_kwargs=render_kwargs)
 
-    if video_save_path and render_kwargs.get('mode') == 'rgb_array':
-        fps = 1 // getattr(environment, 'dt', 1/30)
-        for i, path in enumerate(paths):
-            video_save_dir = os.path.expanduser('/tmp/simulate_policy/')
-            video_save_path = os.path.join(video_save_dir, f'episode_{i}.mp4')
-            save_video(path['images'], video_save_path, fps=fps)
+    num_paths = len(paths)
+    num_survived = sum(int(path['infos']['is_healthy'][-1]) for path in paths)
+    result = (
+        f"perturbation_strength: {perturbation_strength}, "
+        f"perturbation_probability: {perturbation_probability}, "
+        f"num_survived: {num_survived}/{num_paths}")
+
+    with open("/tmp/robustness-sweep-results.txt", "a") as f:
+        f.write(result + '\n')
+
+    print(result)
+    # if video_save_path and render_kwargs.get('mode') == 'rgb_array':
+    #     fps = 1 // getattr(environment, 'dt', 1/30)
+    #     for i, path in enumerate(paths):
+    #         video_save_dir = os.path.expanduser('/tmp/simulate_policy/')
+    #         video_save_path = os.path.join(video_save_dir, f'episode_{i}.mp4')
+    #         save_video(path['images'], video_save_path, fps=fps)
 
     return paths
 
