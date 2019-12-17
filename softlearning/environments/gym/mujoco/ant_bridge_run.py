@@ -4,6 +4,7 @@ import os
 import re
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+mpl.use('Agg')
 
 import numpy as np
 from gym import utils
