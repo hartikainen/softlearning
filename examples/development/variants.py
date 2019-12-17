@@ -90,6 +90,22 @@ ALGORITHM_PARAMS_ADDITIONAL = {
             'lr': 3e-4,
             'target_update_interval': 1,
             'tau': 5e-3,
+            'discount': tune.sample_from(lambda spec: (
+                {
+                    ('Point2DEnv', 'Pond-v0'): 0.9,
+                }.get(
+                    (
+                        spec.get('config', spec)
+                        ['environment_params']
+                        ['training']
+                        ['domain'],
+                        spec.get('config', spec)
+                        ['environment_params']
+                        ['training']
+                        ['task']
+                    ),
+                    0.99)
+            )),
             'n_initial_exploration_steps': int(1e3),
             'policy_train_every_n_steps': tune.sample_from(lambda spec: (
                 spec.get('config', spec)
