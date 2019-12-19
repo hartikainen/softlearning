@@ -122,6 +122,7 @@ GAUSSIAN_POLICY_PARAMS_BASE = {
     'type': 'GaussianPolicy',
     'kwargs': {
         'hidden_layer_sizes': (M, M),
+        'activation': 'relu',
         'squash': True,
         'observation_keys': None,
         'observation_preprocessors_params': {}
@@ -562,6 +563,7 @@ def get_policy_params(spec):
     if algorithm.lower() == 'ddpg':
         policy_params['kwargs']['scale_identity_multiplier'] = (
             tune.grid_search([0.2]))
+        policy_params['kwargs']['activation'] = 'tanh'
         policy_params['type'] = 'ConstantScaleGaussianPolicy'
     return policy_params
 
