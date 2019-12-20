@@ -32,13 +32,13 @@ def parse_args():
                         type=json.loads,
                         default='{}',
                         help="Kwargs for rollouts renderer.")
+    parser.add_argument('--evaluation-environment-kwargs',
+                        type=json.loads,
+                        default='{}',
+                        help="Arguments passed to the evaluation environment.")
     parser.add_argument('--video-save-path',
                         type=Path,
                         default=None)
-    parser.add_argument('--perturbation-strength',
-                        type=float)
-    parser.add_argument('--perturbation-probability',
-                        type=float)
     parser.add_argument('--deterministic', '-d',
                         type=lambda x: bool(strtobool(x)),
                         nargs='?',
@@ -98,9 +98,7 @@ def simulate_policy(checkpoint_path,
                     max_path_length,
                     render_kwargs,
                     video_save_path=None,
-                    perturbation_strength=None,
-                    perturbation_probability=None,
-                    evaluation_environment_params=None):
+                    evaluation_environment_kwargs=None):
     checkpoint_path = checkpoint_path.rstrip('/')
     picklable, variant, progress, metadata = load_checkpoint(checkpoint_path)
     policy, environment = load_policy_and_environment(picklable, variant)
@@ -109,88 +107,23 @@ def simulate_policy(checkpoint_path,
     environment_params = variant['environment_params']['training']
     domain, task = environment_params['domain'], environment_params['task']
 
-    assert domain in ('Humanoid', 'Hopper', 'Walker2d'), domain
+    # assert domain in ('Humanoid', 'Hopper', 'Walker2d'), domain
     # assert task in ('MaxVelocity-v3', 'Standup-v2', 'Stand-v3', 'SimpleStand-v3', 'v3'), task
 
     if task == 'MaxVelocity-v3':
         environment_params['kwargs'].pop('max_velocity')
 
-    evaluation_task = 'PerturbBody-v2'
-    # (TODO):
-    # More granular perturations
-    # Make z to be 0-centered
-    if evaluation_environment_params is not None:
-        evaluation_params = evaluation_environment_params
-    else:
-        if evaluation_task == 'Pothole-v0':
-            environment_params = {
-                f'pothole-depth-{pothole_depth}': {
-                    'task': evaluation_task,
-                    'kwargs': {
-                        'pothole_depth': pothole_depth,
-                    }
-                }
-                # for pothole_depth in (0.1, 0.2, 0.4, 0.8)
-                for pothole_depth in np.linspace(0.001, 1.0, 100)
-            }
-        elif evaluation_task == 'HeightField-v0':
-            environments_params = {
-                f'height-field-height-{field_z_max}': {
-                    'task': evaluation_task,
-                    'kwargs': {
-                        'field_z_max': field_z_max,
-                        'field_z_range': (0, field_z_max),
-                    }
-                }
-                for field_z_max in np.linspace(0, 0.5, 50)
-            }
-        elif evaluation_task == 'PerturbRandomAction-v0':
-            environments_params = {
-                f'perturbation-probability-{perturbation_probability}': {
-                    'kwargs': {
-                        'perturb_random_action_kwargs': {
-                            'perturbation_probability': perturbation_probability,
-                        },
-                    }
-                }
-                for perturbation_probability in np.linspace(0, 0.5, 50)
-            }
-        elif evaluation_task == 'PerturbNoisyAction-v0':
-            environments_params = {
-                f'noise-scale-{noise_scale}': {
-                    'kwargs': {
-                        'perturb_noisy_action_kwargs': {
-                            'noise_scale': noise_scale,
-                        },
-                    }
-                }
-                for noise_scale in np.linspace(0, 1.0, 50)
-            }
-        elif evaluation_task == 'PerturbBody-v2':
-            environments_params = {
-                f'noise-scale-{noise_scale}': {
-                    'kwargs': {
-                        'perturb_noisy_action_kwargs': {
-                            'noise_scale': noise_scale,
-                        },
-                    }
-                }
-                for noise_scale in np.linspace(0, 1.0, 50)
-            }
-        else:
-            raise NotImplementedError(evaluation_task)
-
-    assert not environment_params['kwargs'], environment_params['kwargs']
+    # assert not environment_params['kwargs'], environment_params['kwargs']
     environment = get_environment(
         'gym',
         domain,
         task,
         {
             **environment_params['kwargs'],
-            # **evaluation_environment_params,
-            'perturb_random_action_kwargs': {
-                'perturbation_probability': perturbation_probability
-            },
+            **evaluation_environment_kwargs,
+            # 'perturb_random_action_kwargs': {
+            #     'perturbation_probability': perturbation_probability
+            # },
             # 'wind_kwargs': {
             #     'wind_strength': perturbation_strength
             # }
@@ -218,17 +151,21 @@ def simulate_policy(checkpoint_path,
                          path_length=max_path_length,
                          render_kwargs=render_kwargs)
 
-    num_paths = len(paths)
-    num_survived = sum(int(path['infos']['is_healthy'][-1]) for path in paths)
-    result = (
-        f"perturbation_strength: {perturbation_strength}, "
-        f"perturbation_probability: {perturbation_probability}, "
-        f"num_survived: {num_survived}/{num_paths}")
+    if 'Point2D' in environment.unwrapped.__class__.__name__:
+        infos = environment.get_path_infos(paths)
 
-    with open("/tmp/robustness-sweep-results.txt", "a") as f:
-        f.write(result + '\n')
+    else:
+        num_paths = len(paths)
+        num_survived = sum(int(path['infos']['is_healthy'][-1]) for path in paths)
+        result = (
+            f"perturbation_strength: {perturbation_strength}, "
+            f"perturbation_probability: {perturbation_probability}, "
+            f"num_survived: {num_survived}/{num_paths}")
 
-    print(result)
+        with open("/tmp/robustness-sweep-results.txt", "a") as f:
+            f.write(result + '\n')
+
+        print(result)
     # if video_save_path and render_kwargs.get('mode') == 'rgb_array':
     #     fps = 1 // getattr(environment, 'dt', 1/30)
     #     for i, path in enumerate(paths):
