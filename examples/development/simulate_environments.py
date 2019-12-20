@@ -18,6 +18,7 @@ from softlearning.environments.utils import get_environment_from_params
 from softlearning.policies.utils import get_policy_from_variant
 from softlearning.samplers import rollouts
 from .simulate_policy import load_checkpoint, load_policy_and_environment
+from softlearning.utils.dict import deep_update
 
 
 def parse_args():
@@ -91,6 +92,7 @@ def simulate_trial_in_environments(experiment_path,
                                    deterministic,
                                    num_rollouts,
                                    max_path_length):
+    import tensorflow as tf
     print(f"trial_dirname: {trial_dirname}")
     trial_dir = os.path.join(experiment_path, trial_dirname)
 
@@ -126,10 +128,10 @@ def simulate_trial_in_environments(experiment_path,
         for name, environment_params in environments_params.items():
             print("environment_params")
             pprint(environment_params)
-            evaluation_environment_params = {
-                **variant['environment_params']['training'],
-                **environment_params,
-            }
+            evaluation_environment_params = deep_update(
+                variant['environment_params']['training'],
+                environment_params,
+            )
             if ('terminate_when_unhealthy' in (variant
                                                ['environment_params']
                                                ['training'])):
