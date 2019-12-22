@@ -267,6 +267,7 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
     'gym': {
         DEFAULT_KEY: 1000,
         'Ant': {
+            DEFAULT_KEY: 1000,
             'BridgeRun-v0': 200,
         },
         'Point2DEnv': {
@@ -299,6 +300,7 @@ EPOCH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: int(5e4),
             'v3': int(5e4),
             'BridgeRun-v0': int(1e4),
+            'Pond-v0': int(1e4),
         },
     },
 }
@@ -337,6 +339,12 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'bridge_width': bridge_width,
                 }
                 for bridge_width in [0.5, 1.0, 2.0, 3.0, 5.0]
+            ]),
+            'Pond-v0': tune.grid_search([
+                {
+                    'pond_radius': pond_radius,
+                }
+                for pond_radius in [20.0, 10.0, 5.0]
             ]),
         },
         'Humanoid': {  # 17 DoF

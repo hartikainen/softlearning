@@ -58,6 +58,11 @@ MUJOCO_ENVIRONMENT_SPECS = (
                         '.ant_bridge_run:AntBridgeRunEnv'),
     },
     {
+        'id': 'Ant-Pond-v0',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.ant_pond:AntPondEnv'),
+    },
+    {
         'id': 'Humanoid-Parameterizable-v3',
         'entry_point': (f'gym.envs.mujoco.humanoid_v3:HumanoidEnv'),
     },
