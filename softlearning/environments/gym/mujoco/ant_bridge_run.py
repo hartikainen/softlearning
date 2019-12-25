@@ -14,13 +14,18 @@ from gym.envs.mujoco.ant_v3 import AntEnv
 class AntBridgeRunEnv(AntEnv):
     def __init__(self,
                  *args,
+                 exclude_current_positions_from_observation=False,
                  bridge_length=10.0,
                  bridge_width=2.0,
                  **kwargs):
         utils.EzPickle.__init__(**locals())
         self.bridge_length = bridge_length
         self.bridge_width = bridge_width
-        return super(AntBridgeRunEnv, self).__init__(*args, **kwargs)
+        return super(AntBridgeRunEnv, self).__init__(
+            *args,
+            exclude_current_positions_from_observation=(
+                exclude_current_positions_from_observation),
+            **kwargs)
 
     def step(self, *args, **kwargs):
         observation, reward, done, info = super(AntBridgeRunEnv, self).step(

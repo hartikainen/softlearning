@@ -336,12 +336,14 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             'BridgeRun-v0': tune.grid_search([
                 {
                     'bridge_width': bridge_width,
+                    'exclude_current_positions_from_observation': False,
                 }
                 for bridge_width in [0.5, 1.0, 2.0, 3.0, 5.0]
             ]),
             'Pond-v0': tune.grid_search([
                 {
                     'pond_radius': pond_radius,
+                    'exclude_current_positions_from_observation': False,
                 }
                 for pond_radius in [20.0, 10.0, 5.0]
             ]),

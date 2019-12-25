@@ -14,6 +14,7 @@ from gym.envs.mujoco.ant_v3 import AntEnv
 class AntPondEnv(AntEnv):
     def __init__(self,
                  *args,
+                 exclude_current_positions_from_observation=False,
                  pond_radius=1.0,
                  angular_velocity_max=1.0,
                  velocity_reward_weight=1.0,
@@ -23,7 +24,11 @@ class AntPondEnv(AntEnv):
         self.angular_velocity_max = angular_velocity_max
         self.velocity_reward_weight = velocity_reward_weight
         self.pond_center = (-pond_radius - 3.0, 0)
-        return super(AntPondEnv, self).__init__(*args, **kwargs)
+        return super(AntPondEnv, self).__init__(
+            *args,
+            exclude_current_positions_from_observation=(
+                exclude_current_positions_from_observation),
+            **kwargs)
 
     def step(self, action):
         xy_position_before = self.get_body_com("torso")[:2].copy()
