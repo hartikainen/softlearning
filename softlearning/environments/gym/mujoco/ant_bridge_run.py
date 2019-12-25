@@ -37,19 +37,19 @@ class AntBridgeRunEnv(AntEnv):
             x_position < self.bridge_length
             and self.bridge_width / 2 <= np.abs(y_position))
 
-        if fell_off_the_bridge:
-            reward = -1000
-            done = True
-            info['fell_off_the_bridge'] = True
-        else:
-            info['fell_off_the_bridge'] = False
-
         after_bridge = self.bridge_length <= x_position
         if after_bridge:
             reward = 20.0
             info['after_bridge'] = True
         else:
             info['after_bridge'] = False
+
+        if fell_off_the_bridge:
+            reward = -1000
+            done = True
+            info['fell_off_the_bridge'] = True
+        else:
+            info['fell_off_the_bridge'] = False
 
         return observation, reward, done, info
 

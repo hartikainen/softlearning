@@ -337,15 +337,16 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 {
                     'bridge_width': bridge_width,
                     'exclude_current_positions_from_observation': False,
+                    'healthy_reward': 0.0,
                 }
-                for bridge_width in [0.5, 1.0, 2.0, 3.0, 5.0]
+                for bridge_width in [2.5, 5.0, 7.5, 10.0, 15.0]
             ]),
             'Pond-v0': tune.grid_search([
                 {
                     'pond_radius': pond_radius,
                     'exclude_current_positions_from_observation': False,
                 }
-                for pond_radius in [20.0, 10.0, 5.0]
+                for pond_radius in [30.0, 50.0, 75.0, 100.0]
             ]),
         },
         'Humanoid': {  # 17 DoF
