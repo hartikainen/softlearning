@@ -9,12 +9,13 @@ from gym import spaces, wrappers
 from .softlearning_env import SoftlearningEnv
 from softlearning.environments.gym import register_environments
 from softlearning.environments.gym.wrappers import (
-    NormalizeActionWrapper,
     PerturbRandomActionWrapper,
     PerturbNoisyActionWrapper,
     PerturbBodyWrapper,
     WindWrapper,
-    PixelObservationWrapper)
+)
+
+from softlearning.utils.gym import is_continuous_space
 
 
 def parse_domain_task(gym_id):
@@ -95,8 +96,15 @@ class GymAdapter(SoftlearningEnv):
             # depends on time rather than state).
             env = env.env
 
-        if normalize:
-            env = NormalizeActionWrapper(env)
+        if normalize and is_continuous_space(env.action_space):
+            env = wrappers.RescaleAction(env, -1.0, 1.0)
+
+        # TODO(hartikainen): We need the clip action wrapper because sometimes
+        # the tfp.bijectors.Tanh() produces values strictly greater than 1 or
+        # strictly less than -1, which causes the env fail without clipping.
+        # The error is in the order of 1e-7, which should not cause issues.
+        # See https://github.com/tensorflow/probability/issues/664.
+        env = wrappers.ClipAction(env)
 
         if perturb_random_action_kwargs is not None:
             env = PerturbRandomActionWrapper(env, **perturb_random_action_kwargs)
@@ -111,7 +119,7 @@ class GymAdapter(SoftlearningEnv):
             env = WindWrapper(env, **wind_kwargs)
 
         if pixel_wrapper_kwargs is not None:
-            env = PixelObservationWrapper(env, **pixel_wrapper_kwargs)
+            env = wrappers.PixelObservationWrapper(env, **pixel_wrapper_kwargs)
 
         self._env = env
 

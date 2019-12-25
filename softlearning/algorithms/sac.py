@@ -7,6 +7,7 @@ import tensorflow_probability as tfp
 from flatten_dict import flatten, unflatten
 
 from softlearning.models.utils import flatten_input_structure
+from softlearning.utils.gym import is_continuous_space, is_discrete_space
 from .rl_algorithm import RLAlgorithm
 
 
@@ -34,6 +35,18 @@ def stack_paths(paths):
         pass
 
     return stacked_paths
+
+
+def heuristic_target_entropy(action_space):
+    if is_continuous_space(action_space):
+        heuristic_target_entropy = -np.prod(action_space.shape)
+    elif is_discrete_space(action_space):
+        raise NotImplementedError(
+            "TODO(hartikainen): implement for discrete spaces.")
+    else:
+        raise NotImplementedError((type(action_space), action_space))
+
+    return heuristic_target_entropy
 
 
 class SAC(RLAlgorithm):
@@ -105,7 +118,7 @@ class SAC(RLAlgorithm):
 
         self._reward_scale = reward_scale
         self._target_entropy = (
-            -np.prod(self._training_environment.action_space.shape)
+            heuristic_target_entropy(self._training_environment.action_space)
             if target_entropy == 'auto'
             else target_entropy)
 
@@ -209,7 +222,6 @@ class SAC(RLAlgorithm):
         })
         actions = self._policy.actions(policy_inputs)
         log_pis = self._policy.log_pis(policy_inputs, actions)
-
         assert log_pis.shape.as_list() == [None, 1]
 
         log_alpha = self._log_alpha = tf.compat.v1.get_variable(
@@ -345,10 +357,7 @@ class SAC(RLAlgorithm):
         stacked_evaluation_paths = stack_paths(evaluation_paths)
 
         feed_dict = self._get_feed_dict(iteration, batch)
-
-        # TODO(hartikainen): We need to unwrap self._diagnostics_ops from its
-        # tensorflow `_DictWrapper`.
-        diagnostics = self._session.run({**self._diagnostics_ops}, feed_dict)
+        diagnostics = self._session.run(self._diagnostics_ops, feed_dict)
 
         if self._training_environment.unwrapped.__class__.__name__ == 'Point2DBridgeRunEnv':
             training_env = self._training_environment

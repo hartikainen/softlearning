@@ -48,14 +48,14 @@ Keras-Preprocessing==1.0.5
 kiwisolver==1.0.1
 lockfile==0.12.2
 Markdown==3.0.1
-matplotlib==3.0.2
+matplotlib==3.1.2
 more-itertools==4.3.0
 mujoco-py==2.0.2.8
 git+https://github.com/vitchyr/multiworld.git@d76b3dae2e8cbca02924f93d6cc0239c552f6408
 networkx==2.2
 numpy==1.17.3
 pandas==0.23.4
-Pillow==5.3.0
+Pillow==6.2.0
 plotly==1.9.6
 pluggy==0.13.0
 protobuf==3.9.1

@@ -1,4 +1,3 @@
-
 from copy import deepcopy
 
 from ray import tune
@@ -113,7 +112,7 @@ ALGORITHM_PARAMS_ADDITIONAL = {
                 ['kwargs']
                 ['target_update_interval']
             ))
-        }
+        },
     },
 }
 

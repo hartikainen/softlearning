@@ -5,11 +5,10 @@ from collections import OrderedDict
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tensorflow.python.keras.engine import training_utils
 
-from softlearning.distributions.squash_bijector import SquashBijector
 from softlearning.models.feedforward import feedforward_model
 from softlearning.models.utils import flatten_input_structure, create_inputs
+from softlearning.utils.tensorflow import nest
 
 from .base_policy import LatentSpacePolicy
 
@@ -18,13 +17,20 @@ class GaussianPolicy(LatentSpacePolicy):
     def __init__(self,
                  input_shapes,
                  output_shape,
+                 action_range,
                  *args,
                  squash=True,
                  preprocessors=None,
                  name=None,
                  **kwargs):
+
+        assert (np.all(action_range == np.array([[-1], [1]]))), (
+            "The action space should be scaled to (-1, 1)."
+            " TODO(hartikainen): We should support non-scaled actions spaces.")
+
         self._Serializable__initialize(locals())
 
+        self._action_range = action_range
         self._input_shapes = input_shapes
         self._output_shape = output_shape
         self._squash = squash
@@ -47,18 +53,21 @@ class GaussianPolicy(LatentSpacePolicy):
             in zip(preprocessors_flat, inputs_flat)
         ]
 
-        float_inputs = tf.keras.layers.Lambda(
-            lambda inputs: training_utils.cast_if_floating_dtype(inputs)
-        )(preprocessed_inputs)
+        def cast_and_concat(x):
+            x = nest.map_structure(
+                lambda element: tf.cast(element, tf.float32), x)
+            x = nest.flatten(x)
+            x = tf.concat(x, axis=-1)
+            return x
 
         conditions = tf.keras.layers.Lambda(
-            lambda inputs: tf.concat(inputs, axis=-1)
-        )(float_inputs)
+            cast_and_concat
+        )(preprocessed_inputs)
 
         self.condition_inputs = inputs_flat
 
         shift_and_log_scale_diag = self._shift_and_log_scale_diag_net(
-            output_size=output_shape[0] * 2,
+            output_size=np.prod(output_shape) * 2,
         )(conditions)
 
         shift, log_scale_diag = tf.keras.layers.Lambda(
@@ -100,7 +109,7 @@ class GaussianPolicy(LatentSpacePolicy):
         )((shift, log_scale_diag, self.latents_input))
 
         squash_bijector = (
-            SquashBijector()
+            tfp.bijectors.Tanh()
             if self._squash
             else tfp.bijectors.Identity())
 
@@ -232,6 +241,7 @@ class ConstantScaleGaussianPolicy(FeedforwardGaussianPolicy):
     def __init__(self,
                  input_shapes,
                  output_shape,
+                 action_range,
                  hidden_layer_sizes,
                  squash=True,
                  preprocessors=None,
@@ -240,6 +250,10 @@ class ConstantScaleGaussianPolicy(FeedforwardGaussianPolicy):
                  activation='relu',
                  output_activation='linear',
                  *args, **kwargs):
+        assert (np.all(action_range == np.array([[-1], [1]]))), (
+            "The action space should be scaled to (-1, 1)."
+            " TODO(hartikainen): We should support non-scaled actions spaces.")
+
         self._hidden_layer_sizes = hidden_layer_sizes
         self._activation = activation
         self._output_activation = output_activation
@@ -247,6 +261,7 @@ class ConstantScaleGaussianPolicy(FeedforwardGaussianPolicy):
 
         self._Serializable__initialize(locals())
 
+        self._action_range = action_range
         self._input_shapes = input_shapes
         self._output_shape = output_shape
         self._squash = squash
@@ -269,13 +284,16 @@ class ConstantScaleGaussianPolicy(FeedforwardGaussianPolicy):
             in zip(preprocessors_flat, inputs_flat)
         ]
 
-        float_inputs = tf.keras.layers.Lambda(
-            lambda inputs: training_utils.cast_if_floating_dtype(inputs)
-        )(preprocessed_inputs)
+        def cast_and_concat(x):
+            x = nest.map_structure(
+                lambda element: tf.cast(element, tf.float32), x)
+            x = nest.flatten(x)
+            x = tf.concat(x, axis=-1)
+            return x
 
         conditions = tf.keras.layers.Lambda(
-            lambda inputs: tf.concat(inputs, axis=-1)
-        )(float_inputs)
+            cast_and_concat
+        )(preprocessed_inputs)
 
         self.condition_inputs = inputs_flat
 
@@ -315,7 +333,7 @@ class ConstantScaleGaussianPolicy(FeedforwardGaussianPolicy):
         )((shift, self.latents_input))
 
         squash_bijector = (
-            SquashBijector()
+            tfp.bijectors.Tanh()
             if self._squash
             else tfp.bijectors.Identity())
 
