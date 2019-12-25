@@ -667,7 +667,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
     }
     if algorithm == 'DDPG':
         sampler_params['kwargs']['exploration_noise'] = tune.grid_search([
-            0.03, 0.1, 0.2, 0.3, 0.4, 0.6, 0.8, 1.0
+            0.01, 0.03, 0.1, 0.2, 0.3, 0.6, 1.0,
         ])
     variant_spec = {
         'git_sha': get_git_rev(__file__),
