@@ -35,7 +35,6 @@ ALGORITHM_PARAMS_ADDITIONAL = {
             'action_prior': 'uniform',
             'n_initial_exploration_steps': int(1e3),
 
-            # 'discount': tune.grid_search([0.9, 0.99, 0.995, 0.999, 1.0]),
             'discount': tune.sample_from(lambda spec: (
                 {
                     ('Point2DEnv', 'Pond-v0'): 0.9,
@@ -267,7 +266,7 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
         DEFAULT_KEY: 1000,
         'Ant': {
             DEFAULT_KEY: 1000,
-            'BridgeRun-v0': 200,
+            'BridgeRun-v0': 1000,
         },
         'Point2DEnv': {
             DEFAULT_KEY: 20,
@@ -335,18 +334,23 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             },
             'BridgeRun-v0': tune.grid_search([
                 {
-                    'bridge_width': bridge_width,
                     'exclude_current_positions_from_observation': False,
-                    'healthy_reward': 0.0,
+                    'healthy_reward': 1.0,
+                    'forward_reward_weight': forward_reward_weight,
+                    'after_bridge_reward': 20.0,
+                    'bridge_width': bridge_width,
                 }
-                for bridge_width in [2.5, 5.0, 7.5, 10.0, 15.0]
+                for bridge_width in [2.5, 5.0, 7.5, 10.0]
+                for forward_reward_weight in [1.0, 3.0, 5.0]
             ]),
             'Pond-v0': tune.grid_search([
                 {
                     'pond_radius': pond_radius,
+                    'velocity_reward_weight': velocity_reward_weight,
                     'exclude_current_positions_from_observation': False,
                 }
-                for pond_radius in [30.0, 50.0, 75.0, 100.0]
+                for pond_radius in [10.0, 20.0, 30.0]
+                for velocity_reward_weight in [1.0, 3.0]
             ]),
         },
         'Humanoid': {  # 17 DoF
