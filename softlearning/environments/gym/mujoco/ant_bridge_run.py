@@ -15,41 +15,72 @@ class AntBridgeRunEnv(AntEnv):
     def __init__(self,
                  *args,
                  exclude_current_positions_from_observation=False,
+                 forward_reward_weight=3.0,
+                 after_bridge_reward=20.0,
                  bridge_length=10.0,
                  bridge_width=2.0,
                  **kwargs):
         utils.EzPickle.__init__(**locals())
         self.bridge_length = bridge_length
         self.bridge_width = bridge_width
+        self.forward_reward_weight = forward_reward_weight
+        self.after_bridge_reward = after_bridge_reward
         return super(AntBridgeRunEnv, self).__init__(
             *args,
             exclude_current_positions_from_observation=(
                 exclude_current_positions_from_observation),
             **kwargs)
 
-    def step(self, *args, **kwargs):
-        observation, reward, done, info = super(AntBridgeRunEnv, self).step(
-            *args, **kwargs)
-        xy_position = self.get_body_com("torso")[:2].copy()
-        x_position, y_position = xy_position[0], xy_position[1]
+    def step(self, action):
+        xy_position_before = self.get_body_com("torso")[:2].copy()
+        self.do_simulation(action, self.frame_skip)
+        xy_position_after = self.get_body_com("torso")[:2].copy()
+
+        x_position, y_position = xy_position_after
+
+        xy_velocity = (xy_position_after - xy_position_before) / self.dt
+        x_velocity, y_velocity = xy_velocity
+
+        ctrl_cost = self.control_cost(action)
+        contact_cost = self.contact_cost
+
+        forward_reward = self.forward_reward_weight * x_velocity
+        healthy_reward = self.healthy_reward
+
+        rewards = forward_reward + healthy_reward
+        costs = ctrl_cost + contact_cost
+
+        reward = rewards - costs
+        observation = self._get_obs()
 
         fell_off_the_bridge = (
             x_position < self.bridge_length
             and self.bridge_width / 2 <= np.abs(y_position))
 
         after_bridge = self.bridge_length <= x_position
-        if after_bridge:
-            reward = 20.0
-            info['after_bridge'] = True
-        else:
-            info['after_bridge'] = False
 
-        if fell_off_the_bridge:
-            reward = -1000
-            done = True
-            info['fell_off_the_bridge'] = True
-        else:
-            info['fell_off_the_bridge'] = False
+        if after_bridge:
+            reward = self.after_bridge_reward
+
+        done = self.done or fell_off_the_bridge
+
+        info = {
+            'reward_forward': forward_reward,
+            'reward_ctrl': -ctrl_cost,
+            'reward_contact': -contact_cost,
+            'reward_survive': healthy_reward,
+
+            'x_position': xy_position_after[0],
+            'y_position': xy_position_after[1],
+            'distance_from_origin': np.linalg.norm(xy_position_after, ord=2),
+
+            'x_velocity': x_velocity,
+            'y_velocity': y_velocity,
+            'forward_reward': forward_reward,
+
+            'after_bridge': after_bridge,
+            'fell_off_the_bridge': fell_off_the_bridge
+        }
 
         return observation, reward, done, info
 
