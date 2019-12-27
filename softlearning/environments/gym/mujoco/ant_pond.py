@@ -16,7 +16,7 @@ class AntPondEnv(AntEnv):
                  *args,
                  exclude_current_positions_from_observation=False,
                  pond_radius=1.0,
-                 angular_velocity_max=1.0,
+                 angular_velocity_max=float('inf'),
                  velocity_reward_weight=1.0,
                  **kwargs):
         utils.EzPickle.__init__(**locals())
