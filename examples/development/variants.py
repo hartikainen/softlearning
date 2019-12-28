@@ -150,6 +150,8 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
         'Ant': {
             DEFAULT_KEY: int(1e7),
             'v3': int(3e6),
+            'Pond-v0': int(2e7),
+            'BridgeRun-v0': int(2e7),
         },
         'Humanoid': {
             DEFAULT_KEY: int(3e6),
@@ -340,8 +342,8 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'after_bridge_reward': 20.0,
                     'bridge_width': bridge_width,
                 }
-                for bridge_width in [2.5, 5.0, 7.5, 10.0]
-                for forward_reward_weight in [1.0, 3.0, 5.0]
+                for bridge_width in [1.0, 2.0, 2.5]
+                for forward_reward_weight in [5.0]
             ]),
             'Pond-v0': tune.grid_search([
                 {
@@ -349,8 +351,8 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'velocity_reward_weight': velocity_reward_weight,
                     'exclude_current_positions_from_observation': False,
                 }
-                for pond_radius in [10.0, 20.0, 30.0]
-                for velocity_reward_weight in [1.0, 3.0]
+                for pond_radius in [30.0]
+                for velocity_reward_weight in [5.0]
             ]),
         },
         'Humanoid': {  # 17 DoF
