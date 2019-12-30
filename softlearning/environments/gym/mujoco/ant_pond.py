@@ -9,6 +9,16 @@ mpl.use('Agg')
 import numpy as np
 from gym import utils
 from gym.envs.mujoco.ant_v3 import AntEnv
+from scipy.spatial.transform import Rotation
+
+
+def quaternion_multiply(quaternion1, quaternion0):
+    w0, x0, y0, z0 = quaternion0
+    w1, x1, y1, z1 = quaternion1
+    return np.array([-x1 * x0 - y1 * y0 - z1 * z0 + w1 * w0,
+                     x1 * w0 + y1 * z0 - z1 * y0 + w1 * x0,
+                     -x1 * z0 + y1 * w0 + z1 * x0 + w1 * y0,
+                     x1 * y0 - y1 * x0 + z1 * w0 + w1 * z0], dtype=np.float64)
 
 
 class AntPondEnv(AntEnv):
@@ -29,6 +39,34 @@ class AntPondEnv(AntEnv):
             exclude_current_positions_from_observation=(
                 exclude_current_positions_from_observation),
             **kwargs)
+
+    def _get_obs(self):
+        qpos = self.sim.data.qpos.flat.copy()
+        qvel = self.sim.data.qvel.flat.copy()
+        contact_force = self.contact_forces.flat.copy()
+
+        # free joint = qpos[0:7]
+        xyz, rotation = qpos[:3], qpos[3:7]
+
+        xy_from_pond_center = xyz[:2] - self.pond_center
+        angle_to_pond_center = np.arctan2(*xy_from_pond_center[::-1])
+        pond_quaternion = np.roll(
+            Rotation.from_euler('z', angle_to_pond_center).as_quat(), 1)
+        new_quaternion = quaternion_multiply(pond_quaternion, rotation)
+
+        distance_from_water = self.distance_from_pond_center(
+            xyz[:2]
+        ) - self.pond_radius
+
+        observation = np.concatenate((
+            np.array(distance_from_water)[np.newaxis],
+            np.array(qpos[2])[np.newaxis],
+            new_quaternion,
+            qpos[7:],
+            qvel,
+            contact_force))
+
+        return observation
 
     def step(self, action):
         xy_position_before = self.get_body_com("torso")[:2].copy()
@@ -131,8 +169,10 @@ class AntPondEnv(AntEnv):
         infos = {}
         x, y = np.split(np.concatenate(tuple(itertools.chain(*[
             [
-                path['observations']['observations'][:, :2],
-                path['next_observations']['observations'][[-1], :2]
+                np.concatenate((
+                    np.array(path['infos']['x_position'])[..., np.newaxis],
+                    np.array(path['infos']['y_position'])[..., np.newaxis],
+                ), axis=-1),
             ]
             for path in paths
         ]))), 2, axis=-1)
@@ -215,9 +255,9 @@ class AntPondEnv(AntEnv):
         color_map = plt.cm.get_cmap('PuBuGn', len(paths))
         for i, path in enumerate(paths):
             positions = np.concatenate((
-                path['observations']['observations'][:, :2],
-                path['next_observations']['observations'][[-1], :2],
-            ), axis=0)
+                np.array(path['infos']['x_position'])[..., np.newaxis],
+                np.array(path['infos']['y_position'])[..., np.newaxis],
+            ), axis=-1)
             color = color_map(i)
             axis.plot(
                 positions[:, 0],
