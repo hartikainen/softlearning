@@ -11,8 +11,18 @@ def parse_args():
 
     parser.add_argument(
         'sync_path', type=str, default=None, nargs='?')
+    # parser.add_argument(
+    #     '--include_folders',
+    #     type=str,
+    #     metavar='folder',
+    #     nargs='*',
+    #     default=())
     parser.add_argument(
-        '--sync-checkpoints', action='store_true', default=False)
+        '--include-checkpoints',
+        type=str,
+        metavar='checkpoint-id',
+        nargs='*',
+        default=())
     parser.add_argument(
         '--dry', action='store_true', default=False)
     args = parser.parse_args()
@@ -47,15 +57,34 @@ def sync_gs(args):
 
     command_parts = ['gsutil', '-m', 'rsync', '-r']
 
-    if not args.sync_checkpoints:
-        command_parts += ['-x', '".*./checkpoint_.*./.*"']
-
     if args.dry:
         command_parts += ["-n"]
+
+    # included_file_regexes = (
+    #     "params.json$",
+    #     "params.pkl$",
+    #     "progress.csv$",
+    #     "result.json$",
+    #     *[
+    #         f"{included_folder}"
+    #         for included_folder in args.include_folders
+    #     ],
+    # )
+
+    # command_parts += [
+    #     "-x", shlex.quote(f".*/(?!{'|'.join(included_file_regexes)})")
+    # ]
+
+    command_parts += [
+        "-x",
+        shlex.quote(f".*(?=checkpoint_(?!(?:{'|'.join(args.include_checkpoints)})/)\d+/)")
+    ]
 
     command_parts += [shlex.quote(remote_gs_path), shlex.quote(local_gs_path)]
 
     command = " ".join(command_parts)
+
+    print(command)
 
     subprocess.call(command, shell=True)
 
