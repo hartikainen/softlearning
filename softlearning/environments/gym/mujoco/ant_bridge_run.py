@@ -15,15 +15,16 @@ class AntBridgeRunEnv(AntEnv):
     def __init__(self,
                  *args,
                  exclude_current_positions_from_observation=False,
-                 forward_reward_weight=3.0,
-                 after_bridge_reward=20.0,
+                 velocity_reward_weight=3.0,
+                 after_bridge_reward=None,
                  bridge_length=10.0,
                  bridge_width=2.0,
                  **kwargs):
         utils.EzPickle.__init__(**locals())
         self.bridge_length = bridge_length
         self.bridge_width = bridge_width
-        self.forward_reward_weight = forward_reward_weight
+        self.velocity_reward_weight = velocity_reward_weight
+        assert after_bridge_reward is None, after_bridge_reward
         self.after_bridge_reward = after_bridge_reward
         return super(AntBridgeRunEnv, self).__init__(
             *args,
@@ -38,16 +39,18 @@ class AntBridgeRunEnv(AntEnv):
 
         x_position, y_position = xy_position_after
 
-        xy_velocity = (xy_position_after - xy_position_before) / self.dt
-        x_velocity, y_velocity = xy_velocity
+        x_velocity, y_velocity = (
+            xy_position_after - xy_position_before) / self.dt
+        xy_velocity = np.linalg.norm((x_velocity, y_velocity), ord=2)
 
         ctrl_cost = self.control_cost(action)
         contact_cost = self.contact_cost
 
-        forward_reward = self.forward_reward_weight * x_velocity
+        velocity_reward = self.velocity_reward_weight * (
+            np.sign(x_velocity) * xy_velocity)
         healthy_reward = self.healthy_reward
 
-        rewards = forward_reward + healthy_reward
+        rewards = velocity_reward + healthy_reward
         costs = ctrl_cost + contact_cost
 
         reward = rewards - costs
@@ -59,13 +62,10 @@ class AntBridgeRunEnv(AntEnv):
 
         after_bridge = self.bridge_length <= x_position
 
-        if after_bridge:
-            reward = self.after_bridge_reward
-
         done = self.done or fell_off_the_bridge
 
         info = {
-            'reward_forward': forward_reward,
+            'velocity_reward': velocity_reward,
             'reward_ctrl': -ctrl_cost,
             'reward_contact': -contact_cost,
             'reward_survive': healthy_reward,
@@ -76,7 +76,7 @@ class AntBridgeRunEnv(AntEnv):
 
             'x_velocity': x_velocity,
             'y_velocity': y_velocity,
-            'forward_reward': forward_reward,
+            'xy_velocity': xy_velocity,
 
             'after_bridge': after_bridge,
             'fell_off_the_bridge': fell_off_the_bridge

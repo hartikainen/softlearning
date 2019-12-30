@@ -338,12 +338,12 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 {
                     'exclude_current_positions_from_observation': False,
                     'healthy_reward': 1.0,
-                    'forward_reward_weight': forward_reward_weight,
-                    'after_bridge_reward': 20.0,
+                    'velocity_reward_weight': velocity_reward_weight,
+                    # 'after_bridge_reward': 20.0,
                     'bridge_width': bridge_width,
                 }
                 for bridge_width in [1.0, 2.0, 2.5]
-                for forward_reward_weight in [5.0]
+                for velocity_reward_weight in [5.0]
             ]),
             'Pond-v0': tune.grid_search([
                 {
