@@ -268,7 +268,8 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
         DEFAULT_KEY: 1000,
         'Ant': {
             DEFAULT_KEY: 1000,
-            'BridgeRun-v0': 1000,
+            'BridgeRun-v0': 200,
+            'Pond-v0': 250,
         },
         'Point2DEnv': {
             DEFAULT_KEY: 20,
@@ -342,7 +343,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     # 'after_bridge_reward': 20.0,
                     'bridge_width': bridge_width,
                 }
-                for bridge_width in [1.0, 2.0, 2.5]
+                for bridge_width in [0.3]
                 for velocity_reward_weight in [5.0]
             ]),
             'Pond-v0': tune.grid_search([
@@ -434,6 +435,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             ]),
             'Pond-v0': tune.grid_search([
                 {
+                    'observation_keys': ('observation', ),
                     'pond_radius': pond_radius,
                     'terminate_on_success': False,
                     'angular_velocity_max': 1.0,
@@ -638,7 +640,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                 [-6.0, -3.0, -1.5, 0.0, 1.0, 2.0],
             ),
             'Ant': tune.grid_search(
-                [-16.0, -8.0, -4.0, -2.0, 0.0, 2.0, 4.0, 5.0]
+                [-16.0, -8.0, -4.0, -2.0, 0.0, 2.0, 4.0]
             ),
             'humanoid': tune.grid_search(
                 # np.round(np.linspace(1, 5, 11), 2).tolist()

@@ -184,7 +184,7 @@ class AntBridgeRunEnv(AntEnv):
 
         base_size = 6.4
         x_min, x_max = np.array((0, self.bridge_length + 20))
-        y_min, y_max = np.array((-1, 1.0)) * (20 + self.bridge_width)
+        y_min, y_max = np.array((-1, 1.0)) * (40 + self.bridge_width)
         width = x_max - x_min
         height = y_max - y_min
 
