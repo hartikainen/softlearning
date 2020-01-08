@@ -371,6 +371,24 @@ def simulate_perturbations(args):
             }
             for perturbation_probability in np.linspace(0.0, 0.6, 51)
         }
+    elif evaluation_task == 'PerturbBody-AntPond-v0':
+        environments_params = {
+            f'perturbation-probability-{perturbation_probability}': {
+                'kwargs': {
+                    'perturb_body_kwargs': {
+                        'perturbation_strength': 25.0,
+                        'perturbation_direction': {
+                            "type": "towards",
+                            "target": "pond_center"
+                        },
+                        'perturbation_probability': perturbation_probability,
+                        'perturbation_frequency': None,
+                        'perturbation_length': 1,
+                    },
+                }
+            }
+            for perturbation_probability in np.linspace(0.0, 0.4, 51)
+        }
     elif evaluation_task == 'Wind-v0':
         environments_params = {
             f'wind-strength-{wind_strength}': {

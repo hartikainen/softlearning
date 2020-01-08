@@ -77,6 +77,23 @@ class PerturbBodyWrapper(gym.Wrapper):
                     (perturbation[0], 0.0, perturbation[1]))
             return perturbation
 
+        elif isinstance(self._perturbation_direction, dict):
+            if self._perturbation_direction['type'] == 'towards':
+                perturbation_target = self._perturbation_direction['target']
+                if perturbation_target == 'pond_center':
+                    perturbation_target = self.env.pond_center
+                else:
+                    raise NotImplementedError(self._perturbation_direction)
+
+                xy = self.sim.data.qpos.flat[:2]
+                perturbation_direction = perturbation_target - xy
+                perturbation_direction /= np.linalg.norm(perturbation_direction)
+                perturbation_direction = np.array(
+                    (perturbation_direction[0], perturbation_direction[1], 0.0)
+                )
+
+            return perturbation_direction
+
         raise NotImplementedError(type(self._perturbation_direction))
 
     @property

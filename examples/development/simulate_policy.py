@@ -156,14 +156,27 @@ def simulate_policy(checkpoint_path,
 
     else:
         num_paths = len(paths)
-        num_survived = sum(int(path['infos']['is_healthy'][-1]) for path in paths)
-        result = (
-            f"perturbation_strength: {perturbation_strength}, "
-            f"perturbation_probability: {perturbation_probability}, "
-            f"num_survived: {num_survived}/{num_paths}")
+        if environment.unwrapped.__class__.__name__ == 'AntPondEnv':
+            in_water = sum(int(path['infos']['in_water'][-1])
+                           for path in paths)
+            num_survived = sum(
+                int(max_path_length <= path['terminals'].shape[0])
+                for path in paths)
+            result = (
+                # f"perturbation_strength: {perturbation_strength}, "
+                f"in_water: {in_water}, "
+                f"num_survived: {num_survived}/{num_paths}")
+        elif 'is_healthy' in paths[0]['infos']:
+            num_survived = sum(int(path['infos']['is_healthy'][-1]) for path in paths)
+            result = (
+                # f"perturbation_strength: {perturbation_strength}, "
+                # f"perturbation_probability: {perturbation_probability}, "
+                f"num_survived: {num_survived}/{num_paths}")
+        else:
+            raise NotImplementedError
 
-        with open("/tmp/robustness-sweep-results.txt", "a") as f:
-            f.write(result + '\n')
+        # with open("/tmp/robustness-sweep-results.txt", "a") as f:
+        #     f.write(result + '\n')
 
         print(result)
     # if video_save_path and render_kwargs.get('mode') == 'rgb_array':
