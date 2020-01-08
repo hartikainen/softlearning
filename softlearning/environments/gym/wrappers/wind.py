@@ -19,6 +19,7 @@ class WindWrapper(gym.Wrapper):
         return result
 
     def reset(self, *args, **kwargs):
+        self.sim.model.opt.wind[:] = 0.0
         self._step_counter = 0
         return super(WindWrapper, self).reset(*args, **kwargs)
 

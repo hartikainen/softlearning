@@ -61,6 +61,8 @@ class PerturbBodyWrapper(gym.Wrapper):
         return super(PerturbBodyWrapper, self).__init__(*args, **kwargs)
 
     def reset(self, *args, **kwargs):
+        self.sim.data.xfrc_applied[:] = 0.0
+        self._perturbation_started_at = None
         self._step_counter = 0
         return super(PerturbBodyWrapper, self).reset(*args, **kwargs)
 
