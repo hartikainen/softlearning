@@ -395,6 +395,7 @@ def simulate_perturbations(args):
                 'kwargs': {
                     'wind_kwargs': {
                         'wind_strength': wind_strength,
+                        'wind_direction': 'random',
                     },
                 }
             }
