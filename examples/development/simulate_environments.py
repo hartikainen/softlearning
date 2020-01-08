@@ -387,7 +387,7 @@ def simulate_perturbations(args):
                     },
                 }
             }
-            for perturbation_probability in np.linspace(0.0, 0.4, 51)
+            for perturbation_probability in np.linspace(0.0, 0.1, 51)
         }
     elif evaluation_task == 'Wind-v0':
         environments_params = {
@@ -401,6 +401,22 @@ def simulate_perturbations(args):
             }
             for wind_strength in np.linspace(0, 60.0, 51)
         }
+    elif evaluation_task == 'Wind-AntPond-v0':
+        environments_params = {
+            f'wind-strength-{wind_strength}': {
+                'kwargs': {
+                    'wind_kwargs': {
+                        'wind_strength': wind_strength,
+                        'wind_direction': {
+                            "type": "towards",
+                            "target": "pond_center"
+                        },
+                    },
+                }
+            }
+            for wind_strength in np.linspace(0, 5.0, 51)
+        }
+
     else:
         raise NotImplementedError(evaluation_task)
 

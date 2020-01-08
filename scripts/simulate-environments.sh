@@ -91,6 +91,7 @@ EVALUATION_TASKS=(
     # "PerturbBody-v2"
     # "PerturbBody-AntPond-v0"
     # "Wind-v0"
+    # "Wind-AntPond-v0"
     "PerturbRandomAction-v0"
     "PerturbNoisyAction-v0"
 )
