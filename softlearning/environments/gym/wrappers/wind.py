@@ -20,10 +20,10 @@ class WindWrapper(gym.Wrapper):
         self._wind_strength = wind_strength
         self._wind_direction = wind_direction
         result = super(WindWrapper, self).__init__(*args, **kwargs)
-        self.sim.model.opt.density = 1.2
         return result
 
     def reset(self, *args, **kwargs):
+        self.sim.model.opt.density = 0.0
         self.sim.model.opt.wind[:] = 0.0
         self._step_counter = 0
         return super(WindWrapper, self).reset(*args, **kwargs)
@@ -69,11 +69,13 @@ class WindWrapper(gym.Wrapper):
         if self._step_counter % 150 == 0:
             wind_direction = self.wind_direction
             wind = wind_direction * self._wind_strength
+            self.sim.model.opt.density = 1.2
             self.sim.model.opt.wind[0:wind.size] = wind
 
         result = super(WindWrapper, self).step(*args, **kwargs)
 
         if (self._step_counter % 200) == 0:
+            self.sim.model.opt.density = 0.0
             self.sim.model.opt.wind[:] = 0.0
 
         return result
