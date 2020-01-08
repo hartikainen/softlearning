@@ -102,6 +102,7 @@ class AntPondEnv(AntEnv):
             'angular_velocity_reward': angular_velocity_reward,
             'reward_ctrl': -ctrl_cost,
             'reward_contact': -contact_cost,
+            'is_healthy': self.is_healthy,
             'reward_survive': healthy_reward,
 
             'x_position': xy_position_after[0],
