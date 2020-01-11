@@ -36,7 +36,7 @@ class ExperimentRunner(tune.Trainable):
         gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
         self._session = tf.compat.v1.Session(
             config=tf.compat.v1.ConfigProto(gpu_options=gpu_options))
-        tf.keras.backend.set_session(self._session)
+        tf.compat.v1.keras.backend.set_session(self._session)
 
         self.train_generator = None
         self._built = False
@@ -209,8 +209,7 @@ class ExperimentRunner(tune.Trainable):
         tf_checkpoint = self._get_tf_checkpoint()
 
         tf_checkpoint.save(
-            file_prefix=self._tf_checkpoint_prefix(checkpoint_dir),
-            session=self._session)
+            file_prefix=self._tf_checkpoint_prefix(checkpoint_dir))
 
         return os.path.join(checkpoint_dir, '')
 
