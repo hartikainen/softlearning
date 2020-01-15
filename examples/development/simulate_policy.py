@@ -14,6 +14,7 @@ from softlearning.environments.utils import (
 from softlearning.policies.utils import get_policy_from_variant
 from softlearning.samplers import rollouts
 from softlearning.utils.video import save_video
+from softlearning.utils.misc import set_seed
 
 
 DEFAULT_RENDER_KWARGS = {
@@ -99,7 +100,14 @@ def simulate_policy(checkpoint_path,
                     render_kwargs,
                     video_save_path=None,
                     evaluation_environment_kwargs=None):
+    set_seed(np.random.randint(0, 100000))
+
     checkpoint_path = checkpoint_path.rstrip('/')
+    trial_path = os.path.dirname(checkpoint_path)
+    simulate_policy_path = os.path.join(trial_path, 'simulate_policy')
+    os.makedirs(simulate_policy_path, exist_ok=True)
+    os.chdir(simulate_policy_path)
+
     picklable, variant, progress, metadata = load_checkpoint(checkpoint_path)
     policy, environment = load_policy_and_environment(picklable, variant)
     render_kwargs = {**DEFAULT_RENDER_KWARGS, **render_kwargs}
@@ -151,7 +159,9 @@ def simulate_policy(checkpoint_path,
                          path_length=max_path_length,
                          render_kwargs=render_kwargs)
 
-    if 'Point2D' in environment.unwrapped.__class__.__name__:
+
+    # if 'Point2D' in environment.unwrapped.__class__.__name__:
+    if hasattr(environment, 'get_path_infos'):
         infos = environment.get_path_infos(paths)
 
     else:
