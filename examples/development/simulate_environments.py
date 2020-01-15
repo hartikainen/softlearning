@@ -113,8 +113,11 @@ def simulate_trial_in_environments(experiment_path,
         checkpoint_ids, desired_checkpoint
     ))[0]]]
 
-    dataframe_parts = []
+    new_trial_dir = os.path.join(output_dir, trial_dirname)
+    os.makedirs(new_trial_dir, exist_ok=True)
+
     assert checkpoint_dirs and str(desired_checkpoint) in checkpoint_dirs[0]
+    dataframe_parts = []
     for checkpoint_dir in checkpoint_dirs:
         print(f"checkpoint_dir: {checkpoint_dir}")
 
@@ -171,6 +174,14 @@ def simulate_trial_in_environments(experiment_path,
 
             dataframe_parts.append(checkpoint_data)
 
+            if hasattr(environment, 'get_path_infos'):
+                figure_save_dir = os.path.join(new_trial_dir, 'figures')
+                os.makedirs(figure_save_dir, exist_ok=True)
+                figure_save_path = os.path.join(
+                    figure_save_dir, f'simulate-{desired_checkpoint}-{name}.png')
+                infos = environment.get_path_infos(
+                    paths, figure_save_path=figure_save_path)
+
     variant = {
         key: value for key, value in variant.items()
         if key != 'environment_params'
@@ -183,11 +194,6 @@ def simulate_trial_in_environments(experiment_path,
     old_environment_params = old_variant['environment_params']
     variant['old_environment_params'] = old_environment_params.copy()
     dataframe = pd.DataFrame(dataframe_parts)
-
-    new_trial_dir = os.path.join(output_dir, trial_dirname)
-
-    if not os.path.exists(new_trial_dir):
-        os.makedirs(new_trial_dir)
 
     progress_path = os.path.join(new_trial_dir, 'progress.csv')
 

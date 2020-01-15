@@ -166,7 +166,10 @@ class AntPondEnv(AntEnv):
             positions, velocities).item()
         return angular_velocity
 
-    def get_path_infos(self, paths, evaluation_type='training'):
+    def get_path_infos(self,
+                       paths,
+                       evaluation_type='training',
+                       figure_save_path=None):
         infos = {}
         x, y = np.split(np.concatenate(tuple(itertools.chain(*[
             [
@@ -215,21 +218,26 @@ class AntPondEnv(AntEnv):
 
         infos.update({'support': support_of_valid_bins})
 
-        log_base_dir = os.getcwd()
-        heatmap_dir = os.path.join(log_base_dir, 'heatmap')
-        if not os.path.exists(heatmap_dir):
-            os.makedirs(heatmap_dir)
+        if figure_save_path is None:
+            log_base_dir = os.getcwd()
+            figure_save_dir = os.path.join(log_base_dir, 'figures')
+            if not os.path.exists(figure_save_dir):
+                os.makedirs(figure_save_dir)
 
-        previous_heatmaps = glob.glob(
-            os.path.join(heatmap_dir, f"{evaluation_type}-iteration-*-heatmap.png"))
-        heatmap_iterations = [
-            int(re.search(f"{evaluation_type}-iteration-(\d+)-heatmap.png", x).group(1))
-            for x in previous_heatmaps
-        ]
-        if not heatmap_iterations:
-            iteration = 0
-        else:
-            iteration = int(max(heatmap_iterations) + 1)
+            previous_figure_saves = glob.glob(
+                os.path.join(figure_save_dir, f"{evaluation_type}-iteration-*.png"))
+            figure_save_iterations = [
+                int(re.search(f"{evaluation_type}-iteration-(\d+).png", x).group(1))
+                for x in previous_figure_saves
+            ]
+            if not figure_save_iterations:
+                iteration = 0
+            else:
+                iteration = int(max(figure_save_iterations) + 1)
+
+            figure_save_path = os.path.join(
+                figure_save_dir,
+                f'{evaluation_type}-iteration-{iteration:05}.png')
 
         margin = 20
         x_min, x_max = (
@@ -239,7 +247,7 @@ class AntPondEnv(AntEnv):
             self.pond_center[1] - self.pond_radius - margin,
             self.pond_center[1] + self.pond_radius + margin)
 
-        base_size = 6.4
+        base_size = 12.8
         width = x_max - x_min
         height = y_max - y_min
 
@@ -281,6 +289,35 @@ class AntPondEnv(AntEnv):
                 s=20.0,
             )
 
+            if 'perturbed' in path['infos']:
+                perturbed = np.array(path['infos']['perturbed'])
+                perturbations = np.stack(
+                    path['infos']['perturbation'], axis=0)[perturbed]
+                # perturbations /= np.linalg.norm(
+                #     perturbations, ord=2, keepdims=True, axis=-1)
+
+                perturbed_xy = np.stack((
+                    path['infos']['x_position'],
+                    path['infos']['y_position']
+                ), axis=-1)[perturbed]
+
+                axis.quiver(
+                    perturbed_xy[:, 0],
+                    perturbed_xy[:, 1],
+                    perturbations[:, 0],
+                    perturbations[:, 1],
+                    units='xy',
+                    angles='xy',
+                    scale=1.0,
+                    scale_units='xy',
+                    width=0.1,
+                    headwidth=15,
+                    headlength=10,
+                    linestyle='dashed',
+                    color=color,
+                    zorder=0,
+                )
+
         pond_circle = mpl.patches.Circle(
             self.pond_center,
             self.pond_radius,
@@ -293,10 +330,7 @@ class AntPondEnv(AntEnv):
 
         axis.grid(True, linestyle='-', linewidth=0.2)
 
-        heatmap_path = os.path.join(
-            heatmap_dir,
-            f'{evaluation_type}-iteration-{iteration:05}-heatmap.png')
-        plt.savefig(heatmap_path)
+        plt.savefig(figure_save_path)
         figure.clf()
         plt.close(figure)
 
