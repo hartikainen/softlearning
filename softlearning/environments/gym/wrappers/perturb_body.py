@@ -118,11 +118,11 @@ class PerturbBodyWrapper(gym.Wrapper):
     def step(self, *args, **kwargs):
         self._step_counter += 1
 
+        torso_index = self.sim.model.body_name2id('torso')
         if self.should_start_perturbation:
-            torso_index = self.sim.model.body_name2id('torso')
             perturbation_direction = self.perturbation_direction
 
-            perturbation  = (
+            perturbation = (
                 perturbation_direction * self._perturbation_strength)
             self._perturbation_started_at = self._step_counter
             self.sim.data.xfrc_applied[torso_index][
@@ -131,10 +131,18 @@ class PerturbBodyWrapper(gym.Wrapper):
         if hasattr(self, 'viewer') and self.viewer:
             self.viewer.vopt.flags[11:13] = 1
 
-        result = super(PerturbBodyWrapper, self).step(*args, **kwargs)
+        observation, reward, done, info = super(PerturbBodyWrapper, self).step(
+            *args, **kwargs)
+
+        info.update({
+            'perturbed': np.any(
+                0 != self.sim.data.xfrc_applied[torso_index][0:3]),
+            'perturbation': self.sim.data.xfrc_applied[
+                torso_index][0:3].copy(),
+        })
 
         if self.should_end_perturbation:
             self.sim.data.xfrc_applied[:] = 0.0
             self._perturbation_started_at = None
 
-        return result
+        return observation, reward, done, info

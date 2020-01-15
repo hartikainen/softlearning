@@ -72,10 +72,16 @@ class WindWrapper(gym.Wrapper):
             self.sim.model.opt.density = 1.2
             self.sim.model.opt.wind[0:wind.size] = wind
 
-        result = super(WindWrapper, self).step(*args, **kwargs)
+        observation, reward, done, info = super(WindWrapper, self).step(
+            *args, **kwargs)
+
+        info.update({
+            'perturbed': np.any(0 != self.sim.model.opt.wind),
+            'perturbation': self.sim.model.opt.wind[:3].copy(),
+        })
 
         if (self._step_counter % 200) == 0:
             self.sim.model.opt.density = 0.0
             self.sim.model.opt.wind[:] = 0.0
 
-        return result
+        return observation, reward, done, info
