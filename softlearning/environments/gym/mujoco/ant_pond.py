@@ -54,6 +54,14 @@ class AntPondEnv(AntEnv):
             Rotation.from_euler('z', angle_to_pond_center).as_quat(), 1)
         new_quaternion = quaternion_multiply(pond_quaternion, rotation)
 
+        # Fixed quaternion encodes the last element with sin/cos, s.t. the
+        # quaternion is continuous around -pi/pi.
+        fixed_quaternion = np.concatenate((
+            new_quaternion[:-1],
+            np.cos(new_quaternion[[-1]] * np.pi),
+            np.sin(new_quaternion[[-1]] * np.pi),
+        ))
+
         distance_from_water = self.distance_from_pond_center(
             xyz[:2]
         ) - self.pond_radius
@@ -61,7 +69,7 @@ class AntPondEnv(AntEnv):
         observation = np.concatenate((
             np.array(distance_from_water)[np.newaxis],
             np.array(qpos[2])[np.newaxis],
-            new_quaternion,
+            fixed_quaternion,
             qpos[7:],
             qvel,
             contact_force))
