@@ -351,9 +351,12 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'pond_radius': pond_radius,
                     'velocity_reward_weight': velocity_reward_weight,
                     'exclude_current_positions_from_observation': False,
+                    'experimental_angular_velocity_type':
+                    experimental_angular_velocity_type,
                 }
                 for pond_radius in [30.0]
                 for velocity_reward_weight in [5.0]
+                for experimental_angular_velocity_type in [1, 2, 3]
             ]),
         },
         'Humanoid': {  # 17 DoF

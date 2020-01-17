@@ -28,6 +28,7 @@ class AntPondEnv(AntEnv):
                  pond_radius=1.0,
                  angular_velocity_max=float('inf'),
                  velocity_reward_weight=1.0,
+                 experimental_angular_velocity_type=1,
                  **kwargs):
         utils.EzPickle.__init__(**locals())
         self.pond_radius = pond_radius
@@ -36,6 +37,8 @@ class AntPondEnv(AntEnv):
         self.pond_center = (-pond_radius - 3.0, 0)
         self.cumulative_angle_travelled = 0.0
         self.cumulative_angular_velocity = 0.0
+        self.experimental_angular_velocity_type = (
+            experimental_angular_velocity_type)
         return super(AntPondEnv, self).__init__(
             *args,
             exclude_current_positions_from_observation=(
@@ -162,7 +165,7 @@ class AntPondEnv(AntEnv):
             np.atleast_2d(state)).item()
         return distance_from_pond_center
 
-    def compute_angular_velocities(self, positions, velocities):
+    def compute_angular_velocities_1(self, positions, velocities):
         positions = positions - velocities / 2
         positions_ = positions - self.pond_center
 
@@ -183,6 +186,44 @@ class AntPondEnv(AntEnv):
             / (r / self.pond_radius))
 
         return angular_velocities
+
+    def compute_angular_velocities_2(self, positions, velocities):
+        positions1 = positions - velocities - self.pond_center
+        positions2 = positions - self.pond_center
+        angles1 = np.arctan2(positions1[..., 1], positions1[..., 0])
+        angles2 = np.arctan2(positions2[..., 1], positions2[..., 0])
+        angles = np.arctan2(
+            np.sin(angles2 - angles1),
+            np.cos(angles2 - angles1)
+        )[..., np.newaxis]
+
+        angular_velocities = angles * self.pond_radius
+
+        return angular_velocities
+
+    def compute_angular_velocities_3(self, positions, velocities):
+        positions1 = positions - velocities / 2 - self.pond_center
+        positions2 = positions + velocities / 2 - self.pond_center
+        angles1 = np.arctan2(positions1[..., 1], positions1[..., 0])
+        angles2 = np.arctan2(positions2[..., 1], positions2[..., 0])
+        angles = np.arctan2(
+            np.sin(angles2 - angles1),
+            np.cos(angles2 - angles1)
+        )[..., np.newaxis]
+
+        angular_velocities = angles * self.pond_radius
+
+        return angular_velocities
+
+    def compute_angular_velocities(self, positions, velocities):
+        if self.experimental_angular_velocity_type == 1:
+            return self.compute_angular_velocities_1(positions, velocities)
+        elif self.experimental_angular_velocity_type == 2:
+            return self.compute_angular_velocities_2(positions, velocities)
+        elif self.experimental_angular_velocity_type == 3:
+            return self.compute_angular_velocities_3(positions, velocities)
+
+        raise NotImplementedError(self.experimental_angular_velocity_type)
 
     def compute_angular_velocity(self, position, velocity):
         positions = np.atleast_2d(position)
