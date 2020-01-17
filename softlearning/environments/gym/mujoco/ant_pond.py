@@ -92,8 +92,8 @@ class AntPondEnv(AntEnv):
         angle_after = np.arctan2(
             *(xy_position_after - self.pond_center)[::-1])
         angle_travelled = np.arctan2(
-            np.sin(angle_before - angle_after),
-            np.cos(angle_before - angle_after))
+            np.sin(angle_after - angle_before),
+            np.cos(angle_after - angle_before))
 
         xy_velocity = (xy_position_after - xy_position_before) / self.dt
         x_velocity, y_velocity = xy_velocity
