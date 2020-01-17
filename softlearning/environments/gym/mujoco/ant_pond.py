@@ -34,11 +34,18 @@ class AntPondEnv(AntEnv):
         self.angular_velocity_max = angular_velocity_max
         self.velocity_reward_weight = velocity_reward_weight
         self.pond_center = (-pond_radius - 3.0, 0)
+        self.cumulative_angle_travelled = 0.0
+        self.cumulative_angular_velocity = 0.0
         return super(AntPondEnv, self).__init__(
             *args,
             exclude_current_positions_from_observation=(
                 exclude_current_positions_from_observation),
             **kwargs)
+
+    def reset_model(self, *args, **kwargs):
+        self.cumulative_angle_travelled = 0.0
+        self.cumulative_angular_velocity = 0.0
+        return super(AntPondEnv, self).reset_model(*args, **kwargs)
 
     def _get_obs(self):
         qpos = self.sim.data.qpos.flat.copy()
@@ -77,6 +84,14 @@ class AntPondEnv(AntEnv):
         self.do_simulation(action, self.frame_skip)
         xy_position_after = self.get_body_com("torso")[:2].copy()
 
+        angle_before = np.arctan2(
+            *(xy_position_before - self.pond_center)[::-1])
+        angle_after = np.arctan2(
+            *(xy_position_after - self.pond_center)[::-1])
+        angle_travelled = np.arctan2(
+            np.sin(angle_before - angle_after),
+            np.cos(angle_before - angle_after))
+
         xy_velocity = (xy_position_after - xy_position_before) / self.dt
         x_velocity, y_velocity = xy_velocity
 
@@ -98,6 +113,9 @@ class AntPondEnv(AntEnv):
 
         in_water = self.in_water(xy_position_after).item()
 
+        self.cumulative_angle_travelled += angle_travelled
+        self.cumulative_angular_velocity += angular_velocity
+
         reward = rewards - costs
         done = self.done or in_water
         observation = self._get_obs()
@@ -118,6 +136,9 @@ class AntPondEnv(AntEnv):
 
             'distance_from_water': distance_from_water,
             'in_water': in_water,
+
+            'cumulative_angle_travelled': self.cumulative_angle_travelled,
+            'cumulative_angular_velocity': self.cumulative_angular_velocity,
         }
 
         return observation, reward, done, info
