@@ -18,7 +18,8 @@ def get_variant_spec(args):
     virel_algorithm_kwargs = {
         'type': 'VIREL',
         'kwargs': {
-            'lr': 3e-4,
+            'policy_lr': 3e-4,
+            'Q_lr': 3e-4,
             'reward_scale': 1.0,
             'discount': 0.99,
             'tau': 5e-3,
