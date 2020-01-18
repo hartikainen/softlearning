@@ -43,7 +43,8 @@ class VIREL(RLAlgorithm):
             Qs,
             plotter=None,
 
-            lr=3e-4,
+            policy_lr=3e-4,
+            Q_lr=3e-4,
             reward_scale=1.0,
             discount=0.99,
             tau=5e-3,
@@ -86,9 +87,8 @@ class VIREL(RLAlgorithm):
 
         self._plotter = plotter
 
-        self._policy_lr = lr
-        self._Q_lr = lr
-        self._beta_lr = lr
+        self._policy_lr = policy_lr
+        self._Q_lr = Q_lr
 
         self._reward_scale = reward_scale
         self._discount = discount
