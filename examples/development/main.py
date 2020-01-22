@@ -55,8 +55,36 @@ class ExperimentRunner(tune.Trainable):
         sampler = self.sampler = get_sampler_from_variant(variant)
         Qs = self.Qs = get_Q_function_from_variant(
             variant, training_environment)
+        if variant['Q_params']['type'] == 'pretrained_feature_Q_function':
+            checkpoint_dir = variant['Q_params']['pretrained_checkpoint_dir']
+            checkpoint_dir = os.path.join(
+                "/Users/hartikainen/ray_results",
+                "gym/Point2DEnv/Wall-v0",
+                "2020-01-21T17-03-19-expert-1",
+                "id=ed19c3fc-seed=5686_2020-01-21_17-03-20kksb0fhk",
+                # "2020-01-18T15-06-09-virel",
+                # "id=0f91bc96-seed=8703_2020-01-18_15-06-10s2mehkbr",
+                "checkpoint_50")
+            self._restore_value_functions(checkpoint_dir)
+
         policy = self.policy = get_policy_from_variant(
             variant, training_environment)
+        if variant['policy_params']['type'] == 'PretrainedFeatureGaussianPolicy':
+            variant['policy_params']['pretrained_checkpoint_dir']
+            checkpoint_dir = os.path.join(
+                "/Users/hartikainen/ray_results",
+                "gym/Point2DEnv/Wall-v0",
+                "2020-01-21T17-03-19-expert-1",
+                "id=ed19c3fc-seed=5686_2020-01-21_17-03-20kksb0fhk",
+                # "2020-01-18T15-06-09-virel",
+                # "id=0f91bc96-seed=8703_2020-01-18_15-06-10s2mehkbr",
+                "checkpoint_50")
+            pickle_path = self._pickle_path(checkpoint_dir)
+            with open(pickle_path, 'rb') as f:
+                picklable = pickle.load(f)
+            self.policy.set_weights(
+                picklable['policy_weights'][:-2]
+                + self.policy.get_weights()[-2:])
 
         initial_exploration_policy = self.initial_exploration_policy = (
             get_policy_from_params(

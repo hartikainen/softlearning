@@ -20,9 +20,18 @@ def get_uniform_policy(*args, **kwargs):
     return policy
 
 
+def get_pretrained_feature_gaussian_policy(*args, **kwargs):
+    from .gaussian_policy import PretrainedFeatureGaussianPolicy
+
+    policy = PretrainedFeatureGaussianPolicy(*args, **kwargs)
+
+    return policy
+
+
 POLICY_FUNCTIONS = {
     'GaussianPolicy': get_gaussian_policy,
     'UniformPolicy': get_uniform_policy,
+    'PretrainedFeatureGaussianPolicy': get_pretrained_feature_gaussian_policy,
 }
 
 

@@ -1,5 +1,5 @@
-
 from copy import deepcopy
+import os
 
 from ray import tune
 import numpy as np
@@ -478,6 +478,15 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             )),
         },
         'policy_params': tune.sample_from(get_policy_params),
+
+            # 'type': 'PretrainedFeatureGaussianPolicy',
+            # 'pretrained_checkpoint_dir': os.path.join(
+            #     "/Users/hartikainen/ray_results",
+            #     "gym/Point2DEnv/Wall-v0",
+            #     "2020-01-21T17-03-19-expert-1",
+            #     "id=ed19c3fc-seed=5686_2020-01-21_17-03-20kksb0fhk",
+            #     "checkpoint_50"),
+
         'exploration_policy_params': {
             'type': 'UniformPolicy',
             'kwargs': {
@@ -491,6 +500,13 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
         },
         'Q_params': {
             'type': 'double_feedforward_Q_function',
+
+            # 'type': 'pretrained_feature_Q_function',
+            # 'pretrained_checkpoint_dir': tune.sample_from(lambda spec: (
+            #     spec.get('config', spec)
+            #     ['policy_params']
+            #     ['pretrained_checkpoint_dir'])),
+
             'kwargs': {
                 'hidden_layer_sizes': (M, M),
                 'observation_keys': None,
