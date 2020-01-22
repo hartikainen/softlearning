@@ -38,14 +38,12 @@ class GaussianPolicy(LatentSpacePolicy):
         self._output_shape = output_shape
         self._squash = squash
         self._name = name
+        self._preprocessors = preprocessors
 
         super(GaussianPolicy, self).__init__(*args, **kwargs)
 
         inputs = create_inputs(input_shapes)
-        if preprocessors is None:
-            preprocessors = nest.map_structure(lambda x: None, inputs)
-
-        preprocessed_inputs = apply_preprocessors(preprocessors, inputs)
+        preprocessed_inputs = self.preprocess_inputs(inputs)
 
         conditions = tf.keras.layers.Lambda(
             cast_and_concat
@@ -151,6 +149,14 @@ class GaussianPolicy(LatentSpacePolicy):
             self.condition_inputs,
             (shift, log_scale_diag, log_pis, raw_actions, actions))
 
+    def preprocess_inputs(self, inputs):
+        preprocessors = self._preprocessors
+        if preprocessors is None:
+            preprocessors = nest.map_structure(lambda x: None, inputs)
+
+        preprocessed_inputs = apply_preprocessors(preprocessors, inputs)
+        return preprocessed_inputs
+
     def _shift_and_log_scale_diag_net(self, input_shapes, output_size):
         raise NotImplementedError
 
@@ -218,3 +224,46 @@ class FeedforwardGaussianPolicy(GaussianPolicy):
             output_activation=self._output_activation)
 
         return shift_and_log_scale_diag_net
+
+
+class PretrainedFeatureGaussianPolicy(GaussianPolicy):
+    def __init__(self,
+                 hidden_layer_sizes,
+                 activation='relu',
+                 output_activation='linear',
+                 *args,
+                 **kwargs):
+        self._hidden_layer_sizes = hidden_layer_sizes
+        self._activation = activation
+        self._output_activation = output_activation
+
+        self._Serializable__initialize(locals())
+        super(PretrainedFeatureGaussianPolicy, self).__init__(*args, **kwargs)
+
+    def _shift_and_log_scale_diag_net(self, output_size):
+        shift_and_log_scale_diag_body = feedforward_model(
+            hidden_layer_sizes=self._hidden_layer_sizes[:-1],
+            output_size=self._hidden_layer_sizes[-1],
+            activation='relu',
+            output_activation='relu',
+            name="pretrained_features_body",
+            trainable=False,
+        )
+
+        shift_and_log_scale_diag_body.trainable = False
+
+        shift_and_log_scale_diag_head = feedforward_model(
+            hidden_layer_sizes=(),
+            output_size=output_size,
+            activation='linear',
+            output_activation='linear',
+            name="linear_head",
+        )
+
+        shift_and_log_scale_diag_net = tf.keras.Sequential((
+            shift_and_log_scale_diag_body,
+            shift_and_log_scale_diag_head,
+        ))
+        return shift_and_log_scale_diag_net
+
+
