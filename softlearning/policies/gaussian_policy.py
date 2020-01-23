@@ -8,6 +8,9 @@ import tensorflow_probability as tfp
 
 from softlearning.models.feedforward import feedforward_model
 from softlearning.models.utils import create_inputs
+from softlearning.models.bae.student_t import (
+    create_n_degree_polynomial_form_observations_actions_v4,
+)
 from softlearning.utils.tensorflow import (
     nest,
     apply_preprocessors,
@@ -267,3 +270,46 @@ class PretrainedFeatureGaussianPolicy(GaussianPolicy):
         return shift_and_log_scale_diag_net
 
 
+class LinearPolynomialGaussianPolicy(GaussianPolicy):
+    def __init__(self,
+                 activation='linear',
+                 output_activation='linear',
+                 degree=3,
+                 *args,
+                 **kwargs):
+        self._activation = activation
+        self._output_activation = output_activation
+        self._degree = degree
+
+        self._Serializable__initialize(locals())
+        super(LinearPolynomialGaussianPolicy, self).__init__(*args, **kwargs)
+
+    def preprocess_inputs(self, inputs):
+        D = sum([input_.shape[-1] for input_ in nest.flatten(inputs)])
+        preprocessed_inputs = (
+            super(LinearPolynomialGaussianPolicy, self).preprocess_inputs(inputs))
+        fn = create_n_degree_polynomial_form_observations_actions_v4(
+            D, self._degree)
+        preprocessed_inputs = tf.keras.layers.Lambda(
+            # n_degree_polynomial_form_observations_actions.python_function
+            fn.python_function
+        )(preprocessed_inputs)
+        preprocessed_inputs = tf.keras.layers.Reshape(
+            {
+                6: (27, ),
+                5: (20, ),
+                4: (14, ),
+                3: (9, ),
+            }[self._degree]
+        )(preprocessed_inputs)
+
+        return preprocessed_inputs
+
+    def _shift_and_log_scale_diag_net(self, output_size):
+        shift_and_log_scale_diag_net = feedforward_model(
+            hidden_layer_sizes=(),
+            output_size=output_size,
+            activation=self._activation,
+            output_activation=self._output_activation)
+
+        return shift_and_log_scale_diag_net

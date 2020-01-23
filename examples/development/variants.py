@@ -74,12 +74,15 @@ ALGORITHM_PARAMS_ADDITIONAL = {
 
 GAUSSIAN_POLICY_PARAMS_BASE = {
     'type': 'GaussianPolicy',
+    # 'type': 'LinearPolynomialGaussianPolicy',
+    # 'type': 'RandomFeatureGaussianPolicy',
     'kwargs': {
         'hidden_layer_sizes': (M, M),
         'squash': True,
         'observation_keys': None,
-        'observation_preprocessors_params': {}
-    }
+        # 'degree': 5,
+        'observation_preprocessors_params': {},
+    },
 }
 
 TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
@@ -498,6 +501,8 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
         },
         'Q_params': {
             'type': 'double_feedforward_Q_function',
+            # 'type': 'double_linear_polynomial_Q_function',
+            # 'type': 'linear_polynomial_Q_function',
 
             # 'type': 'pretrained_feature_Q_function',
             # 'pretrained_checkpoint_dir': tune.sample_from(lambda spec: (
@@ -506,9 +511,27 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             #     ['pretrained_checkpoint_dir'])),
 
             'kwargs': {
-                'hidden_layer_sizes': (M, M),
+                'hidden_layer_sizes': tune.sample_from(lambda spec: (
+                    spec.get('config', spec)
+                    ['policy_params']
+                    ['kwargs']
+                    ['hidden_layer_sizes']
+                )),
+                # 'degree': tune.sample_from(
+                #     lambda spec: (
+                #         spec.get('config', spec)
+                #         ['policy_params']
+                #         ['kwargs']
+                #         ['degree'])
+                # ),
                 'observation_keys': None,
-                'observation_preprocessors_params': {}
+                'observation_preprocessors_params': tune.sample_from(
+                    lambda spec: (
+                        spec.get('config', spec)
+                        ['policy_params']
+                        ['kwargs']
+                        ['observation_preprocessors_params'])
+                ),
             },
         },
         'algorithm_params': algorithm_params,

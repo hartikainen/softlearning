@@ -3,7 +3,9 @@ import tensorflow as tf
 from softlearning.models.feedforward import feedforward_model
 from softlearning.models.utils import create_inputs
 from softlearning.utils.tensorflow import nest, apply_preprocessors
-from softlearning.utils.keras import PicklableModel
+from softlearning.models.bae.student_t import (
+    create_n_degree_polynomial_form_observations_actions_v4,
+)
 from .base_value_function import StateActionValueFunction
 
 
@@ -25,6 +27,53 @@ def create_feedforward_Q_function(input_shapes,
         name=name,
         **kwargs
     )
+
+    Q_model = tf.keras.Model(inputs, Q_model_body(preprocessed_inputs))
+
+    Q_function = StateActionValueFunction(
+        model=Q_model, observation_keys=observation_keys)
+
+    return Q_function
+
+
+def create_linear_polynomial_Q_function(input_shapes,
+                                        *args,
+                                        preprocessors=None,
+                                        observation_keys=None,
+                                        degree=3,
+                                        name='linear_Q',
+                                        **kwargs):
+    inputs = create_inputs(input_shapes)
+    if preprocessors is None:
+        preprocessors = nest.map_structure(lambda x: None, inputs)
+
+    Q_model_body = feedforward_model(
+        *args,
+        output_size=1,
+        hidden_layer_sizes=(),
+        activation='linear',
+        name=name,
+        **kwargs
+    )
+
+    D = sum([input_.shape[-1] for input_ in nest.flatten(inputs)])
+    preprocessed_inputs = apply_preprocessors(preprocessors, inputs)
+    fn = create_n_degree_polynomial_form_observations_actions_v4(D, degree)
+    preprocessed_inputs = tf.keras.layers.Lambda(
+        # n_degree_polynomial_form_observations_actions.python_function
+        fn.python_function
+    )(preprocessed_inputs)
+
+    preprocessed_inputs = tf.keras.layers.Reshape(
+        {
+            # (D + D ** 2, )
+            # (D * (D + 3) // 2, )
+            6: (209, ),
+            5: (125, ),
+            4: (69, ),
+            3: (34, ),
+        }[degree]
+    )(preprocessed_inputs)
 
     Q_model = tf.keras.Model(inputs, Q_model_body(preprocessed_inputs))
 

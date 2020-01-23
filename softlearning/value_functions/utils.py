@@ -17,6 +17,12 @@ VALUE_FUNCTIONS = {
     'double_feedforward_Q_function': lambda *args, **kwargs: (
         create_double_value_function(
             vanilla.create_feedforward_Q_function, *args, **kwargs)),
+    'double_linear_polynomial_Q_function': lambda *args, **kwargs: (
+        create_double_value_function(
+            vanilla.create_linear_polynomial_Q_function, *args, **kwargs)),
+    'linear_polynomial_Q_function': lambda *args, **kwargs: (
+        create_double_value_function(
+            vanilla.create_linear_polynomial_Q_function, *args, **kwargs))[:1],
     'pretrained_feature_Q_function': lambda *args, **kwargs: (
         create_double_value_function(
             vanilla.create_pretrained_feature_Q_function, *args, **kwargs)),
