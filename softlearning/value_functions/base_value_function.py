@@ -22,6 +22,18 @@ class BaseValueFunction:
     def trainable_variables(self):
         return self.model.trainable_variables
 
+    @property
+    def variables(self):
+        return self.model.variables
+
+    @property
+    def trainable_weights(self):
+        return self.model.trainable_weights
+
+    @property
+    def weights(self):
+        return self.model.weights
+
     def get_weights(self, *args, **kwargs):
         return self.model.get_weights(*args, **kwargs)
 

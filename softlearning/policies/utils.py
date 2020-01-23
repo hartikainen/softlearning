@@ -12,6 +12,14 @@ def get_gaussian_policy(*args, **kwargs):
     return policy
 
 
+def get_linear_polynomial_gaussian_policy(*args, **kwargs):
+    from .gaussian_policy import LinearPolynomialGaussianPolicy
+
+    policy = LinearPolynomialGaussianPolicy(*args, **kwargs)
+
+    return policy
+
+
 def get_uniform_policy(*args, **kwargs):
     from .uniform_policy import ContinuousUniformPolicy
 
@@ -30,6 +38,7 @@ def get_pretrained_feature_gaussian_policy(*args, **kwargs):
 
 POLICY_FUNCTIONS = {
     'GaussianPolicy': get_gaussian_policy,
+    'LinearPolynomialGaussianPolicy': get_linear_polynomial_gaussian_policy,
     'UniformPolicy': get_uniform_policy,
     'PretrainedFeatureGaussianPolicy': get_pretrained_feature_gaussian_policy,
 }
