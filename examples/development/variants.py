@@ -157,6 +157,7 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: int(3e6),
             'Stand-v3': int(1e8),
             'SimpleStand-v3': int(1e8),
+            'Pond-v0': int(5e7),
             'v3': int(1e8),
         },
         'Pendulum': {
@@ -302,6 +303,11 @@ EPOCH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
             'v3': int(5e4),
             'BridgeRun-v0': int(1e4),
             'Pond-v0': int(1e4),
+        },
+        'Humanoid': {
+            DEFAULT_KEY: int(5e4),
+            'v3': int(5e4),
+            'Pond-v0': int(2.5e4),
         },
     },
 }

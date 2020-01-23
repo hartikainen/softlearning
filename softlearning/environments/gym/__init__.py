@@ -85,6 +85,11 @@ MUJOCO_ENVIRONMENT_SPECS = (
                         '.height_field_env:HumanoidHeightFieldEnv'),
     },
     {
+        'id': 'Humanoid-Pond-v0',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.humanoid_pond:HumanoidPondEnv'),
+    },
+    {
         'id': 'Hopper-Pothole-v0',
         'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
                         '.hopper_pothole:HopperPotholeEnv'),
@@ -175,7 +180,7 @@ MULTIWORLD_ENVIRONMENT_SPECS = (
             'author': 'Kristian Hartikainen'
         },
         'kwargs': {
-            'terminate_on_success': True,
+            'terminate_on_success': False,
         },
     }
 )
