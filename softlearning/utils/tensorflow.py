@@ -45,3 +45,12 @@ def cast_and_concat(x):
     x = nest.flatten(x)
     x = tf.concat(x, axis=-1)
     return x
+
+
+@tf.function(experimental_relax_shapes=True)
+def batch_quadratic_form(W, inputs):
+    W = tf.cast(tf.convert_to_tensor(W), tf.float32)
+    inputs = tf.cast(tf.convert_to_tensor(inputs), tf.float32)
+    return tf.einsum(
+        '...bi,ji,...bj->...b', inputs, W, inputs
+    )[..., tf.newaxis]
