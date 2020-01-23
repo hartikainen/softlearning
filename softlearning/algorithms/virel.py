@@ -1,10 +1,15 @@
 from copy import deepcopy
 from collections import OrderedDict
 
+import numpy as np
 import tensorflow as tf
 
 from .rl_algorithm import RLAlgorithm
 
+from softlearning.models.bae.student_t import (
+    build_student_t_params,
+    create_n_degree_polynomial_form_observations_actions_v4,
+)
 from .sac import td_targets
 
 
@@ -96,10 +101,20 @@ class VIREL(RLAlgorithm):
         self._tau = tau
         self._beta_scale = beta_scale
         self._beta_batch_size = beta_batch_size
-        self._target_update_interval = target_update_interval
         self._beta_update_type = beta_update_type
+        self._target_update_interval = target_update_interval
 
         self._save_full_state = save_full_state
+
+        D = (np.prod(self._training_environment.action_space.shape)
+             + np.sum(
+                 np.prod(space.shape)
+                for space in self._training_environment.observation_space.spaces.values()
+             ))
+        self.feature_fn = (
+            create_n_degree_polynomial_form_observations_actions_v4(D, 4))
+
+        self._epistemic_uncertainty = tf.Variable(float('inf'))
 
         self._Q_optimizers = tuple(
             tf.optimizers.Adam(
@@ -214,11 +229,18 @@ class VIREL(RLAlgorithm):
         return Qs_loss
 
     @tf.function(experimental_relax_shapes=True)
+    def _update_beta_uncertainty(self, *args, **kwargs):
+        self._beta.assign(self._beta_scale * self._epistemic_uncertainty)
+        return self._epistemic_uncertainty
+
+    @tf.function(experimental_relax_shapes=True)
     def _update_beta(self, *args, **kwargs):
         if self._beta_update_type is None:
             return 0.0
         elif self._beta_update_type == 'MSBE':
             return self._update_beta_MSBE(*args, **kwargs)
+        elif self._beta_update_type == 'uncertainty':
+            return self._update_beta_uncertainty(*args, **kwargs)
 
         raise NotImplementedError(self._beta_update_type)
 
@@ -259,6 +281,7 @@ class VIREL(RLAlgorithm):
     def _do_training(self, iteration, batch):
         beta_batch_size = min(self._beta_batch_size, self._pool.size)
         beta_batch = self._training_batch(beta_batch_size)
+
         training_diagnostics = self._do_updates(batch, beta_batch)
 
         if iteration % self._target_update_interval == 0:
@@ -283,6 +306,8 @@ class VIREL(RLAlgorithm):
         diagnostics = OrderedDict((
             ('beta', self._beta.numpy()),
             ('policy', self._policy.get_diagnostics(batch['observations'])),
+            ('epistemic_uncertainty',
+             tf.reduce_mean(self._epistemic_uncertainty).numpy())
         ))
 
         if self._plotter:
