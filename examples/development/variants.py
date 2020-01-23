@@ -82,6 +82,17 @@ GAUSSIAN_POLICY_PARAMS_BASE = {
         'observation_keys': None,
         # 'degree': 5,
         'observation_preprocessors_params': {},
+        # 'observation_preprocessors_params': {
+        #     'observation': {
+        #         'type': 'normalize_preprocessor',
+        #         'kwargs': {
+        #             'input_low': [-5.0, -5.0],
+        #             'input_high': [5.0, 5.0],
+        #             'output_low': [-1.0, -1.0],
+        #             'output_high': [1.0, 1.0],
+        #         },
+        #     },
+        # },
     },
 }
 
