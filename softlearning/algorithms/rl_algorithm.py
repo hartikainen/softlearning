@@ -172,6 +172,7 @@ class RLAlgorithm(Checkpointable):
             self._epoch_before_hook()
             gt.stamp('epoch_before_hook')
 
+            all_training_diagnostics = []
             start_samples = self.sampler._total_samples
             for i in count():
                 samples_now = self.sampler._total_samples
@@ -188,11 +189,24 @@ class RLAlgorithm(Checkpointable):
                 gt.stamp('sample')
 
                 if self.ready_to_train:
-                    self._do_training_repeats(timestep=self._total_timestep)
+                    training_diagnostics = self._do_training_repeats(
+                        timestep=self._total_timestep)
+                    all_training_diagnostics += [training_diagnostics]
                 gt.stamp('train')
 
                 self._timestep_after_hook()
                 gt.stamp('timestep_after_hook')
+
+            if all_training_diagnostics:
+                training_diagnostics_keys = all_training_diagnostics[0].keys()
+                training_diagnostics = {
+                    key: tf.reduce_mean([
+                        td[key] for td in all_training_diagnostics
+                    ]).numpy()
+                    for key in training_diagnostics_keys
+                }
+            else:
+                training_diagnostics = {}
 
             training_paths = self.sampler.get_last_n_paths(
                 math.ceil(self._epoch_length / self.sampler._max_path_length))
@@ -230,6 +244,7 @@ class RLAlgorithm(Checkpointable):
             diagnostics.update((
                 ('evaluation', evaluation_metrics),
                 ('training', training_metrics),
+                ('training2', training_diagnostics),
                 ('times', time_diagnostics),
                 ('sampler', sampler_diagnostics),
                 ('epoch', self._epoch),
@@ -328,12 +343,14 @@ class RLAlgorithm(Checkpointable):
         if trained_enough: return
 
         for i in range(self._n_train_repeat):
-            self._do_training(
+            training_diagnostics = self._do_training(
                 iteration=timestep,
                 batch=self._training_batch())
 
         self._num_train_steps += self._n_train_repeat
         self._train_steps_this_epoch += self._n_train_repeat
+
+        return training_diagnostics
 
     @abc.abstractmethod
     def _do_training(self, iteration, batch):
