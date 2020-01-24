@@ -300,6 +300,7 @@ class LinearPolynomialGaussianPolicy(GaussianPolicy):
                 5: (20, ),
                 4: (14, ),
                 3: (9, ),
+                2: (5, ),
             }[self._degree]
         )(preprocessed_inputs)
 
