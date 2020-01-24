@@ -6,10 +6,9 @@ import tensorflow as tf
 
 from .rl_algorithm import RLAlgorithm
 
-from softlearning.models.bae.student_t import (
-    build_student_t_params,
-    create_n_degree_polynomial_form_observations_actions_v4,
-)
+from softlearning.models.bae.linear import (
+    LinearStudentTModel,
+    create_linearized_observations_actions_fn)
 from .sac import td_targets
 
 
@@ -58,6 +57,7 @@ class VIREL(RLAlgorithm):
             beta_batch_size=4096,
             beta_update_type='MSBE',
             target_update_interval=1,
+            TD_target_model_update_interval=100,
 
             save_full_state=False,
             **kwargs,
@@ -103,6 +103,7 @@ class VIREL(RLAlgorithm):
         self._beta_batch_size = beta_batch_size
         self._beta_update_type = beta_update_type
         self._target_update_interval = target_update_interval
+        self._TD_target_model_update_interval = TD_target_model_update_interval
 
         self._save_full_state = save_full_state
 
@@ -111,8 +112,31 @@ class VIREL(RLAlgorithm):
                  np.prod(space.shape)
                 for space in self._training_environment.observation_space.spaces.values()
              ))
+
+        class wrapped_Q:
+            def __init__(self, Qs):
+                self._Qs = Qs
+
+            @property
+            def trainable_variables(self):
+                return [
+                    variable
+                    for Q in self._Qs
+                    for variable in Q.trainable_variables
+                ]
+
+            @tf.function(experimental_relax_shapes=True)
+            def __call__(self, inputs):
+                Qs_values = tuple(
+                    Q.values(*inputs) for Q in self._Qs)
+                Q_values = tf.reduce_min(Qs_values, axis=0)
+                return Q_values
+
         self.feature_fn = (
-            create_n_degree_polynomial_form_observations_actions_v4(D, 4))
+            create_linearized_observations_actions_fn(
+                wrapped_Q(self._Q_targets)))
+
+        self.linear_student_t_model = LinearStudentTModel()
 
         self._epistemic_uncertainty = tf.Variable(float('inf'))
 
@@ -214,6 +238,9 @@ class VIREL(RLAlgorithm):
         Q_targets = self._compute_Q_targets(
             next_observations, rewards, terminals)
 
+        tf.debugging.assert_shapes((
+            (Q_targets, ('B', 1)), (rewards, ('B', 1))))
+
         Qs_losses = [
             0.5 * tf.losses.MSE(
                 y_true=Q_targets,
@@ -253,6 +280,31 @@ class VIREL(RLAlgorithm):
                     tau * source_weight + (1.0 - tau) * target_weight)
 
     @tf.function(experimental_relax_shapes=True)
+    def _update_student_t_model(self, data):
+        Y = self._compute_Q_targets(
+            data['next_observations'],
+            data['rewards'],
+            data['terminals'])
+
+        B = self.feature_fn((data['observations'], data['actions']))
+
+        diagonal_noise_scale = tf.constant(1e-1)
+        self.linear_student_t_model.update(B, Y, diagonal_noise_scale)
+
+        return tf.constant(True)
+
+    @tf.function(experimental_relax_shapes=True)
+    def _update_uncertainties(self, observations, actions):
+        b = self.feature_fn((observations, actions))
+        loc, scale, df, aleatoric_uncertainties, epistemic_uncertainties = (
+            self.linear_student_t_model(b))
+
+        self._epistemic_uncertainty.assign(
+            tf.reduce_mean(epistemic_uncertainties))
+
+        return epistemic_uncertainties
+
+    # @tf.function(experimental_relax_shapes=True)
     def _do_updates(self, batch, beta_batch):
         Qs_values, Qs_losses = self._update_critic(
             batch['observations'],
@@ -262,6 +314,8 @@ class VIREL(RLAlgorithm):
             batch['terminals'])
 
         policy_losses = self._update_actor(batch['observations'])
+        epistemic_uncertainties = self._update_uncertainties(
+            beta_batch['observations'], beta_batch['actions'])
         beta_losses = self._update_beta(
             beta_batch['observations'],
             beta_batch['actions'],
@@ -274,6 +328,8 @@ class VIREL(RLAlgorithm):
             ('Q_loss-mean', tf.reduce_mean(Qs_losses)),
             ('policy_loss-mean', tf.reduce_mean(policy_losses)),
             ('beta', self._beta),
+            ('epistemic_uncertainty-mean', tf.reduce_mean(
+                epistemic_uncertainties)),
             ('beta_loss-mean', tf.reduce_mean(beta_losses)),
         ))
         return diagnostics
@@ -281,6 +337,17 @@ class VIREL(RLAlgorithm):
     def _do_training(self, iteration, batch):
         beta_batch_size = min(self._beta_batch_size, self._pool.size)
         beta_batch = self._training_batch(beta_batch_size)
+
+        if iteration == 0:
+            initialize_model_batch = self._training_batch(1)
+            _ = self.linear_student_t_model((
+                self.feature_fn((
+                    initialize_model_batch['observations'],
+                    initialize_model_batch['actions']))))
+
+        if iteration % self._TD_target_model_update_interval == 0:
+            target_model_prior_data = self._training_batch(self._pool.size)
+            self._update_student_t_model(target_model_prior_data)
 
         training_diagnostics = self._do_updates(batch, beta_batch)
 

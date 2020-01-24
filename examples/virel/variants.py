@@ -20,14 +20,16 @@ def get_variant_spec(args):
         'kwargs': {
             'policy_lr': 3e-4,
             'Q_lr': 3e-4,
-            'reward_scale': 1.0,
-            'discount': 0.99,
             'tau': 5e-3,
             'beta_scale': tune.grid_search([1e-4, 1e-3, 1e-2, 1e-1, 1.0]),
             'beta_update_type': 'MSBE',
             'target_update_interval': 1,
 
             'n_initial_exploration_steps': int(1e3),
+
+            'reward_scale': 1.0,
+            'discount': 0.99,
+            'TD_target_model_update_interval': 100,
         },
     }
 

@@ -72,6 +72,7 @@ def create_linear_polynomial_Q_function(input_shapes,
             5: (125, ),
             4: (69, ),
             3: (34, ),
+            2: (14, ),
         }[degree]
     )(preprocessed_inputs)
 
