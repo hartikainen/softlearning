@@ -68,7 +68,7 @@ def create_linearized_observations_actions_fn(non_linear_model):
             jacobians = tape.jacobian(
                 non_linear_values,
                 non_linear_model.trainable_variables,
-                experimental_use_pfor=False,
+                experimental_use_pfor=True,
             )
 
             del tape
@@ -84,7 +84,7 @@ def create_linearized_observations_actions_fn(non_linear_model):
             # the last dimension has size of `None`, which causes e.g. keras models
             # to fail on build.
             feature_size = tf.reduce_sum([
-                tf.reduce_prod(x.shape)
+                tf.reduce_prod(tf.shape(x))
                 for x in non_linear_model.trainable_variables
             ])
 
