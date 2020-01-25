@@ -6,10 +6,11 @@ import tensorflow as tf
 
 from .rl_algorithm import RLAlgorithm
 
+from softlearning.utils.tensorflow import nest
 from softlearning.models.bae.linear import (
     LinearStudentTModel,
     LinearizedObservationsActionsModel)
-from softlearning.utils.tensorflow import cast_and_concat
+from softlearning.utils.tensorflow import cast_and_concat, nest
 from .sac import td_targets
 
 
@@ -113,7 +114,7 @@ class VIREL(RLAlgorithm):
         D = (np.prod(self._training_environment.action_space.shape)
              + np.sum(
                  np.prod(space.shape)
-                for space in self._training_environment.observation_space.spaces.values()
+                 for space in self._training_environment.observation_space.spaces.values()
              ))
 
         class wrapped_Q:
@@ -130,9 +131,58 @@ class VIREL(RLAlgorithm):
 
             @tf.function(experimental_relax_shapes=True)
             def __call__(self, inputs):
-                outputs = tuple(
-                    model(inputs) for model in self._models)
+                batch_size = 128
+                input_shape = tf.shape(nest.flatten(inputs)[0])
+                N = input_shape[0]
+                batch_starts = tf.range(
+                    0, tf.maximum(0, N - batch_size + 1), batch_size)
+
+                outputs = []
+                for model in self._models:
+                    output_shape = model.output_shape[1:]
+
+                    def map_batches():
+                        model_output_batches = tf.map_fn(
+                            lambda i: model(
+                                nest.map_structure(
+                                    lambda x: x[i:i+batch_size, ...], inputs)
+                            ),
+                            batch_starts,
+                            dtype=tf.float32,
+                            # infer_shape=True,
+                            # swap_memory=True,
+                        )
+                        model_outputs = tf.reshape(
+                            model_output_batches,
+                            tf.concat(([-1], tf.shape(model_output_batches)[2:]), axis=0),
+                            # (-1, tf.shape(model_output_batches)[-1])
+                        )
+                        return model_outputs
+
+                    model_outputs = tf.cond(
+                        0 < tf.size(batch_starts),
+                        true_fn=map_batches,
+                        false_fn=lambda: tf.zeros(tf.concat(([0], output_shape), axis=0)),
+                    )
+                    model_outputs_rest = tf.cond(
+                        0 < (N % batch_size),
+                        true_fn=lambda: model(
+                            nest.map_structure(
+                                lambda x: x[-(N % batch_size):, ...], inputs)),
+                        false_fn=lambda: tf.zeros(tf.concat(([0], output_shape), axis=0)),
+                    )
+
+                    model_outputs = tf.concat((
+                        model_outputs,
+                        model_outputs_rest,
+                    ), axis=0)
+                    outputs.append(model_outputs)
+
                 outputs = tf.reduce_min(outputs, axis=0)
+                tf.debugging.assert_equal(
+                    tf.shape(outputs)[:-1], input_shape[:-1])
+                tf.debugging.assert_equal(
+                    tf.shape(outputs)[1:], output_shape)
                 return outputs
 
         if self._Q_targets[0].model.name == 'linearized_feedforward_Q':
@@ -407,7 +457,7 @@ class VIREL(RLAlgorithm):
 
         if iteration % self._TD_target_model_update_interval == 0:
             target_model_prior_data = self._training_batch(
-                min(self._pool.size, int(2e3)))
+                min(self._pool.size, int(1e5)))
             self._update_student_t_model(target_model_prior_data)
             del target_model_prior_data
 
