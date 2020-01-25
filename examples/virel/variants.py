@@ -30,6 +30,10 @@ def get_variant_spec(args):
             'reward_scale': 1.0,
             'discount': 0.99,
             'TD_target_model_update_interval': 100,
+            'Q_update_type': tune.grid_search([
+                # 'MSBBE',
+                'MSBE',
+            ])
         },
     }
 
