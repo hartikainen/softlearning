@@ -59,6 +59,7 @@ class VIREL(RLAlgorithm):
             beta_update_version='v1',
             target_update_interval=1,
             TD_target_model_update_interval=100,
+            Q_update_type='MSBE',
 
             save_full_state=False,
             **kwargs,
@@ -106,6 +107,7 @@ class VIREL(RLAlgorithm):
         self._beta_update_version = beta_update_version
         self._target_update_interval = target_update_interval
         self._TD_target_model_update_interval = TD_target_model_update_interval
+        self._Q_update_type = Q_update_type
 
         self._save_full_state = save_full_state
 
@@ -189,12 +191,43 @@ class VIREL(RLAlgorithm):
         return tf.stop_gradient(Q_targets)
 
     @tf.function(experimental_relax_shapes=True)
-    def _update_critic(self,
-                       observations,
-                       actions,
-                       next_observations,
-                       rewards,
-                       terminals):
+    def _update_critic_MSBBE(self,
+                             observations,
+                             actions,
+                             next_observations,
+                             rewards,
+                             terminals):
+        """Update the Q-function."""
+        b = self.feature_fn((observations, actions))
+        loc, scale, df, aleatoric_uncertainties, epistemic_uncertainties = (
+            self.linear_student_t_model(b))
+        Q_targets = loc
+
+        tf.debugging.assert_shapes((
+            (Q_targets, ('B', 1)), (rewards, ('B', 1))))
+
+        Qs_values = []
+        Qs_losses = []
+        for Q, optimizer in zip(self._Qs, self._Q_optimizers):
+            with tf.GradientTape() as tape:
+                Q_values = Q.values(observations, actions)
+                Q_losses = (
+                    0.5 * tf.losses.MSE(y_true=Q_targets, y_pred=Q_values))
+
+            gradients = tape.gradient(Q_losses, Q.trainable_variables)
+            optimizer.apply_gradients(zip(gradients, Q.trainable_variables))
+            Qs_losses.append(Q_losses)
+            Qs_values.append(Q_values)
+
+        return Qs_values, Qs_losses
+
+    @tf.function(experimental_relax_shapes=True)
+    def _update_critic_MSBE(self,
+                            observations,
+                            actions,
+                            next_observations,
+                            rewards,
+                            terminals):
         """Update the Q-function."""
         Q_targets = self._compute_Q_targets(
             next_observations, rewards, terminals)
@@ -216,6 +249,15 @@ class VIREL(RLAlgorithm):
             Qs_values.append(Q_values)
 
         return Qs_values, Qs_losses
+
+    @tf.function(experimental_relax_shapes=True)
+    def _update_critic(self, *args, **kwargs):
+        if self._Q_update_type == 'MSBE':
+            return self._update_critic_MSBE(*args, **kwargs)
+        elif self._Q_update_type == 'MSBBE':
+            return self._update_critic_MSBBE(*args, **kwargs)
+
+        raise NotImplementedError(self._Q_update_type)
 
     @tf.function(experimental_relax_shapes=True)
     def _update_actor(self, observations):
