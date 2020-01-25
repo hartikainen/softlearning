@@ -76,6 +76,7 @@ GAUSSIAN_POLICY_PARAMS_BASE = {
     'type': 'GaussianPolicy',
     # 'type': 'LinearPolynomialGaussianPolicy',
     # 'type': 'RandomFeatureGaussianPolicy',
+    # 'type': 'LinearizedFeedforwardGaussianPolicy',
     'kwargs': {
         'hidden_layer_sizes': (M, M),
         'squash': True,
@@ -516,6 +517,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             'type': 'double_feedforward_Q_function',
             # 'type': 'double_linear_polynomial_Q_function',
             # 'type': 'linear_polynomial_Q_function',
+            # 'type': 'linearized_feedforward_Q_function',
 
             # 'type': 'pretrained_feature_Q_function',
             # 'pretrained_checkpoint_dir': tune.sample_from(lambda spec: (

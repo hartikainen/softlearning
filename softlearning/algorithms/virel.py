@@ -8,7 +8,7 @@ from .rl_algorithm import RLAlgorithm
 
 from softlearning.models.bae.linear import (
     LinearStudentTModel,
-    create_linearized_observations_actions_fn)
+    LinearizedObservationsActionsModel)
 from .sac import td_targets
 
 
@@ -114,27 +114,42 @@ class VIREL(RLAlgorithm):
              ))
 
         class wrapped_Q:
-            def __init__(self, Qs):
-                self._Qs = Qs
+            def __init__(self, models):
+                self._models = models
 
             @property
             def trainable_variables(self):
                 return [
                     variable
-                    for Q in self._Qs
-                    for variable in Q.trainable_variables
+                    for model in self._models
+                    for variable in model.trainable_variables
                 ]
 
             @tf.function(experimental_relax_shapes=True)
             def __call__(self, inputs):
-                Qs_values = tuple(
-                    Q.values(*inputs) for Q in self._Qs)
-                Q_values = tf.reduce_min(Qs_values, axis=0)
-                return Q_values
+                outputs = tuple(
+                    model(inputs) for model in self._models)
+                outputs = tf.reduce_min(outputs, axis=0)
+                return outputs
 
-        self.feature_fn = (
-            create_linearized_observations_actions_fn(
-                wrapped_Q(self._Q_targets)))
+        if self._Q_targets[0].model.name == 'linearized_feedforward_Q':
+            self._Q_targets[0].model.summary()
+            for Q_target in self._Q_targets:
+                linearized_model = self._Q_targets[0].model.layers[-2]
+                assert isinstance(
+                    linearized_model, LinearizedObservationsActionsModel), (
+                        linearized_model)
+            feature_fns = [
+                tf.keras.Model(
+                    Q_target.model.inputs,
+                    Q_target.model.layers[-2].output,
+                    name=f'linearized_feature_model_{i}',
+                    trainable=False)
+                for i, Q_target in enumerate(self._Q_targets)
+            ]
+            self.feature_fn = wrapped_Q(feature_fns)
+        else:
+            raise NotImplementedError(self._Q_targets[0].model.name)
 
         self.linear_student_t_model = LinearStudentTModel()
 
