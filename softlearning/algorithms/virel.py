@@ -167,7 +167,7 @@ class VIREL(RLAlgorithm):
             learning_rate=self._policy_lr,
             name="policy_optimizer")
 
-        self._beta = tf.Variable(1.0, name='beta', dtype=tf.float32)
+        self._beta = tf.Variable(self._beta_scale, name='beta', dtype=tf.float32)
 
     @tf.function(experimental_relax_shapes=True)
     def _compute_Q_targets(self, next_observations, rewards, terminals):
