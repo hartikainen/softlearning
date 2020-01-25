@@ -9,6 +9,7 @@ from .rl_algorithm import RLAlgorithm
 from softlearning.models.bae.linear import (
     LinearStudentTModel,
     LinearizedObservationsActionsModel)
+from softlearning.utils.tensorflow import cast_and_concat
 from .sac import td_targets
 
 
@@ -152,6 +153,8 @@ class VIREL(RLAlgorithm):
                 for i, Q_target in enumerate(self._Q_targets)
             ]
             self.feature_fn = wrapped_Q(feature_fns)
+        elif self._Q_targets[0].model.name == 'feedforward_Q':
+            self.feature_fn = cast_and_concat
         else:
             raise NotImplementedError(self._Q_targets[0].model.name)
 
