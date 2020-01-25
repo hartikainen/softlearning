@@ -36,11 +36,21 @@ def get_pretrained_feature_gaussian_policy(*args, **kwargs):
     return policy
 
 
+def get_linearized_feedforward_gaussian_policy(*args, **kwargs):
+    from .gaussian_policy import LinearizedFeedforwardGaussianPolicy
+
+    policy = LinearizedFeedforwardGaussianPolicy(*args, **kwargs)
+
+    return policy
+
+
 POLICY_FUNCTIONS = {
     'GaussianPolicy': get_gaussian_policy,
     'LinearPolynomialGaussianPolicy': get_linear_polynomial_gaussian_policy,
     'UniformPolicy': get_uniform_policy,
     'PretrainedFeatureGaussianPolicy': get_pretrained_feature_gaussian_policy,
+    'LinearizedFeedforwardGaussianPolicy': (
+        get_linearized_feedforward_gaussian_policy),
 }
 
 

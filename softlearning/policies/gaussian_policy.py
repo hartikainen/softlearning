@@ -11,6 +11,8 @@ from softlearning.models.utils import create_inputs
 from softlearning.models.bae.student_t import (
     create_n_degree_polynomial_form_observations_actions_v4,
 )
+from softlearning.models.bae.linear import (
+    LinearizedObservationsActionsModel)
 from softlearning.utils.tensorflow import (
     nest,
     apply_preprocessors,
@@ -312,5 +314,47 @@ class LinearPolynomialGaussianPolicy(GaussianPolicy):
             output_size=output_size,
             activation=self._activation,
             output_activation=self._output_activation)
+
+        return shift_and_log_scale_diag_net
+
+
+class LinearizedFeedforwardGaussianPolicy(GaussianPolicy):
+    def __init__(self,
+                 hidden_layer_sizes,
+                 activation='relu',
+                 output_activation='linear',
+                 *args,
+                 **kwargs):
+        self._hidden_layer_sizes = hidden_layer_sizes
+        self._activation = activation
+        self._output_activation = output_activation
+
+        self._Serializable__initialize(locals())
+        super(LinearizedFeedforwardGaussianPolicy, self).__init__(
+            *args, **kwargs)
+
+    def _shift_and_log_scale_diag_net(self, output_size):
+        non_linear_model = feedforward_model(
+            hidden_layer_sizes=self._hidden_layer_sizes,
+            output_size=output_size,
+            activation=self._activation,
+            output_activation=self._output_activation,
+            name='non-linear',
+        )
+
+        linearized_model = LinearizedObservationsActionsModel(non_linear_model)
+
+        linear_model = feedforward_model(
+            hidden_layer_sizes=(),
+            output_size=output_size,
+            activation=None,
+            output_activation=self._output_activation,
+            name='linear',
+        )
+
+        shift_and_log_scale_diag_net = tf.keras.Sequential((
+            linearized_model,
+            linear_model,
+        ))
 
         return shift_and_log_scale_diag_net

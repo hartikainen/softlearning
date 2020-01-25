@@ -51,52 +51,83 @@ class LinearStudentTModel(tf.keras.Model):
         self.Sigma_N.assign(Sigma_N)
 
 
-def create_linearized_observations_actions_fn(non_linear_model):
-    class LinearizedObservationsActionsModel(tf.keras.Model):
-        def __init__(self, non_linear_model, *args, **kwargs):
-            super(LinearizedObservationsActionsModel, self).__init__(
-                *args, **kwargs)
-            self.non_linear_model = non_linear_model
+class LinearizedObservationsActionsModel(tf.keras.Model):
+    def __init__(self, non_linear_model, *args, **kwargs):
+        super(LinearizedObservationsActionsModel, self).__init__(
+            *args, **kwargs)
+        self.non_linear_model = non_linear_model
 
-        @tf.function(experimental_relax_shapes=True)
-        def call(self, inputs):
-            with tf.GradientTape(persistent=True) as tape:
-                non_linear_values = non_linear_model(inputs)
+    @tf.function(experimental_relax_shapes=True)
+    def call(self, inputs):
+        with tf.GradientTape(persistent=True) as tape:
+            non_linear_values = self.non_linear_model(inputs)
+            non_linear_values = tf.reduce_sum(non_linear_values, axis=-1)
 
-            batch_shape = tf.shape(non_linear_values)[:-1]
+        batch_shape = tf.shape(non_linear_values)
+        jacobians = tape.jacobian(
+            non_linear_values,
+            self.non_linear_model.trainable_variables,
+            experimental_use_pfor=True,
+        )
+        del tape
 
-            jacobians = tape.jacobian(
-                non_linear_values,
-                non_linear_model.trainable_variables,
-                experimental_use_pfor=True,
-            )
+        final_shape = tf.concat((batch_shape, [-1]), axis=0)
+        features = tf.concat([
+            tf.reshape(w * j, final_shape)
+            for w, j in zip(
+                    self.non_linear_model.trainable_variables, jacobians)
+        ], axis=-1)
 
-            del tape
+        # We need to explicitly reshape the output features since otherwise
+        # the last dimension has size of `None`, which causes e.g. keras models
+        # to fail on build.
+        feature_size = tf.reduce_sum([
+            tf.reduce_prod(tf.shape(x))
+            for x in self.non_linear_model.trainable_variables
+        ])
 
-            final_shape = tf.concat((batch_shape, [-1]), axis=0)
-            features = tf.concat([
-                tf.reshape(w * j, final_shape)
-                for w, j in zip(
-                        non_linear_model.trainable_variables, jacobians)
-            ], axis=-1)
+        tf.debugging.assert_equal(tf.shape(features)[-1], feature_size)
+        tf.debugging.assert_equal(batch_shape, tf.shape(features)[:-1])
 
-            # We need to explicitly reshape the output features since otherwise
-            # the last dimension has size of `None`, which causes e.g. keras models
-            # to fail on build.
-            feature_size = tf.reduce_sum([
-                tf.reduce_prod(tf.shape(x))
-                for x in non_linear_model.trainable_variables
-            ])
+        final_shape = tf.concat((batch_shape, [feature_size]), axis=0)
+        features = tf.reshape(features, final_shape)
 
-            tf.debugging.assert_equal(tf.shape(features)[-1], feature_size)
-            tf.debugging.assert_equal(batch_shape, tf.shape(features)[:-1])
+        # tf.stop_gradient(features)
+        return features
 
-            final_shape = tf.concat((batch_shape, [feature_size]), axis=0)
-            features = tf.reshape(features, final_shape)
+    # def from_config(self, *args, **kwargs):
+    #     pass
 
-            return features
+    # def get_config(self):
+    #     config = {
+    #         'layer': {
+    #             'class_name': self.layer.__class__.__name__,
+    #             'config': self.layer.get_config()
+    #         }
+    #     }
+    #     base_config = super(Wrapper, self).get_config()
+    #     return dict(list(base_config.items()) + list(config.items()))
 
-    linearized_observations_actions_model = LinearizedObservationsActionsModel(
-        non_linear_model)
+    def get_config(self, *args, **kwargs):
+        # base_config = (
+        #     super(LinearizedObservationsActionsModel, self)
+        #     .get_config(*args, **kwargs))
+        base_config = {}
 
-    return linearized_observations_actions_model
+        model_config = {
+            'model': {
+                'config': self.non_linear_model.get_config(),
+                'class_name': self.non_linear_model.__class__.__name__,
+            },
+        }
+        config = {**base_config, **model_config}
+        return config
+
+    @classmethod
+    def from_config(cls, config, custom_objects=None):
+        from tensorflow.python.keras.layers import deserialize as deserialize_layer  # pylint: disable=g-import-not-at-top
+        # custom_objects = custom_objects or {}
+        # custom_objects[cls.__name__] = cls
+        model = deserialize_layer(
+            config.pop('model'), custom_objects=custom_objects)
+        return cls(model, **config)
