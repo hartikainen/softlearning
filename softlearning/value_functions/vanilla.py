@@ -3,6 +3,7 @@ import tensorflow as tf
 from softlearning.models.feedforward import feedforward_model
 from softlearning.models.utils import create_inputs
 from softlearning.utils.tensorflow import nest, apply_preprocessors
+from softlearning.models.bae.linear import LinearizedObservationsActionsModel
 from softlearning.models.bae.student_t import (
     create_n_degree_polynomial_form_observations_actions_v4,
 )
@@ -24,11 +25,13 @@ def create_feedforward_Q_function(input_shapes,
     Q_model_body = feedforward_model(
         *args,
         output_size=1,
-        name=name,
         **kwargs
     )
 
-    Q_model = tf.keras.Model(inputs, Q_model_body(preprocessed_inputs))
+    Q_model = tf.keras.Model(
+        inputs,
+        Q_model_body(preprocessed_inputs),
+        name=name)
 
     Q_function = StateActionValueFunction(
         model=Q_model, observation_keys=observation_keys)
@@ -124,6 +127,59 @@ def create_pretrained_feature_Q_function(input_shapes,
 
     Q_model = tf.keras.Model(
         inputs, Q_model_head(Q_model_body(preprocessed_inputs)))
+
+    Q_function = StateActionValueFunction(
+        model=Q_model, observation_keys=observation_keys)
+
+    return Q_function
+
+
+def linearized_feedforward_Q_function(input_shapes,
+                                      *args,
+                                      preprocessors=None,
+                                      observation_keys=None,
+                                      activation='tanh',
+                                      name='linearized_feedforward_Q',
+                                      **kwargs):
+
+    assert activation == 'tanh', (
+        "This is not guaranteed to work with non-smooth non-linearities.")
+    inputs = create_inputs(input_shapes)
+    if preprocessors is None:
+        preprocessors = nest.map_structure(lambda x: None, inputs)
+
+    preprocessed_inputs = apply_preprocessors(preprocessors, inputs)
+
+    non_linear_model = feedforward_model(
+        *args,
+        output_size=1,
+        activation=activation,
+        name='non-linear',
+        **kwargs
+    )
+
+    linearized_model = LinearizedObservationsActionsModel(
+        non_linear_model, name='linearized_model')
+
+    linear_model = feedforward_model(
+        hidden_layer_sizes=(),
+        output_size=1,
+        activation=None,
+        output_activation='linear',
+        name='linear',
+    )
+
+    out = linearized_model(preprocessed_inputs)
+    out = linear_model(out)
+    # Q_model_body = tf.keras.Sequential((
+    #     linearized_model,
+    #     linear_model,
+    # ), name=name)
+
+    Q_model = tf.keras.Model(
+        inputs,
+        out,
+        name=name)
 
     Q_function = StateActionValueFunction(
         model=Q_model, observation_keys=observation_keys)

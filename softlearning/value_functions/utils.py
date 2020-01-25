@@ -26,6 +26,9 @@ VALUE_FUNCTIONS = {
     'pretrained_feature_Q_function': lambda *args, **kwargs: (
         create_double_value_function(
             vanilla.create_pretrained_feature_Q_function, *args, **kwargs)),
+    'linearized_feedforward_Q_function': lambda *args, **kwargs: (
+        create_double_value_function(
+            vanilla.linearized_feedforward_Q_function, *args, **kwargs)),
 }
 
 

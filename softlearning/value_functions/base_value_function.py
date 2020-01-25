@@ -4,6 +4,7 @@ from collections import OrderedDict
 import tensorflow as tf
 
 from softlearning.utils.tensorflow import nest
+from softlearning.models.bae import linear
 
 
 class BaseValueFunction:
@@ -84,7 +85,10 @@ class BaseValueFunction:
     def __setstate__(self, state):
         model_config = state.pop('model_config')
         model_weights = state.pop('model_weights')
-        model = tf.keras.Model.from_config(model_config)
+        model = tf.keras.Model.from_config(model_config, custom_objects={
+            'LinearizedObservationsActionsModel':
+            linear.LinearizedObservationsActionsModel,
+        })
         model.set_weights(model_weights)
         state['model'] = model
         self.__dict__ = state
