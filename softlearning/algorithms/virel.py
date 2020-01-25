@@ -406,8 +406,10 @@ class VIREL(RLAlgorithm):
                     initialize_model_batch['actions']))))
 
         if iteration % self._TD_target_model_update_interval == 0:
-            target_model_prior_data = self._training_batch(self._pool.size)
+            target_model_prior_data = self._training_batch(
+                min(self._pool.size, int(2e3)))
             self._update_student_t_model(target_model_prior_data)
+            del target_model_prior_data
 
         training_diagnostics = self._do_updates(batch, beta_batch)
 
