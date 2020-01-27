@@ -39,11 +39,20 @@ class HumanoidPondEnv(HumanoidEnv):
         self.cumulative_angular_velocity = 0.0
         self.experimental_angular_velocity_type = (
             experimental_angular_velocity_type)
-        return super(HumanoidPondEnv, self).__init__(
+        result = super(HumanoidPondEnv, self).__init__(
             *args,
             exclude_current_positions_from_observation=(
                 exclude_current_positions_from_observation),
             **kwargs)
+
+        orientation = self.init_qpos[3:7]
+        rotate_90_degree_quaternion = np.roll(
+            Rotation.from_euler('z', 90, degrees=True).as_quat(), 1)
+        new_orientation = quaternion_multiply(
+            rotate_90_degree_quaternion, orientation)
+        self.init_qpos[3:7] = new_orientation
+
+        return result
 
     def reset_model(self, *args, **kwargs):
         self.cumulative_angle_travelled = 0.0
