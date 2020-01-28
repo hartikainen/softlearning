@@ -122,3 +122,16 @@ class JacobianModel(tf.keras.Model):
         model = deserialize_layer(
             config.pop('model'), custom_objects=custom_objects)
         return cls(model, **config)
+
+
+class LinearizedModel(JacobianModel):
+    @tf.function(experimental_relax_shapes=True)
+    def call(self, inputs):
+        features = super(LinearizedModel, self).call(inputs)
+        weights = tf.concat([
+            tf.reshape(weight, (1, -1))
+            for weight in self.non_linear_model.trainable_weights
+        ], axis=-1)
+        features = tf.reduce_sum((features * weights), keepdims=True, axis=-1)
+
+        return features
