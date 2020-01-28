@@ -34,6 +34,7 @@ def get_variant_spec(args):
                 # 'MSBBE',
                 'MSBE',
             ])
+            'diagonal_noise_scale': tune.grid_search([1e-3]),
         },
     }
 
