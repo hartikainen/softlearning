@@ -64,6 +64,7 @@ class VIREL(RLAlgorithm):
             Q_update_type='MSBE',
 
             save_full_state=False,
+            diagonal_noise_scale=1e-4,
             **kwargs,
     ):
         """
@@ -110,6 +111,7 @@ class VIREL(RLAlgorithm):
         self._target_update_interval = target_update_interval
         self._TD_target_model_update_interval = TD_target_model_update_interval
         self._Q_update_type = Q_update_type
+        self._diagonal_noise_scale = diagonal_noise_scale
 
         self._save_full_state = save_full_state
 
@@ -351,7 +353,7 @@ class VIREL(RLAlgorithm):
 
         # B = self.feature_fn((data['observations'], data['actions']))
 
-        diagonal_noise_scale = tf.constant(1e-1)
+        diagonal_noise_scale = tf.constant(self._diagonal_noise_scale)
         self.linear_student_t_model.update(B, Y, diagonal_noise_scale)
 
         return tf.constant(True)
