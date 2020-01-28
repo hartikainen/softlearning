@@ -469,6 +469,9 @@ class VIREL(RLAlgorithm):
              tf.reduce_mean(self._epistemic_uncertainty).numpy())
         ))
 
+        diagnostics['uncertainty_model'] = (
+            self.uncertainty_model.get_diagnostics())
+
         if self._plotter:
             self._plotter.draw()
 
