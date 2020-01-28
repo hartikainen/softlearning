@@ -3,7 +3,7 @@ import tensorflow as tf
 from softlearning.models.feedforward import feedforward_model
 from softlearning.models.utils import create_inputs
 from softlearning.utils.tensorflow import nest, apply_preprocessors
-from softlearning.models.bae.linear import LinearizedObservationsActionsModel
+from softlearning.models.bae.linear import JacobianModel
 from softlearning.models.bae.student_t import (
     create_n_degree_polynomial_form_observations_actions_v4,
 )
@@ -158,7 +158,7 @@ def linearized_feedforward_Q_function(input_shapes,
         **kwargs
     )
 
-    linearized_model = LinearizedObservationsActionsModel(
+    linearized_model = JacobianModel(
         non_linear_model, name='linearized_model')
 
     linear_model = feedforward_model(
