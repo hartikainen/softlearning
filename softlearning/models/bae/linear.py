@@ -64,9 +64,9 @@ class LinearStudentTModel(tf.keras.Model):
         return diagnostics
 
 
-class LinearizedObservationsActionsModel(tf.keras.Model):
+class JacobianModel(tf.keras.Model):
     def __init__(self, non_linear_model, *args, **kwargs):
-        super(LinearizedObservationsActionsModel, self).__init__(
+        super(JacobianModel, self).__init__(
             *args, **kwargs)
         self.non_linear_model = non_linear_model
 
@@ -105,26 +105,9 @@ class LinearizedObservationsActionsModel(tf.keras.Model):
         final_shape = tf.concat((batch_shape, [feature_size]), axis=0)
         features = tf.reshape(features, final_shape)
 
-        # tf.stop_gradient(features)
         return features
 
-    # def from_config(self, *args, **kwargs):
-    #     pass
-
-    # def get_config(self):
-    #     config = {
-    #         'layer': {
-    #             'class_name': self.layer.__class__.__name__,
-    #             'config': self.layer.get_config()
-    #         }
-    #     }
-    #     base_config = super(Wrapper, self).get_config()
-    #     return dict(list(base_config.items()) + list(config.items()))
-
     def get_config(self, *args, **kwargs):
-        # base_config = (
-        #     super(LinearizedObservationsActionsModel, self)
-        #     .get_config(*args, **kwargs))
         base_config = {}
 
         model_config = {
@@ -139,8 +122,6 @@ class LinearizedObservationsActionsModel(tf.keras.Model):
     @classmethod
     def from_config(cls, config, custom_objects=None):
         from tensorflow.python.keras.layers import deserialize as deserialize_layer  # pylint: disable=g-import-not-at-top
-        # custom_objects = custom_objects or {}
-        # custom_objects[cls.__name__] = cls
         model = deserialize_layer(
             config.pop('model'), custom_objects=custom_objects)
         return cls(model, **config)
