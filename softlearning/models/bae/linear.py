@@ -74,7 +74,7 @@ class JacobianModel(tf.keras.Model):
     def call(self, inputs):
         with tf.GradientTape(persistent=True) as tape:
             non_linear_values = self.non_linear_model(inputs)
-            non_linear_values = tf.reduce_sum(non_linear_values, axis=-1)
+            # non_linear_values = tf.reduce_sum(non_linear_values, axis=-1)
 
         batch_shape = tf.shape(non_linear_values)
         jacobians = tape.jacobian(
@@ -132,6 +132,6 @@ class LinearizedModel(JacobianModel):
             tf.reshape(weight, (1, -1))
             for weight in self.non_linear_model.trainable_weights
         ], axis=-1)
-        features = tf.reduce_sum((features * weights), keepdims=True, axis=-1)
+        features = tf.reduce_sum((features * weights), axis=-1)
 
         return features
