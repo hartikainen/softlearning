@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 import tensorflow as tf
 
 from softlearning.utils.tensorflow import (
@@ -53,6 +55,13 @@ class LinearStudentTModel(tf.keras.Model):
         self.nu_N.assign(nu_N)
         self.phi_omega_N.assign(phi_omega_N)
         self.Sigma_N.assign(Sigma_N)
+
+    def get_diagnostics(self):
+        diagnostics = OrderedDict((
+            ('v_N', self.v_N.numpy()),
+            ('nu_N', self.nu_N.numpy()),
+        ))
+        return diagnostics
 
 
 class LinearizedObservationsActionsModel(tf.keras.Model):
