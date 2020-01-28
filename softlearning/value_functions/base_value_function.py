@@ -87,6 +87,7 @@ class BaseValueFunction:
         model_weights = state.pop('model_weights')
         model = tf.keras.Model.from_config(model_config, custom_objects={
             'JacobianModel': linear.JacobianModel,
+            'LinearizedModel': linear.LinearizedModel,
         })
         model.set_weights(model_weights)
         state['model'] = model
