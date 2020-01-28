@@ -62,6 +62,7 @@ class VIREL(RLAlgorithm):
             target_update_interval=1,
             TD_target_model_update_interval=100,
             Q_update_type='MSBE',
+            features_from=None,
 
             save_full_state=False,
             diagonal_noise_scale=1e-4,
@@ -111,6 +112,7 @@ class VIREL(RLAlgorithm):
         self._target_update_interval = target_update_interval
         self._TD_target_model_update_interval = TD_target_model_update_interval
         self._Q_update_type = Q_update_type
+        self._features_from = features_from
         self._diagonal_noise_scale = diagonal_noise_scale
 
         self._save_full_state = save_full_state
@@ -140,24 +142,41 @@ class VIREL(RLAlgorithm):
                 outputs = tf.reduce_min(outputs, axis=0)
                 return outputs
 
-        if self._Q_targets[0].model.name == 'linearized_feedforward_Q':
-            self._Q_targets[0].model.summary()
-            for Q_target in self._Q_targets:
-                linearized_model = self._Q_targets[0].model.layers[-2]
+        if self._Qs[0].model.name == 'linearized_feedforward_Q':
+            features_from = {
+                'Q_targets': self._Q_targets,
+                'Qs': self._Qs,
+            }[self._features_from]
+
+            features_from[0].model.summary()
+            for Q in features_from:
+                linearized_model = features_from[0].model.layers[-2]
                 assert isinstance(
                     linearized_model, LinearizedObservationsActionsModel), (
                         linearized_model)
             feature_fns = [
                 tf.keras.Model(
-                    Q_target.model.inputs,
-                    Q_target.model.layers[-2].output,
+                    Q.model.inputs,
+                    Q.model.layers[-2].output,
                     name=f'linearized_feature_model_{i}',
                     trainable=False)
-                for i, Q_target in enumerate(self._Q_targets)
+                for i, Q in enumerate(features_from)
             ]
             self.feature_fn = wrapped_Q(feature_fns)
-        elif self._Q_targets[0].model.name == 'feedforward_Q':
-            self.feature_fn = cast_and_concat
+        elif self._Qs[0].model.name == 'feedforward_Q':
+            features_from = {
+                'Q_targets': self._Q_targets,
+                'Qs': self._Qs,
+            }[self._features_from]
+
+            features_from[0].model.summary()
+            feature_fns = [
+                LinearizedObservationsActionsModel(
+                    Q.model,
+                    name=f'linearized_feature_model_{i}')
+                for i, Q in enumerate(features_from)
+            ]
+            self.feature_fn = wrapped_Q(feature_fns)
         else:
             raise NotImplementedError(self._Q_targets[0].model.name)
 
