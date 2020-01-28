@@ -86,10 +86,7 @@ class JacobianModel(tf.keras.Model):
 
         final_shape = tf.concat((batch_shape, [-1]), axis=0)
         features = tf.concat([
-            tf.reshape(w * j, final_shape)
-            for w, j in zip(
-                    self.non_linear_model.trainable_variables, jacobians)
-        ], axis=-1)
+            tf.reshape(j, final_shape) for j in jacobians], axis=-1)
 
         # We need to explicitly reshape the output features since otherwise
         # the last dimension has size of `None`, which causes e.g. keras models
