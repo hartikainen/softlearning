@@ -9,7 +9,7 @@ from .rl_algorithm import RLAlgorithm
 from softlearning.utils.tensorflow import nest
 from softlearning.models.bae.linear import (
     LinearStudentTModel,
-    LinearizedObservationsActionsModel)
+    JacobianModel)
 from softlearning.utils.tensorflow import cast_and_concat, nest
 from .sac import td_targets
 
@@ -152,7 +152,7 @@ class VIREL(RLAlgorithm):
             for Q in features_from:
                 linearized_model = features_from[0].model.layers[-2]
                 assert isinstance(
-                    linearized_model, LinearizedObservationsActionsModel), (
+                    linearized_model, JacobianModel), (
                         linearized_model)
             feature_fns = [
                 tf.keras.Model(
@@ -171,7 +171,7 @@ class VIREL(RLAlgorithm):
 
             features_from[0].model.summary()
             feature_fns = [
-                LinearizedObservationsActionsModel(
+                JacobianModel(
                     Q.model,
                     name=f'linearized_feature_model_{i}')
                 for i, Q in enumerate(features_from)

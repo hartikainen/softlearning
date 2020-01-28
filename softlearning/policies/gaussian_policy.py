@@ -12,7 +12,7 @@ from softlearning.models.bae.student_t import (
     create_n_degree_polynomial_form_observations_actions_v4,
 )
 from softlearning.models.bae.linear import (
-    LinearizedObservationsActionsModel)
+    JacobianModel)
 from softlearning.utils.tensorflow import (
     nest,
     apply_preprocessors,
@@ -342,7 +342,7 @@ class LinearizedFeedforwardGaussianPolicy(GaussianPolicy):
             name='non-linear',
         )
 
-        linearized_model = LinearizedObservationsActionsModel(non_linear_model)
+        linearized_model = JacobianModel(non_linear_model)
 
         linear_model = feedforward_model(
             hidden_layer_sizes=(),
