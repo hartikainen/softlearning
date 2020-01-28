@@ -133,58 +133,9 @@ class VIREL(RLAlgorithm):
 
             @tf.function(experimental_relax_shapes=True)
             def __call__(self, inputs):
-                batch_size = 128
-                input_shape = tf.shape(nest.flatten(inputs)[0])
-                N = input_shape[0]
-                batch_starts = tf.range(
-                    0, tf.maximum(0, N - batch_size + 1), batch_size)
-
-                outputs = []
-                for model in self._models:
-                    output_shape = model.output_shape[1:]
-
-                    def map_batches():
-                        model_output_batches = tf.map_fn(
-                            lambda i: model(
-                                nest.map_structure(
-                                    lambda x: x[i:i+batch_size, ...], inputs)
-                            ),
-                            batch_starts,
-                            dtype=tf.float32,
-                            # infer_shape=True,
-                            # swap_memory=True,
-                        )
-                        model_outputs = tf.reshape(
-                            model_output_batches,
-                            tf.concat(([-1], tf.shape(model_output_batches)[2:]), axis=0),
-                            # (-1, tf.shape(model_output_batches)[-1])
-                        )
-                        return model_outputs
-
-                    model_outputs = tf.cond(
-                        0 < tf.size(batch_starts),
-                        true_fn=map_batches,
-                        false_fn=lambda: tf.zeros(tf.concat(([0], output_shape), axis=0)),
-                    )
-                    model_outputs_rest = tf.cond(
-                        0 < (N % batch_size),
-                        true_fn=lambda: model(
-                            nest.map_structure(
-                                lambda x: x[-(N % batch_size):, ...], inputs)),
-                        false_fn=lambda: tf.zeros(tf.concat(([0], output_shape), axis=0)),
-                    )
-
-                    model_outputs = tf.concat((
-                        model_outputs,
-                        model_outputs_rest,
-                    ), axis=0)
-                    outputs.append(model_outputs)
-
+                outputs = tuple(
+                    model(inputs) for model in self._models)
                 outputs = tf.reduce_min(outputs, axis=0)
-                tf.debugging.assert_equal(
-                    tf.shape(outputs)[:-1], input_shape[:-1])
-                tf.debugging.assert_equal(
-                    tf.shape(outputs)[1:], output_shape)
                 return outputs
 
         if self._Q_targets[0].model.name == 'linearized_feedforward_Q':
@@ -392,13 +343,13 @@ class VIREL(RLAlgorithm):
                     tau * source_weight + (1.0 - tau) * target_weight)
 
     @tf.function(experimental_relax_shapes=True)
-    def _update_student_t_model(self, data):
-        Y = self._compute_Q_targets(
-            data['next_observations'],
-            data['rewards'],
-            data['terminals'])
+    def _update_student_t_model(self, B, Y):
+        # Y = self._compute_Q_targets(
+        #     data['next_observations'],
+        #     data['rewards'],
+        #     data['terminals'])
 
-        B = self.feature_fn((data['observations'], data['actions']))
+        # B = self.feature_fn((data['observations'], data['actions']))
 
         diagonal_noise_scale = tf.constant(1e-1)
         self.linear_student_t_model.update(B, Y, diagonal_noise_scale)
@@ -461,8 +412,34 @@ class VIREL(RLAlgorithm):
 
         if iteration % self._TD_target_model_update_interval == 0:
             target_model_prior_data = self._pool.last_n_batch(1e5)
-            self._update_student_t_model(target_model_prior_data)
+            N = target_model_prior_data['rewards'].shape[0]
+            target_model_batch_size = 256
+            Y_parts, B_parts = [], []
+            for i in range(0, N, target_model_batch_size):
+                B = self.feature_fn(
+                    nest.map_structure(
+                        lambda x: x[i:i+target_model_batch_size, ...],
+                        (target_model_prior_data['observations'],
+                         target_model_prior_data['actions']))
+                    )
+                Y = self._compute_Q_targets(
+                    *nest.map_structure(
+                        lambda x: x[i:i+target_model_batch_size, ...],
+                        (target_model_prior_data['next_observations'],
+                         target_model_prior_data['rewards'],
+                         target_model_prior_data['terminals'])
+                    ))
+
+                B_parts.append(B)
+                Y_parts.append(Y)
+
+            B = tf.concat(B_parts, axis=0)
+            Y = tf.concat(Y_parts, axis=0)
+            self._update_student_t_model(B, Y)
+
             del target_model_prior_data
+            del B
+            del Y
 
         training_diagnostics = self._do_updates(batch, beta_batch)
 
