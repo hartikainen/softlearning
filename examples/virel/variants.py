@@ -33,7 +33,11 @@ def get_variant_spec(args):
             'Q_update_type': tune.grid_search([
                 # 'MSBBE',
                 'MSBE',
-            ])
+            ]),
+            'features_from': tune.grid_search([
+                # 'Qs',
+                'Q_targets',
+            ]),
             'diagonal_noise_scale': tune.grid_search([1e-3]),
         },
     }
