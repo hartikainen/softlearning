@@ -161,7 +161,7 @@ class VIREL(RLAlgorithm):
         else:
             raise NotImplementedError(self._Q_targets[0].model.name)
 
-        self.linear_student_t_model = LinearStudentTModel()
+        self.uncertainty_model = LinearStudentTModel()
 
         self._epistemic_uncertainty = tf.Variable(float('inf'))
 
@@ -205,8 +205,7 @@ class VIREL(RLAlgorithm):
                              terminals):
         """Update the Q-function."""
         b = self.feature_fn((observations, actions))
-        loc, scale, df, aleatoric_uncertainties, epistemic_uncertainties = (
-            self.linear_student_t_model(b))
+        loc = self.uncertainty_model(b)[0]
         Q_targets = loc
 
         tf.debugging.assert_shapes((
@@ -345,7 +344,7 @@ class VIREL(RLAlgorithm):
                     tau * source_weight + (1.0 - tau) * target_weight)
 
     @tf.function(experimental_relax_shapes=True)
-    def _update_student_t_model(self, B, Y):
+    def _update_uncertainty_model(self, B, Y):
         # Y = self._compute_Q_targets(
         #     data['next_observations'],
         #     data['rewards'],
@@ -354,15 +353,14 @@ class VIREL(RLAlgorithm):
         # B = self.feature_fn((data['observations'], data['actions']))
 
         diagonal_noise_scale = tf.constant(self._diagonal_noise_scale)
-        self.linear_student_t_model.update(B, Y, diagonal_noise_scale)
+        self.uncertainty_model.update(B, Y, diagonal_noise_scale)
 
         return tf.constant(True)
 
     @tf.function(experimental_relax_shapes=True)
     def _update_uncertainties(self, observations, actions):
         b = self.feature_fn((observations, actions))
-        loc, scale, df, aleatoric_uncertainties, epistemic_uncertainties = (
-            self.linear_student_t_model(b))
+        epistemic_uncertainties = self.uncertainty_model(b)[-1]
 
         self._epistemic_uncertainty.assign(
             tf.reduce_mean(epistemic_uncertainties))
@@ -407,7 +405,7 @@ class VIREL(RLAlgorithm):
 
         if iteration == 0:
             initialize_model_batch = self._training_batch(1)
-            _ = self.linear_student_t_model((
+            _ = self.uncertainty_model((
                 self.feature_fn((
                     initialize_model_batch['observations'],
                     initialize_model_batch['actions']))))
@@ -437,7 +435,7 @@ class VIREL(RLAlgorithm):
 
             B = tf.concat(B_parts, axis=0)
             Y = tf.concat(Y_parts, axis=0)
-            self._update_student_t_model(B, Y)
+            self._update_uncertainty_model(B, Y)
 
             del target_model_prior_data
             del B
