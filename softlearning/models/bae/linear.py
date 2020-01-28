@@ -28,16 +28,20 @@ class LinearStudentTModel(tf.keras.Model):
 
     @tf.function(experimental_relax_shapes=True)
     def update(self, B, Y, diagonal_noise_scale):
+        diagonal_noise_scale = tf.cast(diagonal_noise_scale, tf.float64)
         N = tf.shape(B)[0]
 
-        eye = tf.eye(tf.shape(B)[1])
+        eye = tf.eye(tf.shape(B)[-1], dtype=tf.float64)
         Sigma_N_inv = (
-            tf.matmul(B, B, transpose_a=True)
+            tf.matmul(
+                tf.cast(B, tf.float64),
+                tf.cast(B, tf.float64),
+                transpose_a=True)
             + eye
             * diagonal_noise_scale)
 
         cholesky = tf.linalg.cholesky(Sigma_N_inv)
-        Sigma_N = tf.linalg.cholesky_solve(cholesky, eye)
+        Sigma_N = tf.cast(tf.linalg.cholesky_solve(cholesky, eye), tf.float32)
 
         phi_omega_N = tf.matmul(
             Sigma_N, tf.matmul(B, Y, transpose_a=True))
