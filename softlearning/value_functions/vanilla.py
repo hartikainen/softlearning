@@ -3,7 +3,7 @@ import tensorflow as tf
 from softlearning.models.feedforward import feedforward_model
 from softlearning.models.utils import create_inputs
 from softlearning.utils.tensorflow import nest, apply_preprocessors
-from softlearning.models.bae.linear import JacobianModel
+from softlearning.models.bae.linear import LinearizedModel
 from softlearning.models.bae.student_t import (
     create_n_degree_polynomial_form_observations_actions_v4,
 )
@@ -158,23 +158,10 @@ def linearized_feedforward_Q_function(input_shapes,
         **kwargs
     )
 
-    linearized_model = JacobianModel(
+    linearized_model = LinearizedModel(
         non_linear_model, name='linearized_model')
 
-    linear_model = feedforward_model(
-        hidden_layer_sizes=(),
-        output_size=1,
-        activation=None,
-        output_activation='linear',
-        name='linear',
-    )
-
     out = linearized_model(preprocessed_inputs)
-    out = linear_model(out)
-    # Q_model_body = tf.keras.Sequential((
-    #     linearized_model,
-    #     linear_model,
-    # ), name=name)
 
     Q_model = tf.keras.Model(
         inputs,

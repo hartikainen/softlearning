@@ -11,8 +11,7 @@ from softlearning.models.utils import create_inputs
 from softlearning.models.bae.student_t import (
     create_n_degree_polynomial_form_observations_actions_v4,
 )
-from softlearning.models.bae.linear import (
-    JacobianModel)
+from softlearning.models.bae.linear import LinearizedModel
 from softlearning.utils.tensorflow import (
     nest,
     apply_preprocessors,
@@ -342,19 +341,7 @@ class LinearizedFeedforwardGaussianPolicy(GaussianPolicy):
             name='non-linear',
         )
 
-        linearized_model = JacobianModel(non_linear_model)
-
-        linear_model = feedforward_model(
-            hidden_layer_sizes=(),
-            output_size=output_size,
-            activation=None,
-            output_activation=self._output_activation,
-            name='linear',
-        )
-
-        shift_and_log_scale_diag_net = tf.keras.Sequential((
-            linearized_model,
-            linear_model,
-        ))
+        shift_and_log_scale_diag_net = LinearizedModel(
+            non_linear_model, name='linearized_model')
 
         return shift_and_log_scale_diag_net
