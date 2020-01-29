@@ -62,7 +62,6 @@ class VIREL(RLAlgorithm):
             target_update_interval=1,
             TD_target_model_update_interval=100,
             Q_update_type='MSBE',
-            features_from=None,
 
             save_full_state=False,
             diagonal_noise_scale=1e-4,
@@ -111,7 +110,6 @@ class VIREL(RLAlgorithm):
         self._target_update_interval = target_update_interval
         self._TD_target_model_update_interval = TD_target_model_update_interval
         self._Q_update_type = Q_update_type
-        self._features_from = features_from
         self._diagonal_noise_scale = diagonal_noise_scale
 
         self._save_full_state = save_full_state
@@ -141,65 +139,72 @@ class VIREL(RLAlgorithm):
                 outputs = tf.reduce_min(outputs, axis=0)
                 return outputs
 
+        self._Qs[0].model.summary()
+
         if self._Qs[0].model.name == 'linearized_feedforward_Q':
-            features_from = {
-                'Q_targets': self._Q_targets,
-                'Qs': self._Qs,
-            }[self._features_from]
 
-            features_from[0].model.summary()
-            feature_fns = []
-            for i, Q in enumerate(features_from):
-                linearized_model = features_from[0].model.layers[-1]
-                assert isinstance(
-                    linearized_model, LinearizedModel), linearized_model
+            self.linearized_Q_targets = self._Q_targets
 
-                out = JacobianModel(
-                    Q.model.layers[-1].non_linear_model,
-                )(Q.model.layers[-1].inputs)
-                out = tf.keras.layers.Lambda(lambda x: (
-                    tf.reduce_sum(x, axis=-2)
-                ))(out)
-                feature_fn = tf.keras.Model(
-                    Q.model.inputs,
-                    out,
-                    name=f'jacobian_feature_model_{i}',
-                    trainable=False
-                )
-                feature_fns.append(feature_fn)
-            # feature_fns = [
-            #     tf.keras.Model(
-            #         Q.model.inputs,
-            #         JacobianModel(
-            #             Q.model.layers[-1].non_linear_model,
-            #         )(Q.model.layers[-1].inputs),
-            #         name=f'jacobian_feature_model_{i}',
-            #         trainable=False
-            #     )
-            #     for i, Q in enumerate(features_from)
-            # ]
-            self.feature_fn = wrapped_Q(feature_fns)
-            self.uncertainty_Qs = features_from
+            def create_jacobian_feature_model(Qs):
+                jacobian_feature_fns = []
+                for i, Q in enumerate(Qs):
+                    linearized_model = Qs[0].model.layers[-1]
+                    assert isinstance(
+                        linearized_model, LinearizedModel), linearized_model
+
+                    out = JacobianModel(
+                        Q.model.layers[-1].non_linear_model,
+                    )(Q.model.layers[-1].inputs)
+                    out = tf.keras.layers.Lambda(lambda x: (
+                        tf.reduce_sum(x, axis=-2)
+                    ))(out)
+                    jacobian_feature_fn = tf.keras.Model(
+                        Q.model.inputs,
+                        out,
+                        name=f'jacobian_feature_model_{i}',
+                        trainable=False
+                    )
+                    jacobian_feature_fns.append(jacobian_feature_fn)
+
+                jacobian_feature_model = wrapped_Q(jacobian_feature_fns)
+                return jacobian_feature_model
+
+            self.Q_jacobian_features = create_jacobian_feature_model(self._Qs)
+            self.Q_target_jacobian_features = create_jacobian_feature_model(
+                self._Q_targets)
+
         elif self._Qs[0].model.name == 'feedforward_Q':
-            features_from = {
-                'Q_targets': self._Q_targets,
-                'Qs': self._Qs,
-            }[self._features_from]
-
-            features_from[0].model.summary()
-            feature_fns = [
-                JacobianModel(Q.model, name=f'jacobian_feature_model_{i}')
-                for i, Q in enumerate(features_from)
-            ]
-            self.feature_fn = wrapped_Q(feature_fns)
-
-            self.uncertainty_Qs = [
+            self.linearized_Q_targets = [
                 type(Q)(
                     model=LinearizedModel(
-                        Q.model, name=f'linearized_feature_model_{i}'),
+                        Q.model, name=f'linearized_Q_target_{i}'),
                     observation_keys=Q.observation_keys)
-                for i, Q in enumerate(features_from)
+                for i, Q in enumerate(self._Q_targets)
             ]
+
+            def create_jacobian_feature_model(Qs):
+                jacobian_feature_fns = []
+                for i, Q in enumerate(Qs):
+                    out = JacobianModel(
+                        Q.model, name=f'jacobian_feature_model_{i}',
+                    )(Q.model.inputs)
+                    out = tf.keras.layers.Lambda(lambda x: (
+                        tf.reduce_sum(x, axis=-2)
+                    ))(out)
+                    jacobian_feature_fn = tf.keras.Model(
+                        Q.model.inputs,
+                        out,
+                        name=f'jacobian_feature_model_{i}',
+                        trainable=False
+                    )
+                    jacobian_feature_fns.append(jacobian_feature_fn)
+
+                jacobian_feature_fn = wrapped_Q(jacobian_feature_fns)
+                return jacobian_feature_fn
+
+            self.Q_jacobian_features = create_jacobian_feature_model(self._Qs)
+            self.Q_target_jacobian_features = create_jacobian_feature_model(
+                self._Q_targets)
         else:
             raise NotImplementedError(self._Q_targets[0].model.name)
 
@@ -247,7 +252,7 @@ class VIREL(RLAlgorithm):
                              rewards,
                              terminals):
         """Update the Q-function."""
-        b = self.feature_fn((observations, actions))
+        b = self.Q_jacobian_features((observations, actions))
         loc = self.uncertainty_model(b)[0]
         Q_targets = tf.stop_gradient(loc)
 
@@ -402,7 +407,7 @@ class VIREL(RLAlgorithm):
 
     @tf.function(experimental_relax_shapes=True)
     def _update_uncertainties(self, observations, actions):
-        b = self.feature_fn((observations, actions))
+        b = self.Q_jacobian_features((observations, actions))
         epistemic_uncertainties = self.uncertainty_model(b)[-1]
 
         self._epistemic_uncertainty.assign(
@@ -447,7 +452,7 @@ class VIREL(RLAlgorithm):
         if iteration == 0:
             initialize_model_batch = self._training_batch(1)
             _ = self.uncertainty_model((
-                self.feature_fn((
+                self.Q_jacobian_features((
                     initialize_model_batch['observations'],
                     initialize_model_batch['actions']))))
 
@@ -457,7 +462,7 @@ class VIREL(RLAlgorithm):
             target_model_batch_size = 256
             Y_parts, B_parts = [], []
             for i in range(0, N, target_model_batch_size):
-                B = self.feature_fn(
+                B = self.Q_jacobian_features(
                     nest.map_structure(
                         lambda x: x[i:i+target_model_batch_size, ...],
                         (target_model_prior_data['observations'],
@@ -470,7 +475,7 @@ class VIREL(RLAlgorithm):
                          target_model_prior_data['rewards'],
                          target_model_prior_data['terminals'])
                     ),
-                    Qs=self.uncertainty_Qs)
+                    Qs=self.linearized_Q_targets)
 
                 B_parts.append(B)
                 Y_parts.append(Y)
