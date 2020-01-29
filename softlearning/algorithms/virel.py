@@ -342,6 +342,29 @@ class VIREL(RLAlgorithm):
         return Qs_loss
 
     @tf.function(experimental_relax_shapes=True)
+    def _update_beta_MSBBE(self,
+                           observations,
+                           actions,
+                           next_observations,
+                           rewards,
+                           terminals):
+        b = self.Q_jacobian_features((observations, actions))
+        model_output = self.uncertainty_model(b)
+        loc = model_output[0]
+
+        Q_targets = self._compute_Q_targets(
+            next_observations, rewards, terminals)
+
+        tf.debugging.assert_shapes((
+            (Q_targets, ('B', 1)), (rewards, ('B', 1))))
+
+        MSBBEs = 0.5 * tf.losses.MSE(y_true=Q_targets, y_pred=loc)
+        MSBBE = tf.nn.compute_average_loss(MSBBEs)
+        self._beta.assign(self._beta_scale * MSBBE)
+
+        return MSBBE
+
+    @tf.function(experimental_relax_shapes=True)
     def _update_beta_uncertainty(self, *args, **kwargs):
         self._beta.assign(self._beta_scale * self._epistemic_uncertainty)
         return self._epistemic_uncertainty
@@ -352,6 +375,8 @@ class VIREL(RLAlgorithm):
             return 0.0
         elif self._beta_update_type == 'MSBE':
             return self._update_beta_MSBE(*args, **kwargs)
+        elif self._beta_update_type == 'MSBBE':
+            return self._update_beta_MSBBE(*args, **kwargs)
         elif self._beta_update_type == 'uncertainty':
             return self._update_beta_uncertainty(*args, **kwargs)
 
