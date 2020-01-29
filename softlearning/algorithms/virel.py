@@ -122,25 +122,6 @@ class VIREL(RLAlgorithm):
                  for space in self._training_environment.observation_space.spaces.values()
              ))
 
-        class wrapped_Q:
-            def __init__(self, models):
-                self._models = models
-
-            @property
-            def trainable_variables(self):
-                return [
-                    variable
-                    for model in self._models
-                    for variable in model.trainable_variables
-                ]
-
-            @tf.function(experimental_relax_shapes=True)
-            def __call__(self, inputs):
-                outputs = tuple(
-                    model(inputs) for model in self._models)
-                outputs = tf.reduce_min(outputs, axis=0)
-                return outputs
-
         self._Qs[0].model.summary()
 
         if self._Qs[0].model.name == 'linearized_feedforward_Q':
@@ -148,27 +129,24 @@ class VIREL(RLAlgorithm):
             self.linearized_Q_targets = self._Q_targets
 
             def create_jacobian_feature_model(Qs):
-                jacobian_feature_fns = []
-                for i, Q in enumerate(Qs):
-                    linearized_model = Qs[0].model.layers[-1]
-                    assert isinstance(
-                        linearized_model, LinearizedModel), linearized_model
+                Q = Qs[0]
+                linearized_model = Q.model.layers[-1]
+                assert isinstance(
+                    linearized_model, LinearizedModel), linearized_model
 
-                    out = JacobianModel(
-                        Q.model.layers[-1].non_linear_model,
-                    )(Q.model.layers[-1].inputs)
-                    out = tf.keras.layers.Lambda(lambda x: (
-                        tf.reduce_sum(x, axis=-2)
-                    ))(out)
-                    jacobian_feature_fn = tf.keras.Model(
-                        Q.model.inputs,
-                        out,
-                        name=f'jacobian_feature_model_{i}',
-                        trainable=False
-                    )
-                    jacobian_feature_fns.append(jacobian_feature_fn)
+                out = JacobianModel(
+                    Q.model.layers[-1].non_linear_model,
+                )(Q.model.layers[-1].inputs)
+                out = tf.keras.layers.Lambda(lambda x: (
+                    tf.reduce_sum(x, axis=-2)
+                ))(out)
+                jacobian_feature_model = tf.keras.Model(
+                    Q.model.inputs,
+                    out,
+                    name=f'jacobian_feature_model',
+                    trainable=False
+                )
 
-                jacobian_feature_model = wrapped_Q(jacobian_feature_fns)
                 return jacobian_feature_model
 
             self.Q_jacobian_features = create_jacobian_feature_model(self._Qs)
@@ -185,24 +163,20 @@ class VIREL(RLAlgorithm):
             ]
 
             def create_jacobian_feature_model(Qs):
-                jacobian_feature_fns = []
-                for i, Q in enumerate(Qs):
-                    out = JacobianModel(
-                        Q.model, name=f'jacobian_feature_model_{i}',
-                    )(Q.model.inputs)
-                    out = tf.keras.layers.Lambda(lambda x: (
-                        tf.reduce_sum(x, axis=-2)
-                    ))(out)
-                    jacobian_feature_fn = tf.keras.Model(
-                        Q.model.inputs,
-                        out,
-                        name=f'jacobian_feature_model_{i}',
-                        trainable=False
-                    )
-                    jacobian_feature_fns.append(jacobian_feature_fn)
-
-                jacobian_feature_fn = wrapped_Q(jacobian_feature_fns)
-                return jacobian_feature_fn
+                Q = Qs[0]
+                out = JacobianModel(
+                    Q.model, name=f'jacobian_feature_model',
+                )(Q.model.inputs)
+                out = tf.keras.layers.Lambda(lambda x: (
+                    tf.reduce_sum(x, axis=-2)
+                ))(out)
+                jacobian_feature_model = tf.keras.Model(
+                    Q.model.inputs,
+                    out,
+                    name=f'jacobian_feature_model',
+                    trainable=False
+                )
+                return jacobian_feature_model
 
             self.Q_jacobian_features = create_jacobian_feature_model(self._Qs)
             self.Q_target_jacobian_features = create_jacobian_feature_model(
