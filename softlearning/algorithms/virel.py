@@ -50,8 +50,8 @@ class VIREL(RLAlgorithm):
             discount=0.99,
             tau=5e-3,
             beta_scale=4e-4,
-            learn_beta=True,
             beta_batch_size=4096,
+            beta_update_type='MSBE',
             target_update_interval=1,
 
             save_full_state=False,
@@ -95,9 +95,9 @@ class VIREL(RLAlgorithm):
         self._discount = discount
         self._tau = tau
         self._beta_scale = beta_scale
-        self._learn_beta = learn_beta
         self._beta_batch_size = beta_batch_size
         self._target_update_interval = target_update_interval
+        self._beta_update_type = beta_update_type
 
         self._save_full_state = save_full_state
 
@@ -190,15 +190,12 @@ class VIREL(RLAlgorithm):
         return policy_losses
 
     @tf.function(experimental_relax_shapes=True)
-    def _update_beta(self,
-                     observations,
-                     actions,
-                     next_observations,
-                     rewards,
-                     terminals):
-        if not self._learn_beta:
-            return
-
+    def _update_beta_MSBE(self,
+                          observations,
+                          actions,
+                          next_observations,
+                          rewards,
+                          terminals):
         Q_targets = self._compute_Q_targets(
             next_observations, rewards, terminals)
 
@@ -215,6 +212,15 @@ class VIREL(RLAlgorithm):
         self._beta.assign(self._beta_scale * Qs_loss)
 
         return Qs_loss
+
+    @tf.function(experimental_relax_shapes=True)
+    def _update_beta(self, *args, **kwargs):
+        if self._beta_update_type is None:
+            return 0.0
+        elif self._beta_update_type == 'MSBE':
+            return self._update_beta_MSBE(*args, **kwargs)
+
+        raise NotImplementedError(self._beta_update_type)
 
     @tf.function(experimental_relax_shapes=True)
     def _update_target(self, tau):
