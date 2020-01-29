@@ -18,7 +18,6 @@ class LinearStudentTModel(tf.keras.Model):
 
     @tf.function(experimental_relax_shapes=True)
     def call(self, inputs):
-        inputs = cast_and_concat(inputs)
         loc = tf.tensordot(inputs, self.phi_omega_N, 1)
         aleatoric_uncertainty = self.nu_N / self.v_N
         epistemic_uncertainty = (
@@ -60,6 +59,7 @@ class LinearStudentTModel(tf.keras.Model):
         diagnostics = OrderedDict((
             ('v_N', self.v_N.numpy()),
             ('nu_N', self.nu_N.numpy()),
+            ('nu_N / self.v_N', (self.nu_N / self.v_N).numpy()),
         ))
         return diagnostics
 
