@@ -365,8 +365,15 @@ class VIREL(RLAlgorithm):
         return MSBBE
 
     @tf.function(experimental_relax_shapes=True)
-    def _update_beta_uncertainty(self, *args, **kwargs):
-        self._beta.assign(self._beta_scale * self._epistemic_uncertainty)
+    def _update_beta_uncertainty(self,
+                                 observations,
+                                 actions,
+                                 *args,
+                                 **kwargs):
+        b = self.Q_jacobian_features((observations, actions))
+        epistemic_uncertainties = self.uncertainty_model(b)[-1]
+        epistemic_uncertainty = tf.reduce_mean(epistemic_uncertainties)
+        self._beta.assign(self._beta_scale * epistemic_uncertainty)
         return self._epistemic_uncertainty
 
     @tf.function(experimental_relax_shapes=True)
