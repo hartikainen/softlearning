@@ -26,6 +26,7 @@ def get_variant_spec(args):
             'beta_update_version': tune.grid_search([
                 # 'v1',
                 'v2',
+                # 'v3',
             ]),
             'target_update_interval': 1,
 

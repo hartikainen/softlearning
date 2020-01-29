@@ -351,6 +351,29 @@ class VIREL(RLAlgorithm):
         return self._epistemic_uncertainty
 
     @tf.function(experimental_relax_shapes=True)
+    def _update_beta_v3(self,
+                        observations,
+                        actions,
+                        next_observations,
+                        rewards,
+                        terminals):
+        b = self.Q_jacobian_features((observations, actions))
+        model_output = self.uncertainty_model(b)
+        loc = model_output[0]
+
+        Q_targets = self._compute_Q_targets(
+            next_observations, rewards, terminals)
+
+        tf.debugging.assert_shapes((
+            (Q_targets, ('B', 1)), (rewards, ('B', 1))))
+
+        MSBBEs = 0.5 * tf.losses.MSE(y_true=Q_targets, y_pred=loc)
+        MSBBE = tf.nn.compute_average_loss(MSBBEs)
+        self._beta.assign(self._beta_scale * MSBBE)
+
+        return MSBBE
+
+    @tf.function(experimental_relax_shapes=True)
     def _update_beta(self, *args, **kwargs):
         if not self._learn_beta:
             return 0.0
@@ -359,6 +382,8 @@ class VIREL(RLAlgorithm):
             return self._update_beta_v1(*args, **kwargs)
         elif self._beta_update_version == 'v2':
             return self._update_beta_v2(*args, **kwargs)
+        elif self._beta_update_version == 'v3':
+            return self._update_beta_v3(*args, **kwargs)
 
         raise NotImplementedError(self._beta_update_version)
 
