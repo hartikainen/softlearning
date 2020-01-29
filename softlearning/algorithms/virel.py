@@ -344,9 +344,16 @@ class VIREL(RLAlgorithm):
         return Qs_loss
 
     @tf.function(experimental_relax_shapes=True)
-    def _update_beta_v2(self, *args, **kwargs):
-
-        self._beta.assign(self._beta_scale * self._epistemic_uncertainty)
+    def _update_beta_v2(self,
+                        observations,
+                        actions,
+                        next_observations,
+                        rewards,
+                        terminals):
+        b = self.Q_jacobian_features((observations, actions))
+        epistemic_uncertainties = self.uncertainty_model(b)[-1]
+        epistemic_uncertainty = tf.reduce_mean(epistemic_uncertainties)
+        self._beta.assign(self._beta_scale * epistemic_uncertainty)
 
         return self._epistemic_uncertainty
 
