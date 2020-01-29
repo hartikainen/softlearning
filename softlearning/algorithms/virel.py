@@ -317,15 +317,12 @@ class VIREL(RLAlgorithm):
         return policy_losses
 
     @tf.function(experimental_relax_shapes=True)
-    def _update_beta(self,
-                     observations,
-                     actions,
-                     next_observations,
-                     rewards,
-                     terminals):
-        if not self._learn_beta:
-            return 0.0
-
+    def _update_beta_v1(self,
+                        observations,
+                        actions,
+                        next_observations,
+                        rewards,
+                        terminals):
         Q_targets = self._compute_Q_targets(
             next_observations, rewards, terminals)
 
@@ -347,17 +344,23 @@ class VIREL(RLAlgorithm):
         return Qs_loss
 
     @tf.function(experimental_relax_shapes=True)
-    def _update_beta_v1(self, *args, **kwargs):
-        return self._update_beta(*args, **kwargs)
-
-    @tf.function(experimental_relax_shapes=True)
     def _update_beta_v2(self, *args, **kwargs):
-        if not self._learn_beta:
-            return 0.0
 
         self._beta.assign(self._beta_scale * self._epistemic_uncertainty)
 
         return self._epistemic_uncertainty
+
+    @tf.function(experimental_relax_shapes=True)
+    def _update_beta(self, *args, **kwargs):
+        if not self._learn_beta:
+            return 0.0
+
+        if self._beta_update_version == 'v1':
+            return self._update_beta_v1(*args, **kwargs)
+        elif self._beta_update_version == 'v2':
+            return self._update_beta_v2(*args, **kwargs)
+
+        raise NotImplementedError(self._beta_update_version)
 
     @tf.function(experimental_relax_shapes=True)
     def _update_target(self, tau):
@@ -403,9 +406,7 @@ class VIREL(RLAlgorithm):
         policy_losses = self._update_actor(batch['observations'])
         epistemic_uncertainties = self._update_uncertainties(
             beta_batch['observations'], beta_batch['actions'])
-        beta_update_fn = getattr(
-            self, f'_update_beta_{self._beta_update_version}')
-        beta_losses = beta_update_fn(
+        beta_losses = self._update_beta(
             beta_batch['observations'],
             beta_batch['actions'],
             beta_batch['next_observations'],
