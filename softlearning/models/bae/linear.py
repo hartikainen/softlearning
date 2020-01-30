@@ -51,8 +51,6 @@ class LinearGaussianModel(tf.keras.Model):
         cholesky = tf.linalg.cholesky(Sigma_N_inv)
         Sigma_N = tf.cast(tf.linalg.cholesky_solve(cholesky, eye), tf.float32)
 
-        tf.debugging.assert_equal(Sigma_N, tf.transpose(Sigma_N))
-
         phi_omega_N = tf.matmul(
             Sigma_N, beta * tf.matmul(B, Y, transpose_a=True))
 
