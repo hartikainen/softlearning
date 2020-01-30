@@ -1,8 +1,11 @@
+from sklearn import preprocessing
 import tensorflow as tf
 
 from softlearning.models.feedforward import feedforward_model
 from softlearning.models.utils import create_inputs
-from softlearning.utils.tensorflow import nest, apply_preprocessors
+from softlearning.utils.numpy import custom_combinations
+from softlearning.utils.tensorflow import (
+    nest, cast_and_concat, apply_preprocessors)
 from softlearning.models.bae.linear import LinearizedModel, JacobianModel
 from softlearning.models.bae.student_t import (
     create_n_degree_polynomial_form_observations_actions_v4,
@@ -61,25 +64,25 @@ def create_linear_polynomial_Q_function(input_shapes,
 
     D = sum([input_.shape[-1] for input_ in nest.flatten(inputs)])
     preprocessed_inputs = apply_preprocessors(preprocessors, inputs)
-    fn = create_n_degree_polynomial_form_observations_actions_v4(D, degree)
+    polynomial_features_fn = preprocessing.PolynomialFeatures(degree)
     preprocessed_inputs = tf.keras.layers.Lambda(
-        # n_degree_polynomial_form_observations_actions.python_function
-        fn.python_function
+        cast_and_concat
+    )(preprocessed_inputs)
+    preprocessed_inputs = tf.keras.layers.Lambda(
+        lambda inputs: tf.numpy_function(
+            polynomial_features_fn.fit_transform,
+            [inputs],
+            inputs.dtype
+        )
     )(preprocessed_inputs)
 
+    feature_size = len(custom_combinations(D, degree))
     preprocessed_inputs = tf.keras.layers.Reshape(
-        {
-            # (D + D ** 2, )
-            # (D * (D + 3) // 2, )
-            6: (209, ),
-            5: (125, ),
-            4: (69, ),
-            3: (34, ),
-            2: (14, ),
-        }[degree]
+        (feature_size + 1, )
     )(preprocessed_inputs)
 
-    Q_model = tf.keras.Model(inputs, Q_model_body(preprocessed_inputs))
+    Q_model = tf.keras.Model(
+        inputs, Q_model_body(preprocessed_inputs), name=name)
 
     Q_function = StateActionValueFunction(
         model=Q_model, observation_keys=observation_keys)

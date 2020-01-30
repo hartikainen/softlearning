@@ -3,6 +3,7 @@
 from collections import OrderedDict
 
 import numpy as np
+from sklearn import preprocessing
 import tensorflow as tf
 import tensorflow_probability as tfp
 
@@ -12,6 +13,7 @@ from softlearning.models.bae.student_t import (
     create_n_degree_polynomial_form_observations_actions_v4,
 )
 from softlearning.models.bae.linear import LinearizedModel, JacobianModel
+from softlearning.utils.numpy import custom_combinations
 from softlearning.utils.tensorflow import (
     nest,
     apply_preprocessors,
@@ -288,21 +290,23 @@ class LinearPolynomialGaussianPolicy(GaussianPolicy):
     def preprocess_inputs(self, inputs):
         D = sum([input_.shape[-1] for input_ in nest.flatten(inputs)])
         preprocessed_inputs = (
-            super(LinearPolynomialGaussianPolicy, self).preprocess_inputs(inputs))
-        fn = create_n_degree_polynomial_form_observations_actions_v4(
-            D, self._degree)
+            super(LinearPolynomialGaussianPolicy, self)
+            .preprocess_inputs(inputs))
+        polynomial_features_fn = preprocessing.PolynomialFeatures(self._degree)
         preprocessed_inputs = tf.keras.layers.Lambda(
-            # n_degree_polynomial_form_observations_actions.python_function
-            fn.python_function
+            cast_and_concat
         )(preprocessed_inputs)
+        preprocessed_inputs = tf.keras.layers.Lambda(
+            lambda inputs: tf.numpy_function(
+                polynomial_features_fn.fit_transform,
+                [inputs],
+                inputs.dtype
+            )
+        )(preprocessed_inputs)
+
+        feature_size = len(custom_combinations(D, self._degree))
         preprocessed_inputs = tf.keras.layers.Reshape(
-            {
-                6: (27, ),
-                5: (20, ),
-                4: (14, ),
-                3: (9, ),
-                2: (5, ),
-            }[self._degree]
+            (feature_size + 1, )
         )(preprocessed_inputs)
 
         return preprocessed_inputs
