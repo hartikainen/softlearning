@@ -57,6 +57,7 @@ class LinearStudentTModel(tf.keras.Model):
 
     def get_diagnostics(self):
         diagnostics = OrderedDict((
+            ('N', tf.cast(self.v_N * 2.0, tf.int32).numpy()),
             ('v_N', self.v_N.numpy()),
             ('nu_N', self.nu_N.numpy()),
             ('nu_N / self.v_N', (self.nu_N / self.v_N).numpy()),
