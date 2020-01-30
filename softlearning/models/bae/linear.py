@@ -8,6 +8,64 @@ from softlearning.utils.tensorflow import (
     nest)
 
 
+class LinearGaussianModel(tf.keras.Model):
+    def build(self, input_shapes):
+        D = sum(input_shape[-1] for input_shape in nest.flatten(input_shapes))
+        self.phi_omega_N = self.add_weight('phi_omega_N', shape=(D, 1))
+        self.Sigma_N = self.add_weight('Sigma_N', shape=(D, D))
+        self.beta = self.add_weight('beta', shape=(), dtype=tf.float32)
+        self.N = self.add_weight('N', shape=(), dtype=tf.int32)
+
+    @tf.function(experimental_relax_shapes=True)
+    def call(self, inputs):
+        loc = tf.matmul(inputs, self.phi_omega_N)
+
+        aleatoric_uncertainty = 1.0 / self.beta
+        epistemic_uncertainty = batch_quadratic_form(self.Sigma_N, inputs)
+
+        scale = aleatoric_uncertainty + epistemic_uncertainty
+
+        return loc, scale, aleatoric_uncertainty, epistemic_uncertainty
+
+    @tf.function(experimental_relax_shapes=True)
+    def update(self, B, Y, diagonal_noise_scale):
+        diagonal_noise_scale = tf.cast(diagonal_noise_scale, tf.float64)
+        N = tf.shape(B)[0]
+
+        beta = 1.0 / tf.math.reduce_variance(Y)
+        eye = tf.eye(tf.shape(B)[-1], dtype=tf.float64)
+        Sigma_N_inv = (
+            tf.cast(beta, tf.float64)
+            * tf.matmul(
+                tf.cast(B, tf.float64),
+                tf.cast(B, tf.float64),
+                transpose_a=True)
+            # diagonal_noise_scale is a small constant
+            # to guarantee that Sigma_N_inv is invertible.
+            + eye
+            * diagonal_noise_scale)
+
+        cholesky = tf.linalg.cholesky(Sigma_N_inv)
+        Sigma_N = tf.cast(tf.linalg.cholesky_solve(cholesky, eye), tf.float32)
+
+        tf.debugging.assert_equal(Sigma_N, tf.transpose(Sigma_N))
+
+        phi_omega_N = tf.matmul(
+            Sigma_N, beta * tf.matmul(B, Y, transpose_a=True))
+
+        self.phi_omega_N.assign(phi_omega_N)
+        self.Sigma_N.assign(Sigma_N)
+        self.beta.assign(beta)
+        self.N.assign(N)
+
+    def get_diagnostics(self):
+        diagnostics = OrderedDict((
+            ('N', self.N.numpy()),
+            ('beta', self.beta.numpy()),
+        ))
+        return diagnostics
+
+
 class LinearStudentTModel(tf.keras.Model):
     def build(self, input_shapes):
         D = sum(input_shape[-1] for input_shape in nest.flatten(input_shapes))
