@@ -9,6 +9,7 @@ from .rl_algorithm import RLAlgorithm
 from softlearning.utils.tensorflow import nest
 from softlearning.models.bae.linear import (
     LinearStudentTModel,
+    LinearGaussianModel,
     JacobianModel,
     LinearizedModel)
 from softlearning.utils.tensorflow import nest
@@ -66,6 +67,7 @@ class VIREL(RLAlgorithm):
 
             save_full_state=False,
             diagonal_noise_scale=1e-4,
+            uncertainty_model_type='student_t',
             **kwargs,
     ):
         """
@@ -113,6 +115,7 @@ class VIREL(RLAlgorithm):
         self._TD_target_model_update_interval = TD_target_model_update_interval
         self._Q_update_type = Q_update_type
         self._diagonal_noise_scale = diagonal_noise_scale
+        self._uncertainty_model_type = uncertainty_model_type
 
         self._save_full_state = save_full_state
 
@@ -184,7 +187,12 @@ class VIREL(RLAlgorithm):
         else:
             raise NotImplementedError(self._Q_targets[0].model.name)
 
-        self.uncertainty_model = LinearStudentTModel()
+        if self._uncertainty_model_type == 'student_t':
+            self.uncertainty_model = LinearStudentTModel()
+        elif self._uncertainty_model_type == 'gaussian':
+            self.uncertainty_model = LinearGaussianModel()
+        else:
+            raise NotImplementedError(self._uncertainty_model_type)
 
         self._epistemic_uncertainty = tf.Variable(float('inf'))
 
