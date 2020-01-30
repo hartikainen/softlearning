@@ -136,8 +136,36 @@ class VIREL(RLAlgorithm):
                     linearized_model, LinearizedModel), linearized_model
 
                 out = JacobianModel(
-                    Q.model.layers[-1].non_linear_model,
-                )(Q.model.layers[-1].inputs)
+                    linearized_model.non_linear_model,
+                )(linearized_model.inputs)
+                out = tf.keras.layers.Lambda(lambda x: (
+                    tf.reduce_sum(x, axis=-2)
+                ))(out)
+                jacobian_feature_model = tf.keras.Model(
+                    Q.model.inputs,
+                    out,
+                    name=f'jacobian_feature_model',
+                    trainable=False
+                )
+
+                return jacobian_feature_model
+
+            self.Q_jacobian_features = create_jacobian_feature_model(self._Qs)
+            self.Q_target_jacobian_features = create_jacobian_feature_model(
+                self._Q_targets)
+
+        elif self._Qs[0].model.name == 'linearized_feedforward_Q_v2':
+
+            self.linearized_Q_targets = self._Q_targets
+
+            def create_jacobian_feature_model(Qs):
+                Q = Qs[0]
+                # jacobian_model = Q.model.layers[-3]
+                jacobian_model = Q.model.get_layer('jacobian_model')
+                assert isinstance(
+                    jacobian_model, JacobianModel), jacobian_model
+
+                out = jacobian_model(jacobian_model.inputs)
                 out = tf.keras.layers.Lambda(lambda x: (
                     tf.reduce_sum(x, axis=-2)
                 ))(out)
