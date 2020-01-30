@@ -29,6 +29,9 @@ VALUE_FUNCTIONS = {
     'linearized_feedforward_Q_function': lambda *args, **kwargs: (
         create_double_value_function(
             vanilla.linearized_feedforward_Q_function, *args, **kwargs)),
+    'linearized_feedforward_Q_function_v2': lambda *args, **kwargs: (
+        create_double_value_function(
+            vanilla.linearized_feedforward_Q_function_v2, *args, **kwargs)),
 }
 
 
