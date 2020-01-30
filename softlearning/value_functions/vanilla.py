@@ -3,7 +3,7 @@ import tensorflow as tf
 from softlearning.models.feedforward import feedforward_model
 from softlearning.models.utils import create_inputs
 from softlearning.utils.tensorflow import nest, apply_preprocessors
-from softlearning.models.bae.linear import LinearizedModel
+from softlearning.models.bae.linear import LinearizedModel, JacobianModel
 from softlearning.models.bae.student_t import (
     create_n_degree_polynomial_form_observations_actions_v4,
 )
@@ -162,6 +162,56 @@ def linearized_feedforward_Q_function(input_shapes,
         non_linear_model, name='linearized_model')
 
     out = linearized_model(preprocessed_inputs)
+
+    Q_model = tf.keras.Model(
+        inputs,
+        out,
+        name=name)
+
+    Q_function = StateActionValueFunction(
+        model=Q_model, observation_keys=observation_keys)
+
+    return Q_function
+
+
+def linearized_feedforward_Q_function_v2(input_shapes,
+                                         *args,
+                                         preprocessors=None,
+                                         observation_keys=None,
+                                         activation='tanh',
+                                         name='linearized_feedforward_Q_v2',
+                                         **kwargs):
+
+    assert activation == 'tanh', (
+        "This is not guaranteed to work with non-smooth non-linearities.")
+    inputs = create_inputs(input_shapes)
+    if preprocessors is None:
+        preprocessors = nest.map_structure(lambda x: None, inputs)
+
+    preprocessed_inputs = apply_preprocessors(preprocessors, inputs)
+
+    non_linear_model = feedforward_model(
+        *args,
+        output_size=1,
+        activation=activation,
+        name='non-linear',
+        **kwargs
+    )
+
+    jacobian_model = JacobianModel(
+        non_linear_model, name='jacobian_model')
+
+    linear_model = feedforward_model(
+        hidden_layer_sizes=(),
+        output_size=1,
+        activation=None,
+        output_activation='linear',
+        name='linear',
+    )
+
+    out = jacobian_model(preprocessed_inputs)
+    out = tf.keras.layers.Lambda(lambda x: tf.reduce_sum(x, axis=-2))(out)
+    out = linear_model(out)
 
     Q_model = tf.keras.Model(
         inputs,
