@@ -105,10 +105,9 @@ class OnlineUncertaintyModel(tf.keras.Model):
 
         return True
 
-    @tf.function(experimental_relax_shapes=True)
     def get_diagnostics(self):
         diagnostics = OrderedDict((
-            ('N', self.N),
+            ('N', self.N.numpy()),
         ))
         return diagnostics
 
