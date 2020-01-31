@@ -50,9 +50,7 @@ class OnlineUncertaintyModel(tf.keras.Model):
             tf.ones(tf.shape(b_N_not)[:-1])[..., None], b_N_not), axis=-1)
 
         variance = 1.0
-        b_b_T = tf.matmul(
-            b_N, b_N, transpose_a=True
-        )
+        b_b_T = tf.matmul(b_N, b_N, transpose_a=True)
 
         def initialize_Sigma_N():
             Sigma_N_inv = tf.linalg.inv(self.Sigma_N) + b_b_T / variance
@@ -90,8 +88,8 @@ class OnlineUncertaintyModel(tf.keras.Model):
         self.mu_hat.assign(mu_hat)
 
         b_hat_b_hat_T = tf.matmul(
-            b_hat[..., None], b_hat[..., None], transpose_b=True
-        )
+            b_hat[..., None], b_hat[..., None], transpose_b=True)
+
         Sigma_hat = (
             tf.cast(self.N / (self.N + N), b_hat_b_hat_T.dtype)
             * self.Sigma_hat
