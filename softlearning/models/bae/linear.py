@@ -106,6 +106,7 @@ class OnlineUncertaintyModel(tf.keras.Model):
     def get_diagnostics(self):
         diagnostics = OrderedDict((
             ('N', self.N.numpy()),
+            ('epistemic_uncertainty', self(True).numpy()),
         ))
         return diagnostics
 
