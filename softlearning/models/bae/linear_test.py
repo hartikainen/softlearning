@@ -115,7 +115,8 @@ class OnlineUncertaintyModelTest(unittest.TestCase):
             diagnostics = uncertainty_model.get_diagnostics()
 
             tf.debugging.assert_equal(uncertainty_model.N, i)
-            assert ('N', ) == tuple(diagnostics.keys()), diagnostics.keys()
+            assert {'N', 'epistemic_uncertainty'} == set(
+                diagnostics.keys()), diagnostics.keys()
             tf.debugging.assert_equal(diagnostics['N'], i)
 
             # xx = tf.concat((tf.ones(tf.shape(x)[:-1])[..., None], x), axis=-1)
