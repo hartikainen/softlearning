@@ -62,7 +62,6 @@ class VIREL(RLAlgorithm):
             learn_beta=True,
             beta_batch_size=4096,
             target_update_interval=1,
-            TD_target_model_update_interval=100,
             Q_update_type='MSBE',
 
             save_full_state=False,
@@ -111,7 +110,6 @@ class VIREL(RLAlgorithm):
         self._learn_beta = learn_beta
         self._beta_batch_size = beta_batch_size
         self._target_update_interval = target_update_interval
-        self._TD_target_model_update_interval = TD_target_model_update_interval
         self._Q_update_type = Q_update_type
         self._diagonal_noise_scale = diagonal_noise_scale
         self._uncertainty_model_type = uncertainty_model_type
