@@ -40,7 +40,7 @@ def get_variant_spec(args):
                 'MSBE',
             ]),
             'diagonal_noise_scale': tune.grid_search([1e-3]),
-            'uncertainty_model_type': tune.grid_search(['student_t', 'gaussian']),
+            'uncertainty_model_type': tune.grid_search(['online']),
         },
     }
 
