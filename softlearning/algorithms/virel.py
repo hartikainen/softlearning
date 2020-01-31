@@ -455,6 +455,21 @@ class VIREL(RLAlgorithm):
         ))
         return diagnostics
 
+    def _dump_uncertainty_model_for_diagnostics(self):
+        from datetime import datetime
+        import os
+        time_now = (
+            datetime
+            .now()
+            .isoformat()
+            .replace('-', '')
+            .replace(':', '')
+            .replace('.', ''))
+
+        for i, uncertainty_model in enumerate(self.uncertainty_models):
+            save_path = os.path.join('/tmp', f'{time_now}-{i}')
+            tf.saved_model.save(uncertainty_model, save_path)
+
     def _do_training(self, iteration, batch):
         if iteration == 0:
             initialize_model_batch = self._training_batch(1)
@@ -471,6 +486,9 @@ class VIREL(RLAlgorithm):
         self.last_training_step = self._total_timestep
         uncertainty_batch = self._pool.last_n_batch(steps_since_last_training)
         training_diagnostics = self._do_updates(batch, uncertainty_batch)
+
+        if training_diagnostics['epistemic_uncertainty'].numpy() < 0:
+            self._dump_uncertainty_model_for_diagnostics()
 
         if iteration % self._target_update_interval == 0:
             # Run target ops here.
