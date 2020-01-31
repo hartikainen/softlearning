@@ -23,11 +23,6 @@ def get_variant_spec(args):
             'tau': 5e-3,
             'beta_scale': tune.grid_search([1e-4, 1e-3, 1e-2, 1e-1, 1.0]),
             'learn_beta': True,
-            'beta_update_version': tune.grid_search([
-                # 'v1',
-                'v2',
-                # 'v3',
-            ]),
             'target_update_interval': 1,
 
             'n_initial_exploration_steps': int(1e3),
@@ -40,7 +35,7 @@ def get_variant_spec(args):
                 'MSBE',
             ]),
             'diagonal_noise_scale': tune.grid_search([1e-3]),
-            'uncertainty_model_type': tune.grid_search(['student_t', 'gaussian']),
+            'uncertainty_model_type': tune.grid_search(['online']),
         },
     }
 

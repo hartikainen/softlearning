@@ -10,6 +10,7 @@ from softlearning.utils.tensorflow import nest
 from softlearning.models.bae.linear import (
     LinearStudentTModel,
     LinearGaussianModel,
+    OnlineUncertaintyModel,
     JacobianModel,
     LinearizedModel)
 from softlearning.utils.tensorflow import nest
@@ -60,14 +61,13 @@ class VIREL(RLAlgorithm):
             beta_scale=4e-4,
             learn_beta=True,
             beta_batch_size=4096,
-            beta_update_version='v1',
             target_update_interval=1,
             TD_target_model_update_interval=100,
             Q_update_type='MSBE',
 
             save_full_state=False,
             diagonal_noise_scale=1e-4,
-            uncertainty_model_type='student_t',
+            uncertainty_model_type='online',
             **kwargs,
     ):
         """
@@ -110,7 +110,6 @@ class VIREL(RLAlgorithm):
         self._beta_scale = beta_scale
         self._learn_beta = learn_beta
         self._beta_batch_size = beta_batch_size
-        self._beta_update_version = beta_update_version
         self._target_update_interval = target_update_interval
         self._TD_target_model_update_interval = TD_target_model_update_interval
         self._Q_update_type = Q_update_type
@@ -118,6 +117,7 @@ class VIREL(RLAlgorithm):
         self._uncertainty_model_type = uncertainty_model_type
 
         self._save_full_state = save_full_state
+        self.last_training_step = -1
 
         D = (np.prod(self._training_environment.action_space.shape)
              + np.sum(
@@ -215,10 +215,8 @@ class VIREL(RLAlgorithm):
         else:
             raise NotImplementedError(self._Q_targets[0].model.name)
 
-        if self._uncertainty_model_type == 'student_t':
-            self.uncertainty_model = LinearStudentTModel()
-        elif self._uncertainty_model_type == 'gaussian':
-            self.uncertainty_model = LinearGaussianModel()
+        if uncertainty_model_type == 'online':
+            self.uncertainty_model = OnlineUncertaintyModel()
         else:
             raise NotImplementedError(self._uncertainty_model_type)
 
@@ -265,6 +263,8 @@ class VIREL(RLAlgorithm):
                              terminals):
         """Update the Q-function."""
         b = self.Q_jacobian_features((observations, actions))
+        breakpoint()
+        raise NotImplementedError("TODO(hartikainen): Implement.")
         loc = self.uncertainty_model(b)[0]
         Q_targets = tf.stop_gradient(loc)
 
@@ -353,82 +353,37 @@ class VIREL(RLAlgorithm):
         return policy_losses
 
     @tf.function(experimental_relax_shapes=True)
-    def _update_beta_v1(self,
-                        observations,
-                        actions,
-                        next_observations,
-                        rewards,
-                        terminals):
-        Q_targets = self._compute_Q_targets(
-            next_observations, rewards, terminals)
-
-        tf.debugging.assert_shapes((
-            (Q_targets, ('B', 1)), (rewards, ('B', 1))))
-
-        Qs_losses = [
-            0.5 * tf.losses.MSE(
-                y_true=Q_targets,
-                y_pred=Q.values(observations, actions),
-            )
-            for Q in self._Qs
-        ]
-
-        Qs_loss = tf.nn.compute_average_loss(Qs_losses)
-
-        self._beta.assign(self._beta_scale * Qs_loss)
-
-        return Qs_loss
+    def _update_estimators_and_covariance_matrix(self,
+                                                 observations,
+                                                 actions,
+                                                 next_observations):
+        b = self.Q_jacobian_features((observations, actions))
+        random_actions = tf.random.uniform(
+            actions.shape,
+            minval=self._training_environment.action_space.low,
+            maxval=self._training_environment.action_space.high)
+        b_hat = self.Q_jacobian_features((observations, random_actions))
+        next_actions = self._policy.actions(next_observations)
+        b_not = self.Q_jacobian_features((next_observations, next_actions))
+        self.uncertainty_model.online_update((b, b_hat, b_not, self._discount))
+        return 0.0
 
     @tf.function(experimental_relax_shapes=True)
-    def _update_beta_v2(self,
-                        observations,
-                        actions,
-                        next_observations,
-                        rewards,
-                        terminals):
-        b = self.Q_jacobian_features((observations, actions))
-        epistemic_uncertainties = self.uncertainty_model(b)[-1]
-        epistemic_uncertainty = tf.reduce_mean(epistemic_uncertainties)
+    def _update_beta(self,
+                     observations,
+                     actions,
+                     next_observations,
+                     rewards,
+                     terminals):
+        self._update_estimators_and_covariance_matrix(
+            observations, actions, next_observations)
+
+        dummy_input = True
+        epistemic_uncertainty = self.uncertainty_model(dummy_input)
+        beta_losses = epistemic_uncertainty
+        self._epistemic_uncertainty.assign(epistemic_uncertainty)
         self._beta.assign(self._beta_scale * epistemic_uncertainty)
-
-        return self._epistemic_uncertainty
-
-    @tf.function(experimental_relax_shapes=True)
-    def _update_beta_v3(self,
-                        observations,
-                        actions,
-                        next_observations,
-                        rewards,
-                        terminals):
-        b = self.Q_jacobian_features((observations, actions))
-        model_output = self.uncertainty_model(b)
-        loc = model_output[0]
-
-        Q_targets = self._compute_Q_targets(
-            next_observations, rewards, terminals)
-
-        tf.debugging.assert_shapes((
-            (Q_targets, ('B', 1)), (rewards, ('B', 1))))
-
-        MSBBEs = 0.5 * tf.losses.MSE(y_true=Q_targets, y_pred=loc)
-        MSBBE = tf.nn.compute_average_loss(MSBBEs)
-        self._beta.assign(self._beta_scale * MSBBE)
-
-        return MSBBE
-
-    @tf.function(experimental_relax_shapes=True)
-    def _update_beta(self, *args, **kwargs):
-        if not self._learn_beta:
-            return 0.0
-
-        if self._beta_update_version == 'v1':
-            return self._update_beta_v1(*args, **kwargs)
-        elif self._beta_update_version == 'v2':
-            return self._update_beta_v2(*args, **kwargs)
-        elif self._beta_update_version == 'v3':
-            return self._update_beta_v3(*args, **kwargs)
-
-        raise NotImplementedError(self._beta_update_version)
+        return beta_losses
 
     @tf.function(experimental_relax_shapes=True)
     def _update_target(self, tau):
@@ -439,31 +394,15 @@ class VIREL(RLAlgorithm):
                     tau * source_weight + (1.0 - tau) * target_weight)
 
     @tf.function(experimental_relax_shapes=True)
-    def _update_uncertainty_model(self, B, Y):
-        # Y = self._compute_Q_targets(
-        #     data['next_observations'],
-        #     data['rewards'],
-        #     data['terminals'])
+    def _do_updates(self, batch, uncertainty_batch):
+        beta_losses = self._update_beta(
+            uncertainty_batch['observations'],
+            uncertainty_batch['actions'],
+            uncertainty_batch['next_observations'],
+            uncertainty_batch['rewards'],
+            uncertainty_batch['terminals'])
+        epistemic_uncertainty = beta_losses
 
-        # B = self.feature_fn((data['observations'], data['actions']))
-
-        diagonal_noise_scale = tf.constant(self._diagonal_noise_scale)
-        self.uncertainty_model.update(B, Y, diagonal_noise_scale)
-
-        return tf.constant(True)
-
-    @tf.function(experimental_relax_shapes=True)
-    def _update_uncertainties(self, observations, actions):
-        b = self.Q_jacobian_features((observations, actions))
-        epistemic_uncertainties = self.uncertainty_model(b)[-1]
-
-        self._epistemic_uncertainty.assign(
-            tf.reduce_mean(epistemic_uncertainties))
-
-        return epistemic_uncertainties
-
-    # @tf.function(experimental_relax_shapes=True)
-    def _do_updates(self, batch, beta_batch):
         Qs_values, Qs_losses = self._update_critic(
             batch['observations'],
             batch['actions'],
@@ -472,30 +411,18 @@ class VIREL(RLAlgorithm):
             batch['terminals'])
 
         policy_losses = self._update_actor(batch['observations'])
-        epistemic_uncertainties = self._update_uncertainties(
-            beta_batch['observations'], beta_batch['actions'])
-        beta_losses = self._update_beta(
-            beta_batch['observations'],
-            beta_batch['actions'],
-            beta_batch['next_observations'],
-            beta_batch['rewards'],
-            beta_batch['terminals'])
 
         diagnostics = OrderedDict((
             ('Q_value-mean', tf.reduce_mean(Qs_values)),
             ('Q_loss-mean', tf.reduce_mean(Qs_losses)),
             ('policy_loss-mean', tf.reduce_mean(policy_losses)),
             ('beta', self._beta),
-            ('epistemic_uncertainty-mean', tf.reduce_mean(
-                epistemic_uncertainties)),
+            ('epistemic_uncertainty', epistemic_uncertainty),
             ('beta_loss-mean', tf.reduce_mean(beta_losses)),
         ))
         return diagnostics
 
     def _do_training(self, iteration, batch):
-        beta_batch_size = min(self._beta_batch_size, self._pool.size)
-        beta_batch = self._training_batch(beta_batch_size)
-
         if iteration == 0:
             initialize_model_batch = self._training_batch(1)
             _ = self.uncertainty_model((
@@ -503,39 +430,13 @@ class VIREL(RLAlgorithm):
                     initialize_model_batch['observations'],
                     initialize_model_batch['actions']))))
 
-        if iteration % self._TD_target_model_update_interval == 0:
-            target_model_prior_data = self._pool.last_n_batch(1e5)
-            N = target_model_prior_data['rewards'].shape[0]
-            target_model_batch_size = 256
-            Y_parts, B_parts = [], []
-            for i in range(0, N, target_model_batch_size):
-                B = self.Q_jacobian_features(
-                    nest.map_structure(
-                        lambda x: x[i:i+target_model_batch_size, ...],
-                        (target_model_prior_data['observations'],
-                         target_model_prior_data['actions']))
-                    )
-                Y = self._compute_Q_targets(
-                    *nest.map_structure(
-                        lambda x: x[i:i+target_model_batch_size, ...],
-                        (target_model_prior_data['next_observations'],
-                         target_model_prior_data['rewards'],
-                         target_model_prior_data['terminals'])
-                    ),
-                    Qs=self.linearized_Q_targets)
-
-                B_parts.append(B)
-                Y_parts.append(Y)
-
-            B = tf.concat(B_parts, axis=0)
-            Y = tf.concat(Y_parts, axis=0)
-            self._update_uncertainty_model(B, Y)
-
-            del target_model_prior_data
-            del B
-            del Y
-
-        training_diagnostics = self._do_updates(batch, beta_batch)
+        steps_since_last_training = (
+            self._total_timestep - self.last_training_step)
+        # TODO(hartikainen): For not, assume that training update interval is 1
+        assert steps_since_last_training == 1, steps_since_last_training
+        self.last_training_step = self._total_timestep
+        uncertainty_batch = self._pool.last_n_batch(steps_since_last_training)
+        training_diagnostics = self._do_updates(batch, uncertainty_batch)
 
         if iteration % self._target_update_interval == 0:
             # Run target ops here.
