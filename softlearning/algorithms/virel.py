@@ -260,26 +260,42 @@ class VIREL(RLAlgorithm):
                              rewards,
                              terminals):
         """Update the Q-function."""
-        b = self.Q_jacobian_features((observations, actions))
-        breakpoint()
-        raise NotImplementedError("TODO(hartikainen): Implement.")
-        loc = self.uncertainty_model(b)[0]
-        Q_targets = tf.stop_gradient(loc)
-
-        tf.debugging.assert_shapes((
-            (Q_targets, ('B', 1)), (rewards, ('B', 1))))
+        Q_targets = self._compute_Q_targets(
+            next_observations, rewards, terminals,
+            Qs=self.linearized_Q_targets)
 
         Qs_values = []
         Qs_losses = []
         for Q, optimizer in zip(self._Qs, self._Q_optimizers):
-            with tf.GradientTape() as tape:
-                Q_values = Q.values(observations, actions)
-                Q_losses = (
-                    0.5 * tf.losses.MSE(y_true=Q_targets, y_pred=Q_values))
+            b = self.Q_jacobian_features((observations, actions))
+            b = tf.concat((tf.ones(tf.shape(b)[:-1])[..., None], b), axis=-1)
 
-            gradients = tape.gradient(Q_losses, Q.trainable_variables)
-            optimizer.apply_gradients(zip(gradients, Q.trainable_variables))
-            Qs_losses.append(Q_losses)
+            Delta_N = self.uncertainty_model.Delta_N
+            Sigma_N = self.uncertainty_model.Sigma_N
+            Sigma_hat = self.uncertainty_model.Sigma_hat
+
+            Q_values = Q.values(observations, actions)
+            deltas = Q_targets - Q_values
+
+            # TODO(hartikainen): Should use tf.einsum for this.
+            gradients = tf.matmul(
+                tf.matmul(
+                    Delta_N,
+                    tf.matmul(tf.matmul(Sigma_N, Sigma_hat), Sigma_N)),
+                tf.matmul(b, deltas, transpose_a=True)
+            )[1:]
+            variable_shapes = [tf.shape(x) for x in Q.trainable_variables]
+            variable_sizes = [tf.size(x) for x in Q.trainable_variables]
+            gradient_splits = tf.split(gradients, variable_sizes)
+            reshaped_gradients = [
+                tf.reshape(gradient, shape)
+                for gradient, shape
+                in zip(gradient_splits, variable_shapes)
+            ]
+            optimizer.apply_gradients(
+                zip(reshaped_gradients, Q.trainable_variables))
+
+            Qs_losses.append(deltas)
             Qs_values.append(Q_values)
 
         return Qs_values, Qs_losses
