@@ -285,13 +285,17 @@ class VIREL(RLAlgorithm):
             Q_values = Q.values(observations, actions)
             deltas = Q_targets - Q_values
 
-            # TODO(hartikainen): Should use tf.einsum for this.
-            gradients = tf.matmul(
-                tf.matmul(
+            gradients = tf.reduce_mean(
+                tf.einsum(
+                    'ij,jk,kl,lm,bm,bX->bi',
                     Delta_N,
-                    tf.matmul(tf.matmul(Sigma_N, Sigma_hat), Sigma_N)),
-                tf.matmul(b, deltas, transpose_a=True)
-            )[1:]
+                    Sigma_N,
+                    Sigma_hat,
+                    Sigma_N,
+                    b,
+                    deltas
+                ), axis=0)[1:]
+
             variable_shapes = [tf.shape(x) for x in Q.trainable_variables]
             variable_sizes = [tf.size(x) for x in Q.trainable_variables]
             gradient_splits = tf.split(gradients, variable_sizes)
