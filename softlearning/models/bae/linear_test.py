@@ -80,15 +80,16 @@ class OnlineUncertaintyModelTest(unittest.TestCase):
 
     def test_online_updates_single(self):
         y, x, x_test = load_dataset()
-        next_x = x + np.random.uniform(-1, 1, x.shape)
+        hat_x = x + 5.0 + np.random.uniform(-1, 1, x.shape)
+        next_x = x - 5.0 + np.random.uniform(-1, 1, x.shape)
 
         uncertainty_model = OnlineUncertaintyModel()
         _ = uncertainty_model(x)
 
         # single sample mode
-        for i, (x_, next_x_, y_) in enumerate(zip(x, next_x, y), 1):
+        for i, (x_, hat_x_, next_x_, y_) in enumerate(zip(x, hat_x, next_x, y), 1):
             b = x_[None, ...]
-            b_hat = x_[None, ...]
+            b_hat = hat_x_[None, ...]
             b_not = next_x_[None, ...]
             gamma = 0.99
             uncertainty_model.online_update((b, b_hat, b_not, gamma))
@@ -103,7 +104,12 @@ class OnlineUncertaintyModelTest(unittest.TestCase):
                 tf.ones(tf.shape(next_x[:i])[:-1])[..., None],
                 next_x[:i],
             ), axis=-1)
-            expected_mu_hat = tf.reduce_mean(xx_, axis=0)
+            hat_xx_ = tf.concat((
+                tf.ones(tf.shape(hat_x[:i])[:-1])[..., None],
+                hat_x[:i],
+            ), axis=-1)
+
+            expected_mu_hat = tf.reduce_mean(hat_xx_, axis=0)
             tf.debugging.assert_near(uncertainty_model.mu_hat, expected_mu_hat)
 
             diagnostics = uncertainty_model.get_diagnostics()
@@ -129,15 +135,54 @@ class OnlineUncertaintyModelTest(unittest.TestCase):
                     transpose_a=True)
                 for i in range(xx_.shape[0])
             ], axis=0)
-            tf.debugging.assert_near(uncertainty_model.Delta_N, expected_Delta_N)
-            tf.debugging.assert_near(uncertainty_model.Delta_N, expected_Delta_N_2)
-            tf.debugging.assert_near(uncertainty_model.Delta_N, expected_Delta_N_3)
+            tf.debugging.assert_near(
+                uncertainty_model.Delta_N,
+                expected_Delta_N,
+                rtol=1e-6,
+            )
+            tf.debugging.assert_near(
+                uncertainty_model.Delta_N,
+                expected_Delta_N_2,
+                rtol=1e-6,
+            )
+            tf.debugging.assert_near(
+                uncertainty_model.Delta_N,
+                expected_Delta_N_3,
+                rtol=1e-6,
+            )
 
             variance = 1.0
             expected_Sigma_N = tf.linalg.inv(
                 tf.eye(xx_.shape[-1], dtype=tf.float32)
                 + tf.matmul(xx_, xx_, transpose_a=True) / variance)
             tf.debugging.assert_near(uncertainty_model.Sigma_N, expected_Sigma_N)
+
+            expected_Sigma_hat = tf.reduce_sum(
+                tf.matmul(hat_xx_[:, None, :], hat_xx_[:, None, :], transpose_a=True),
+                axis=0
+            ) / i
+
+            tf.debugging.assert_near(uncertainty_model.Sigma_hat, expected_Sigma_hat)
+
+        expected_epistemic_uncertainty = tf.reduce_mean(
+            tf.matmul(
+                tf.matmul(xx_[:, None, :], uncertainty_model.Sigma_N),
+                xx_[:, None, :],
+                transpose_b=True))
+
+        expected_epistemic_uncertainty_2 = tf.reduce_mean([
+            tf.matmul(
+                tf.matmul(xx_[i][None, ...], uncertainty_model.Sigma_N),
+                xx_[i][..., None])
+            for i in range(xx_.shape[0])
+        ], axis=0)
+
+        tf.debugging.assert_near(
+            expected_epistemic_uncertainty,
+            expected_epistemic_uncertainty_2)
+        tf.debugging.assert_near(
+            epistemic_uncertainty,
+            expected_epistemic_uncertainty)
 
 
 if __name__ == '__main__':
