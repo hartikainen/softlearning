@@ -63,6 +63,7 @@ class VIREL(RLAlgorithm):
             beta_batch_size=4096,
             target_update_interval=1,
             Q_update_type='MSBE',
+            beta_update_type='v1',
 
             save_full_state=False,
             diagonal_noise_scale=1e-4,
@@ -113,6 +114,7 @@ class VIREL(RLAlgorithm):
         self._Q_update_type = Q_update_type
         self._diagonal_noise_scale = diagonal_noise_scale
         self._uncertainty_model_type = uncertainty_model_type
+        self._beta_update_type = beta_update_type
 
         self._save_full_state = save_full_state
         self.last_training_step = -1
@@ -400,12 +402,12 @@ class VIREL(RLAlgorithm):
         return 0.0
 
     @tf.function(experimental_relax_shapes=True)
-    def _update_beta(self,
-                     observations,
-                     actions,
-                     next_observations,
-                     rewards,
-                     terminals):
+    def _update_beta_v1(self,
+                        observations,
+                        actions,
+                        next_observations,
+                        rewards,
+                        terminals):
         self._update_estimators_and_covariance_matrix(
             observations, actions, next_observations)
 
@@ -420,6 +422,16 @@ class VIREL(RLAlgorithm):
         self._epistemic_uncertainty.assign(epistemic_uncertainty)
         self._beta.assign(self._beta_scale * epistemic_uncertainty)
         return beta_losses
+
+    @tf.function(experimental_relax_shapes=True)
+    def _update_beta(self, *args, **kwargs):
+        if not self._learn_beta:
+            return 0.0
+
+        if self._beta_update_type == 'v1':
+            return self._update_beta_v1(*args, **kwargs)
+
+        raise NotImplementedError(self._beta_update_type)
 
     @tf.function(experimental_relax_shapes=True)
     def _update_target(self, tau):
