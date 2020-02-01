@@ -59,7 +59,6 @@ class VIREL(RLAlgorithm):
             discount=0.99,
             tau=5e-3,
             beta_scale=4e-4,
-            learn_beta=True,
             beta_batch_size=4096,
             target_update_interval=1,
             Q_update_type='MSBE',
@@ -108,7 +107,6 @@ class VIREL(RLAlgorithm):
         self._discount = discount
         self._tau = tau
         self._beta_scale = beta_scale
-        self._learn_beta = learn_beta
         self._beta_batch_size = beta_batch_size
         self._target_update_interval = target_update_interval
         self._Q_update_type = Q_update_type
@@ -451,10 +449,9 @@ class VIREL(RLAlgorithm):
 
     @tf.function(experimental_relax_shapes=True)
     def _update_beta(self, *args, **kwargs):
-        if not self._learn_beta:
+        if self._beta_update_type is None:
             return 0.0
-
-        if self._beta_update_type == 'v1':
+        elif self._beta_update_type == 'v1':
             return self._update_beta_v1(*args, **kwargs)
         elif self._beta_update_type == 'v2':
             return self._update_beta_v2(*args, **kwargs)
