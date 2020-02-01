@@ -500,7 +500,7 @@ class VIREL(RLAlgorithm):
             uncertainty_batch['next_observations'],
             uncertainty_batch['rewards'],
             uncertainty_batch['terminals'])
-        epistemic_uncertainty = beta_losses
+        epistemic_uncertainty = self._epistemic_uncertainty
 
         Qs_values, Qs_losses = self._update_critic(
             batch['observations'],
