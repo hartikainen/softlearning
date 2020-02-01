@@ -428,19 +428,8 @@ class VIREL(RLAlgorithm):
                                  next_observations,
                                  *args,
                                  **kwargs):
-        self._update_estimators_and_covariance_matrix(
-            observations, actions, next_observations)
-
-        dummy_input = True
-        epistemic_uncertainties = [
-            uncertainty_model(dummy_input)
-            for uncertainty_model in self.uncertainty_models
-        ]
-        epistemic_uncertainty = tf.reduce_mean(epistemic_uncertainties)
-
-        beta_losses = epistemic_uncertainty
-        self._epistemic_uncertainty.assign(epistemic_uncertainty)
-        self._beta.assign(self._beta_scale * epistemic_uncertainty)
+        beta_losses = self._epistemic_uncertainty
+        self._beta.assign(self._beta_scale * self._epistemic_uncertainty)
         return beta_losses
 
     @tf.function(experimental_relax_shapes=True)
@@ -456,6 +445,18 @@ class VIREL(RLAlgorithm):
 
         raise NotImplementedError(self._beta_update_type)
 
+    @tf.function(experimental_relax_shapes=True)
+    def _update_epistemic_uncertainty(self):
+        dummy_input = True
+        epistemic_uncertainties = [
+            uncertainty_model(dummy_input)
+            for uncertainty_model in self.uncertainty_models
+        ]
+        epistemic_uncertainty = tf.reduce_mean(epistemic_uncertainties)
+        self._epistemic_uncertainty.assign(epistemic_uncertainty)
+        return self._epistemic_uncertainty
+
+    @tf.function(experimental_relax_shapes=True)
     def _update_estimators_and_covariance_matrix(self,
                                                  observations,
                                                  actions,
@@ -487,6 +488,12 @@ class VIREL(RLAlgorithm):
 
     @tf.function(experimental_relax_shapes=True)
     def _do_updates(self, batch, uncertainty_batch):
+        self._update_estimators_and_covariance_matrix(
+            uncertainty_batch['observations'],
+            uncertainty_batch['actions'],
+            uncertainty_batch['next_observations'])
+        self._update_epistemic_uncertainty()
+
         beta_losses = self._update_beta(
             uncertainty_batch['observations'],
             uncertainty_batch['actions'],
