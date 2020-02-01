@@ -10,8 +10,7 @@ from softlearning.utils.tensorflow import (
 
 class OnlineUncertaintyModel(tf.keras.Model):
     def build(self, input_shapes):
-        D = 1 + sum(
-            input_shape[-1] for input_shape in nest.flatten(input_shapes))
+        D = sum(input_shape[-1] for input_shape in nest.flatten(input_shapes))
         self.mu_hat = self.add_weight(
             'mu_hat', shape=(1, D), initializer='zeros')
         self.Sigma_hat = self.add_weight(
@@ -43,11 +42,6 @@ class OnlineUncertaintyModel(tf.keras.Model):
         b_N, b_hat, b_N_not, gamma = inputs
         N = tf.shape(b_N)[0]
         tf.debugging.assert_equal(N, 1)
-        b_N = tf.concat((tf.ones(tf.shape(b_N)[:-1])[..., None], b_N), axis=-1)
-        b_hat = tf.concat((
-            tf.ones(tf.shape(b_hat)[:-1])[..., None], b_hat), axis=-1)
-        b_N_not = tf.concat((
-            tf.ones(tf.shape(b_N_not)[:-1])[..., None], b_N_not), axis=-1)
 
         variance = 1.0
         b_b_T = tf.matmul(b_N, b_N, transpose_a=True)
@@ -113,8 +107,7 @@ class OnlineUncertaintyModel(tf.keras.Model):
 
 class LinearGaussianModel(tf.keras.Model):
     def build(self, input_shapes):
-        D = 1 + sum(
-            input_shape[-1] for input_shape in nest.flatten(input_shapes))
+        D = sum(input_shape[-1] for input_shape in nest.flatten(input_shapes))
         self.phi_omega_N = self.add_weight('phi_omega_N', shape=(D, 1))
         self.Sigma_N = self.add_weight('Sigma_N', shape=(D, D))
         self.beta = self.add_weight('beta', shape=(), dtype=tf.float32)
@@ -122,7 +115,6 @@ class LinearGaussianModel(tf.keras.Model):
 
     @tf.function(experimental_relax_shapes=True)
     def call(self, inputs):
-        inputs = tf.concat((tf.ones(tf.shape(inputs)[:-1])[..., None], inputs), axis=-1)
         loc = tf.matmul(inputs, self.phi_omega_N)
 
         aleatoric_uncertainty = 1.0 / self.beta
@@ -134,7 +126,6 @@ class LinearGaussianModel(tf.keras.Model):
 
     @tf.function(experimental_relax_shapes=True)
     def update(self, B, Y, diagonal_noise_scale):
-        B = tf.concat((tf.ones(tf.shape(B)[:-1])[..., None], B), axis=-1)
         diagonal_noise_scale = tf.cast(diagonal_noise_scale, tf.float64)
         N = tf.shape(B)[0]
 
@@ -172,8 +163,7 @@ class LinearGaussianModel(tf.keras.Model):
 
 class LinearStudentTModel(tf.keras.Model):
     def build(self, input_shapes):
-        D = 1 + sum(
-            input_shape[-1] for input_shape in nest.flatten(input_shapes))
+        D = sum(input_shape[-1] for input_shape in nest.flatten(input_shapes))
         self.v_N = self.add_weight('v_N', shape=())
         self.nu_N = self.add_weight('nu_N', shape=())
         self.phi_omega_N = self.add_weight('phi_omega_N', shape=(D, 1))
@@ -181,7 +171,6 @@ class LinearStudentTModel(tf.keras.Model):
 
     @tf.function(experimental_relax_shapes=True)
     def call(self, inputs):
-        inputs = tf.concat((tf.ones(tf.shape(inputs)[:-1])[..., None], inputs), axis=-1)
         loc = tf.tensordot(inputs, self.phi_omega_N, 1)
         aleatoric_uncertainty = self.nu_N / self.v_N
         epistemic_uncertainty = (
@@ -193,7 +182,6 @@ class LinearStudentTModel(tf.keras.Model):
 
     @tf.function(experimental_relax_shapes=True)
     def update(self, B, Y, diagonal_noise_scale):
-        B = tf.concat((tf.ones(tf.shape(B)[:-1])[..., None], B), axis=-1)
         diagonal_noise_scale = tf.cast(diagonal_noise_scale, tf.float64)
         N = tf.shape(B)[0]
 
