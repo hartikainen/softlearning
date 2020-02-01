@@ -276,7 +276,6 @@ class VIREL(RLAlgorithm):
                 self.Q_jacobian_features,
                 self._Q_optimizers):
             b = feature_fn((observations, actions))
-            b = tf.concat((tf.ones(tf.shape(b)[:-1])[..., None], b), axis=-1)
 
             Delta_N = uncertainty_model.Delta_N
             Sigma_N = uncertainty_model.Sigma_N
@@ -294,7 +293,7 @@ class VIREL(RLAlgorithm):
                     Sigma_N,
                     b,
                     deltas
-                ), axis=0)[1:]
+                ), axis=0)
 
             variable_shapes = [tf.shape(x) for x in Q.trainable_variables]
             variable_sizes = [tf.size(x) for x in Q.trainable_variables]
