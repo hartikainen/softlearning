@@ -117,12 +117,6 @@ class VIREL(RLAlgorithm):
         self._save_full_state = save_full_state
         self.last_training_step = -1
 
-        D = (np.prod(self._training_environment.action_space.shape)
-             + np.sum(
-                 np.prod(space.shape)
-                 for space in self._training_environment.observation_space.spaces.values()
-             ))
-
         self._Qs[0].model.summary()
 
         if self._Qs[0].model.name == 'linearized_feedforward_Q':
@@ -557,8 +551,9 @@ class VIREL(RLAlgorithm):
         ))
 
         for i, uncertainty_model in enumerate(self.uncertainty_models):
+            uncertainty_model_diagnostics = uncertainty_model.get_diagnostics()
             diagnostics[f'uncertainty_model-{i}'] = (
-                uncertainty_model.get_diagnostics())
+                uncertainty_model_diagnostics)
 
         if self._plotter:
             self._plotter.draw()
