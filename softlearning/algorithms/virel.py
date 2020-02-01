@@ -424,12 +424,40 @@ class VIREL(RLAlgorithm):
         return beta_losses
 
     @tf.function(experimental_relax_shapes=True)
+    def _update_beta_v2(self,
+                        observations,
+                        actions,
+                        next_observations,
+                        rewards,
+                        terminals):
+        Q_targets = self._compute_Q_targets(
+            next_observations, rewards, terminals)
+
+        tf.debugging.assert_shapes((
+            (Q_targets, ('B', 1)), (rewards, ('B', 1))))
+
+        Qs_losses = [
+            0.5 * tf.losses.MSE(
+                y_true=Q_targets,
+                y_pred=Q.values(observations, actions))
+            for Q in self._Qs
+        ]
+
+        Qs_loss = tf.nn.compute_average_loss(Qs_losses)
+
+        self._beta.assign(self._beta_scale * Qs_loss)
+
+        return Qs_loss
+
+    @tf.function(experimental_relax_shapes=True)
     def _update_beta(self, *args, **kwargs):
         if not self._learn_beta:
             return 0.0
 
         if self._beta_update_type == 'v1':
             return self._update_beta_v1(*args, **kwargs)
+        elif self._beta_update_type == 'v2':
+            return self._update_beta_v2(*args, **kwargs)
 
         raise NotImplementedError(self._beta_update_type)
 
