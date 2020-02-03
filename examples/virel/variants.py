@@ -1,4 +1,5 @@
 from ray import tune
+import tensorflow as tf
 
 from softlearning.utils.dict import deep_update
 
@@ -38,8 +39,6 @@ def get_variant_spec(args):
                 # 'MSBBE',
                 'MSBE',
             ]),
-            'diagonal_noise_scale': tune.grid_search([1e-3]),
-            'uncertainty_model_type': tune.grid_search(['online']),
         },
     }
 
@@ -48,5 +47,18 @@ def get_variant_spec(args):
         virel_algorithm_kwargs,
         get_algorithm_params(universe, domain, task),
     )
+
+    variant_spec['uncertainty_estimator_params'] = {
+        'type': 'FeedforwardEnsemble',
+        'kwargs': tune.sample_from(lambda spec: {
+            'ensemble_size': 10,
+            'output_size': 10,
+            'hidden_layer_sizes': (spec.get('config', spec)
+                                   ['Q_params']
+                                   ['kwargs']
+                                   ['hidden_layer_sizes']),
+            'prior_kernel_initializer': tf.random_normal_initializer(stddev=0.1),
+        }),
+    }
 
     return variant_spec

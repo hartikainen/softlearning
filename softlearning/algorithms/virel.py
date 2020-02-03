@@ -6,14 +6,6 @@ import tensorflow as tf
 
 from .rl_algorithm import RLAlgorithm
 
-from softlearning.utils.tensorflow import nest
-from softlearning.models.bae.linear import (
-    LinearStudentTModel,
-    LinearGaussianModel,
-    OnlineUncertaintyModel,
-    JacobianModel,
-    LinearizedModel)
-from softlearning.utils.tensorflow import nest
 from .sac import td_targets
 
 
@@ -63,10 +55,9 @@ class VIREL(RLAlgorithm):
             beta_update_type='MSBE',
             target_update_interval=1,
             Q_update_type='MSBE',
+            uncertainty_estimator=None,
 
             save_full_state=False,
-            diagonal_noise_scale=1e-4,
-            uncertainty_model_type='online',
             **kwargs,
     ):
         """
@@ -111,112 +102,16 @@ class VIREL(RLAlgorithm):
         self._beta_update_type = beta_update_type
         self._target_update_interval = target_update_interval
         self._Q_update_type = Q_update_type
-        self._diagonal_noise_scale = diagonal_noise_scale
-        self._uncertainty_model_type = uncertainty_model_type
 
         self._save_full_state = save_full_state
         self.last_training_step = -1
 
-        self._Qs[0].model.summary()
-
-        if self._Qs[0].model.name == 'linearized_feedforward_Q':
-
-            self.linearized_Q_targets = self._Q_targets
-
-            def create_jacobian_feature_model(Qs):
-                jacobian_feature_models = []
-                for i, Q in enumerate(Qs):
-                    linearized_model = Q.model.layers[-1]
-                    assert isinstance(
-                        linearized_model, LinearizedModel), linearized_model
-
-                    out = JacobianModel(
-                        linearized_model.non_linear_model,
-                    )(linearized_model.inputs)
-                    out = tf.keras.layers.Lambda(lambda x: (
-                        tf.reduce_sum(x, axis=-2)
-                    ))(out)
-                    jacobian_feature_model = tf.keras.Model(
-                        Q.model.inputs,
-                        out,
-                        name=f'jacobian_feature_model_{i}',
-                        trainable=False)
-                    jacobian_feature_models.append(jacobian_feature_model)
-
-                return jacobian_feature_models
-
-            self.Q_jacobian_features = create_jacobian_feature_model(self._Qs)
-            self.Q_target_jacobian_features = create_jacobian_feature_model(
-                self._Q_targets)
-
-        elif self._Qs[0].model.name == 'linearized_feedforward_Q_v2':
-
-            self.linearized_Q_targets = self._Q_targets
-
-            def create_jacobian_feature_model(Qs):
-                jacobian_feature_models = []
-                for i, Q in enumerate(Qs):
-                    jacobian_model = Q.model.get_layer('jacobian_model')
-                    assert isinstance(
-                        jacobian_model, JacobianModel), jacobian_model
-
-                    out = jacobian_model(jacobian_model.inputs)
-                    out = tf.keras.layers.Lambda(lambda x: (
-                        tf.reduce_sum(x, axis=-2)
-                    ))(out)
-                    jacobian_feature_model = tf.keras.Model(
-                        Q.model.inputs,
-                        out,
-                        name=f'jacobian_feature_model_{i}',
-                        trainable=False)
-                    jacobian_feature_models.append(jacobian_feature_model)
-
-                return jacobian_feature_models
-
-            self.Q_jacobian_features = create_jacobian_feature_model(self._Qs)
-            self.Q_target_jacobian_features = create_jacobian_feature_model(
-                self._Q_targets)
-
-        elif self._Qs[0].model.name == 'feedforward_Q':
-            self.linearized_Q_targets = [
-                type(Q)(
-                    model=LinearizedModel(
-                        Q.model, name=f'linearized_Q_target_{i}'),
-                    observation_keys=Q.observation_keys)
-                for i, Q in enumerate(self._Q_targets)
-            ]
-
-            def create_jacobian_feature_model(Qs):
-                jacobian_feature_models = []
-                for i, Q in enumerate(Qs):
-                    out = JacobianModel(
-                        Q.model, name=f'jacobian_feature_model',
-                    )(Q.model.inputs)
-                    out = tf.keras.layers.Lambda(lambda x: (
-                        tf.reduce_sum(x, axis=-2)
-                    ))(out)
-                    jacobian_feature_model = tf.keras.Model(
-                        Q.model.inputs,
-                        out,
-                        name=f'jacobian_feature_model',
-                        trainable=False)
-                    jacobian_feature_models.append(jacobian_feature_model)
-
-                return jacobian_feature_models
-
-            self.Q_jacobian_features = create_jacobian_feature_model(self._Qs)
-            self.Q_target_jacobian_features = create_jacobian_feature_model(
-                self._Q_targets)
-        else:
-            raise NotImplementedError(self._Q_targets[0].model.name)
-
-        if uncertainty_model_type == 'online':
-            self.uncertainty_models = tuple(
-                OnlineUncertaintyModel() for _ in range(len(self._Qs)))
-        else:
-            raise NotImplementedError(self._uncertainty_model_type)
-
         self._epistemic_uncertainty = tf.Variable(float('inf'))
+        self._uncertainty_estimator = uncertainty_estimator
+
+        self._uncertainty_optimizer = tf.optimizers.Adam(
+                learning_rate=self._Q_lr,
+                name=f'uncertainty_optimizer')
 
         self._Q_optimizers = tuple(
             tf.optimizers.Adam(
@@ -258,6 +153,8 @@ class VIREL(RLAlgorithm):
                              rewards,
                              terminals):
         """Update the Q-function."""
+        raise NotImplementedError(
+            "TODO(hartikainen): Adapt for RPF ensembles.")
         Q_targets = self._compute_Q_targets(
             next_observations, rewards, terminals,
             Qs=self.linearized_Q_targets)
@@ -446,37 +343,47 @@ class VIREL(RLAlgorithm):
         raise NotImplementedError(self._beta_update_type)
 
     @tf.function(experimental_relax_shapes=True)
-    def _update_epistemic_uncertainty(self):
-        dummy_input = True
-        epistemic_uncertainties = [
-            uncertainty_model(dummy_input)
-            for uncertainty_model in self.uncertainty_models
+    def _update_uncertainty_model(self,
+                                  observations,
+                                  actions,
+                                  next_observations):
+        with tf.GradientTape() as tape:
+            predictions = self._uncertainty_estimator((observations, actions))
+            losses = 0.5 * tf.losses.MSE(y_true=0.0, y_pred=predictions)
+
+        model_and_prior_predictions_before = [
+            model.model_and_prior((observations, actions))
+            for model in self._uncertainty_estimator.models
         ]
-        epistemic_uncertainty = tf.reduce_mean(epistemic_uncertainties)
-        self._epistemic_uncertainty.assign(epistemic_uncertainty)
-        return self._epistemic_uncertainty
+        gradients = tape.gradient(
+            losses, self._uncertainty_estimator.trainable_variables)
+        self._uncertainty_optimizer.apply_gradients(zip(
+            gradients, self._uncertainty_estimator.trainable_variables))
+        model_and_prior_predictions_after = [
+            model.model_and_prior((observations, actions))
+            for model in self._uncertainty_estimator.models
+        ]
+
+        for (model_before, prior_before), (model_after, prior_after) in zip(
+                model_and_prior_predictions_before,
+                model_and_prior_predictions_after):
+            tf.debugging.Assert(
+                tf.reduce_any(model_before != model_after),
+                (model_before, model_after))
+            tf.debugging.assert_equal(prior_before, prior_after)
+
+        return losses
 
     @tf.function(experimental_relax_shapes=True)
-    def _update_estimators_and_covariance_matrix(self,
-                                                 observations,
-                                                 actions,
-                                                 next_observations):
-        for uncertainty_model, feature_fn, target_feature_fn in zip(
-                self.uncertainty_models,
-                self.Q_jacobian_features,
-                self.Q_target_jacobian_features):
-            b = feature_fn((observations, actions))
-            random_actions = tf.random.uniform(
-                actions.shape,
-                minval=self._training_environment.action_space.low,
-                maxval=self._training_environment.action_space.high)
-            b_hat = feature_fn((observations, random_actions))
-            next_actions = self._policy.actions(next_observations)
-            b_not = target_feature_fn((next_observations, next_actions))
-            uncertainty_model.online_update(
-                (b, b_hat, b_not, self._discount))
-
-        return 0.0
+    def _update_epistemic_uncertainty(self,
+                                      observations,
+                                      actions,
+                                      next_actions):
+        predictions = self._uncertainty_estimator((observations, actions))
+        epistemic_uncertainties = tf.reduce_mean(predictions ** 2, axis=(-1, -2))
+        epistemic_uncertainty = tf.reduce_mean(epistemic_uncertainties)
+        self._epistemic_uncertainty.assign(epistemic_uncertainty)
+        return epistemic_uncertainties
 
     @tf.function(experimental_relax_shapes=True)
     def _update_target(self, tau):
@@ -488,11 +395,14 @@ class VIREL(RLAlgorithm):
 
     @tf.function(experimental_relax_shapes=True)
     def _do_updates(self, batch, uncertainty_batch):
-        self._update_estimators_and_covariance_matrix(
+        uncertainty_losses = self._update_uncertainty_model(
             uncertainty_batch['observations'],
             uncertainty_batch['actions'],
             uncertainty_batch['next_observations'])
-        self._update_epistemic_uncertainty()
+        epistemic_uncertainties = self._update_epistemic_uncertainty(
+            uncertainty_batch['observations'],
+            uncertainty_batch['actions'],
+            uncertainty_batch['next_observations'])
 
         beta_losses = self._update_beta(
             uncertainty_batch['observations'],
@@ -517,25 +427,21 @@ class VIREL(RLAlgorithm):
             ('policy_loss-mean', tf.reduce_mean(policy_losses)),
             ('beta', self._beta),
             ('epistemic_uncertainty', epistemic_uncertainty),
+            ('batch_epistemic_uncertainty-mean', tf.reduce_mean(
+                epistemic_uncertainties)),
             ('beta_loss-mean', tf.reduce_mean(beta_losses)),
+            ('uncertainty_loss-mean', tf.reduce_mean(uncertainty_losses)),
         ))
         return diagnostics
 
     def _do_training(self, iteration, batch):
-        if iteration == 0:
-            initialize_model_batch = self._training_batch(1)
-            for uncertainty_model, feature_fn in zip(
-                    self.uncertainty_models, self.Q_jacobian_features):
-                _ = uncertainty_model((
-                    feature_fn((initialize_model_batch['observations'],
-                                initialize_model_batch['actions']))))
-
-        steps_since_last_training = (
-            self._total_timestep - self.last_training_step)
+        # steps_since_last_training = (
+        #     self._total_timestep - self.last_training_step)
         # TODO(hartikainen): For not, assume that training update interval is 1
-        assert steps_since_last_training == 1, steps_since_last_training
-        self.last_training_step = self._total_timestep
-        uncertainty_batch = self._pool.last_n_batch(steps_since_last_training)
+        # assert steps_since_last_training == 1, steps_since_last_training
+        # self.last_training_step = self._total_timestep
+        # uncertainty_batch = self._pool.last_n_batch(steps_since_last_training)
+        uncertainty_batch = self._pool.random_batch(1024)
         training_diagnostics = self._do_updates(batch, uncertainty_batch)
 
         if iteration % self._target_update_interval == 0:
@@ -563,11 +469,6 @@ class VIREL(RLAlgorithm):
             ('epistemic_uncertainty',
              tf.reduce_mean(self._epistemic_uncertainty).numpy())
         ))
-
-        for i, uncertainty_model in enumerate(self.uncertainty_models):
-            uncertainty_model_diagnostics = uncertainty_model.get_diagnostics()
-            diagnostics[f'uncertainty_model-{i}'] = (
-                uncertainty_model_diagnostics)
 
         if self._plotter:
             self._plotter.draw()
