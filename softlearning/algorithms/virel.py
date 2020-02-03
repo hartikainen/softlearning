@@ -375,12 +375,25 @@ class VIREL(RLAlgorithm):
         return losses
 
     @tf.function(experimental_relax_shapes=True)
+    def _compute_epistemic_uncertainties(self, observations, actions):
+        predictions = self._uncertainty_estimator((observations, actions))
+        epistemic_uncertainties = tf.reduce_mean(
+            predictions ** 2, axis=(-1, -2))
+        return epistemic_uncertainties
+
+    @tf.function(experimental_relax_shapes=True)
     def _update_epistemic_uncertainty(self,
                                       observations,
                                       actions,
                                       next_actions):
-        predictions = self._uncertainty_estimator((observations, actions))
-        epistemic_uncertainties = tf.reduce_mean(predictions ** 2, axis=(-1, -2))
+        random_actions = tf.random.uniform(
+            actions.shape,
+            minval=self._training_environment.action_space.low,
+            maxval=self._training_environment.action_space.high)
+
+        epistemic_uncertainties = self._compute_epistemic_uncertainties(
+            observations, random_actions)
+
         epistemic_uncertainty = tf.reduce_mean(epistemic_uncertainties)
         self._epistemic_uncertainty.assign(epistemic_uncertainty)
         return epistemic_uncertainties
@@ -421,6 +434,17 @@ class VIREL(RLAlgorithm):
 
         policy_losses = self._update_actor(batch['observations'])
 
+        random_actions = tf.random.uniform(
+            uncertainty_batch['actions'].shape,
+            minval=self._training_environment.action_space.low,
+            maxval=self._training_environment.action_space.high)
+        epistemic_uncertainty_random_actions = (
+            self._compute_epistemic_uncertainties(
+                uncertainty_batch['observations'], random_actions))
+        epistemic_uncertainty_pool_action = (
+            self._compute_epistemic_uncertainties(
+                uncertainty_batch['observations'], uncertainty_batch['actions']))
+
         diagnostics = OrderedDict((
             ('Q_value-mean', tf.reduce_mean(Qs_values)),
             ('Q_loss-mean', tf.reduce_mean(Qs_losses)),
@@ -431,6 +455,11 @@ class VIREL(RLAlgorithm):
                 epistemic_uncertainties)),
             ('beta_loss-mean', tf.reduce_mean(beta_losses)),
             ('uncertainty_loss-mean', tf.reduce_mean(uncertainty_losses)),
+            ('epistemic_uncertainty_random_actions-mean', tf.reduce_mean(
+                epistemic_uncertainty_random_actions
+            )),
+            ('epistemic_uncertainty_pool_action-mean', tf.reduce_mean(
+                epistemic_uncertainty_pool_action)),
         ))
         return diagnostics
 
