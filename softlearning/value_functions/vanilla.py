@@ -7,6 +7,8 @@ from softlearning.utils.numpy import custom_combinations
 from softlearning.utils.tensorflow import (
     nest, cast_and_concat, apply_preprocessors)
 from softlearning.models.bae.linear import LinearizedModel, JacobianModel
+from softlearning.models.bae.non_linear import (
+    feedforward_random_prior_ensemble_model)
 from softlearning.models.bae.student_t import (
     create_n_degree_polynomial_form_observations_actions_v4,
 )
@@ -219,6 +221,35 @@ def linearized_feedforward_Q_function_v2(input_shapes,
     Q_model = tf.keras.Model(
         inputs,
         out,
+        name=name)
+
+    Q_function = StateActionValueFunction(
+        model=Q_model, observation_keys=observation_keys)
+
+    return Q_function
+
+
+def feedforward_random_prior_ensemble_Q_function(
+        input_shapes,
+        *args,
+        preprocessors=None,
+        observation_keys=None,
+        name='feedforward_random_prior_ensemble_Q',
+        **kwargs):
+    inputs = create_inputs(input_shapes)
+    if preprocessors is None:
+        preprocessors = nest.map_structure(lambda x: None, inputs)
+
+    preprocessed_inputs = apply_preprocessors(preprocessors, inputs)
+    Q_model_body = feedforward_random_prior_ensemble_model(
+        *args,
+        output_size=1,
+        **kwargs
+    )
+
+    Q_model = tf.keras.Model(
+        inputs,
+        Q_model_body(preprocessed_inputs),
         name=name)
 
     Q_function = StateActionValueFunction(

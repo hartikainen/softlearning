@@ -4,7 +4,7 @@ from collections import OrderedDict
 import tensorflow as tf
 
 from softlearning.utils.tensorflow import nest
-from softlearning.models.bae import linear
+from softlearning.models.bae import linear, non_linear
 
 
 class BaseValueFunction:
@@ -88,6 +88,8 @@ class BaseValueFunction:
         model = tf.keras.Model.from_config(model_config, custom_objects={
             'JacobianModel': linear.JacobianModel,
             'LinearizedModel': linear.LinearizedModel,
+            'EnsembleModel': non_linear.EnsembleModel,
+            'RandomPriorModel': non_linear.RandomPriorModel,
         })
         model.set_weights(model_weights)
         state['model'] = model
