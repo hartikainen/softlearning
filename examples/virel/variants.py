@@ -35,7 +35,6 @@ def get_variant_spec(args):
 
             'reward_scale': 1.0,
             'discount': 0.99,
-            'sample_actions_from': tune.grid_search(['random', 'pool']),
             'Q_update_type': tune.grid_search([
                 # 'MSBBE',
                 'MSBE',
