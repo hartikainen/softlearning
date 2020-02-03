@@ -90,6 +90,22 @@ class ExperimentRunner(tune.Trainable):
             get_policy_from_params(
                 variant['exploration_policy_params'], training_environment))
 
+        algorithm_kwargs = {}
+        if 'uncertainty_estimator_params' in variant:
+            uncertainty_estimator_params = variant[
+                'uncertainty_estimator_params']
+            uncertainty_type = uncertainty_estimator_params['type']
+            assert uncertainty_type == 'FeedforwardEnsemble', uncertainty_type
+            uncertainty_estimator_kwargs = uncertainty_estimator_params[
+                'kwargs']
+            from softlearning.models.bae.non_linear import (
+                feedforward_random_prior_ensemble_model)
+            uncertainty_estimator = feedforward_random_prior_ensemble_model(
+                **uncertainty_estimator_kwargs)
+            algorithm_kwargs['uncertainty_estimator'] = uncertainty_estimator
+        else:
+            pass
+
         self.algorithm = get_algorithm_from_variant(
             variant=self._variant,
             training_environment=training_environment,
@@ -98,7 +114,8 @@ class ExperimentRunner(tune.Trainable):
             initial_exploration_policy=initial_exploration_policy,
             Qs=Qs,
             pool=replay_pool,
-            sampler=sampler)
+            sampler=sampler,
+            **algorithm_kwargs)
 
         self._built = True
 
