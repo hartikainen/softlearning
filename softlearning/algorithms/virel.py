@@ -56,6 +56,7 @@ class VIREL(RLAlgorithm):
             target_update_interval=1,
             Q_update_type='MSBE',
             uncertainty_estimator=None,
+            sample_actions_from='random',
 
             save_full_state=False,
             **kwargs,
@@ -108,6 +109,7 @@ class VIREL(RLAlgorithm):
 
         self._epistemic_uncertainty = tf.Variable(float('inf'))
         self._uncertainty_estimator = uncertainty_estimator
+        self._sample_actions_from = sample_actions_from
 
         self._uncertainty_optimizer = tf.optimizers.Adam(
                 learning_rate=self._Q_lr,
@@ -379,7 +381,15 @@ class VIREL(RLAlgorithm):
                                       observations,
                                       actions,
                                       next_actions):
-        predictions = self._uncertainty_estimator((observations, actions))
+        if self._sample_actions_from == 'random':
+            random_actions = tf.random.uniform(
+                actions.shape,
+                minval=self._training_environment.action_space.low,
+                maxval=self._training_environment.action_space.high)
+        elif self._sample_actions_from == 'pool':
+            random_actions = actions
+
+        predictions = self._uncertainty_estimator((observations, random_actions))
         epistemic_uncertainties = tf.reduce_mean(predictions ** 2, axis=(-1, -2))
         epistemic_uncertainty = tf.reduce_mean(epistemic_uncertainties)
         self._epistemic_uncertainty.assign(epistemic_uncertainty)
