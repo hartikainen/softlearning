@@ -4,8 +4,9 @@ from collections import OrderedDict
 import numpy as np
 import tensorflow as tf
 
-from .rl_algorithm import RLAlgorithm
+from softlearning.models.bae import non_linear
 
+from .rl_algorithm import RLAlgorithm
 from .sac import td_targets
 
 
@@ -88,6 +89,21 @@ class VIREL(RLAlgorithm):
         self._Qs = Qs
         self._Q_targets = tuple(deepcopy(Q) for Q in Qs)
 
+        if self._Qs[0].model.name == 'feedforward_random_prior_ensemble_Q':
+            for Q, Q_target in zip(self._Qs, self._Q_targets):
+                # Q_ensemble = Q.model.get_layer('ensemble_model')
+                # Q_target_ensemble = Q_target.model.get_layer('ensemble_model_2')
+                Q_ensemble = Q.model.layers[-1]
+                Q_target_ensemble = Q_target.model.layers[-1]
+                assert isinstance(
+                    Q_target.model.layers[-1], non_linear.EnsembleModel,
+                ), Q_target.model.layers[-1]
+                for Q_ensemble_model, Q_target_ensemble_model in zip(
+                        Q_ensemble.models, Q_target_ensemble.models):
+                    Q_prior = Q_ensemble_model.prior
+                    Q_target_prior = Q_target_ensemble_model.prior
+                    Q_target_prior.set_weights(Q_prior.get_weights())
+
         self._pool = pool
         self._plotter = plotter
 
@@ -134,7 +150,13 @@ class VIREL(RLAlgorithm):
         next_actions = self._policy.actions(next_observations)
         next_Qs_values = tuple(
             Q.values(next_observations, next_actions) for Q in Qs)
-        next_Q_values = tf.reduce_min(next_Qs_values, axis=0)
+        if self._Qs[0].model.name == 'feedforward_random_prior_ensemble_Q':
+            next_Qs_values = tuple(
+                tf.reduce_mean(next_Q_values, axis=-2)
+                for next_Q_values in next_Qs_values)
+            next_Q_values = tf.reduce_mean(next_Qs_values, axis=0)
+        else:
+            next_Q_values = tf.reduce_min(next_Qs_values, axis=0)
 
         Q_targets = compute_Q_targets(
             next_Q_values,
@@ -216,6 +238,9 @@ class VIREL(RLAlgorithm):
         tf.debugging.assert_shapes((
             (Q_targets, ('B', 1)), (rewards, ('B', 1))))
 
+        if (self._Qs[0].model.name == 'feedforward_random_prior_ensemble_Q'):
+            Q_targets = Q_targets[..., tf.newaxis, :]
+
         Qs_values = []
         Qs_losses = []
         for Q, optimizer in zip(self._Qs, self._Q_optimizers):
@@ -250,6 +275,12 @@ class VIREL(RLAlgorithm):
 
             Qs_log_targets = tuple(
                 Q.values(observations, actions) for Q in self._Qs)
+
+            if self._Qs[0].model.name == 'feedforward_random_prior_ensemble_Q':
+                Qs_log_targets = tuple(
+                    tf.reduce_mean(Q_log_targets, axis=-2)
+                    for Q_log_targets in Qs_log_targets)
+
             Q_log_targets = tf.reduce_min(Qs_log_targets, axis=0)
 
             policy_losses = self._beta * log_pis - Q_log_targets
@@ -341,7 +372,8 @@ class VIREL(RLAlgorithm):
     def _compute_epistemic_uncertainties(self, observations, actions):
         predictions = self._uncertainty_estimator((observations, actions))
         epistemic_uncertainties = tf.reduce_mean(
-            predictions ** 2, axis=(-1, -2))
+            predictions ** 2, axis=(-1, -2)
+        )[..., tf.newaxis]
         return epistemic_uncertainties
 
     @tf.function(experimental_relax_shapes=True)
