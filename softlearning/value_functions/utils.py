@@ -34,6 +34,8 @@ VALUE_FUNCTIONS = {
             vanilla.linearized_feedforward_Q_function_v2, *args, **kwargs)),
     'feedforward_random_prior_ensemble_Q_function': lambda *args, **kwargs: (
         (vanilla.feedforward_random_prior_ensemble_Q_function(*args, **kwargs), )),
+    'feedforward_Q_function': lambda *args, **kwargs: (
+            (vanilla.create_feedforward_Q_function(*args, **kwargs), )),
 }
 
 

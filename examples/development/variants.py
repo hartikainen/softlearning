@@ -518,7 +518,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             # 'type': 'double_linear_polynomial_Q_function',
             # 'type': 'linear_polynomial_Q_function',
             # 'type': 'linearized_feedforward_Q_function',
-            'type': 'feedforward_random_prior_ensemble_Q_function',
+            # 'type': 'feedforward_random_prior_ensemble_Q_function',
 
             # 'type': 'pretrained_feature_Q_function',
             # 'pretrained_checkpoint_dir': tune.sample_from(lambda spec: (
@@ -526,17 +526,8 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             #     ['policy_params']
             #     ['pretrained_checkpoint_dir'])),
 
+            'type': 'feedforward_Q_function',
             'kwargs': {
-                'ensemble_size': tune.grid_search([4]),
-                'prior_kernel_initializer': {
-                    'class_name': 'random_normal_initializer',
-                    'config': {
-                        'mean': 0.0,
-                        # 'stddev': tune.grid_search([1e-4, 1e-3, 1e-2, 1e-1, 1.0]),
-                        # 'stddev': tune.grid_search([1e-1, 0.25, 0.5, 0.75, 1.0]),
-                        'stddev': tune.grid_search([3e-1]),
-                    },
-                 },
                 'hidden_layer_sizes': tune.sample_from(lambda spec: (
                     spec.get('config', spec)
                     ['policy_params']
