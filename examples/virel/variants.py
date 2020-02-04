@@ -51,13 +51,20 @@ def get_variant_spec(args):
     variant_spec['uncertainty_estimator_params'] = {
         'type': 'FeedforwardEnsemble',
         'kwargs': tune.sample_from(lambda spec: {
-            'ensemble_size': 10,
+            'ensemble_size': (spec.get('config', spec)
+                              ['Q_params']
+                              ['kwargs']
+                              ['ensemble_size']),
             'output_size': 10,
             'hidden_layer_sizes': (spec.get('config', spec)
                                    ['Q_params']
                                    ['kwargs']
                                    ['hidden_layer_sizes']),
-            'prior_kernel_initializer': tf.random_normal_initializer(stddev=0.1),
+            # 'prior_kernel_initializer': tf.random_normal_initializer(stddev=0.3),
+            'prior_kernel_initializer': (spec.get('config', spec)
+                                         ['Q_params']
+                                         ['kwargs']
+                                         ['prior_kernel_initializer'])
         }),
     }
 
