@@ -17,6 +17,8 @@ VALUE_FUNCTIONS = {
     'double_feedforward_Q_function': lambda *args, **kwargs: (
         create_double_value_function(
             vanilla.create_feedforward_Q_function, *args, **kwargs)),
+    'feedforward_Q_function': lambda *args, **kwargs: (
+            (vanilla.create_feedforward_Q_function(*args, **kwargs), )),
 }
 
 

@@ -490,7 +490,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             },
         },
         'Q_params': {
-            'type': 'double_feedforward_Q_function',
+            'type': 'feedforward_Q_function',
             'kwargs': {
                 'hidden_layer_sizes': (M, M),
                 'observation_keys': None,
