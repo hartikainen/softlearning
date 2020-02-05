@@ -22,12 +22,12 @@ def get_variant_spec(args):
             'policy_lr': 3e-4,
             'Q_lr': 3e-4,
             'tau': 5e-3,
-            'beta_scale': tune.grid_search([1e-4, 1e-3, 1e-2, 1e-1, 1.0]),
+            'beta_scale': tune.grid_search([1.0]),
             'beta_update_type': tune.grid_search([
                 # None,
-                'MSBE',
+                # 'MSBE',
                 # 'MSBBE',
-                # 'uncertainty',
+                'uncertainty',
             ]),
             'target_update_interval': 1,
 
@@ -60,7 +60,6 @@ def get_variant_spec(args):
                                    ['Q_params']
                                    ['kwargs']
                                    ['hidden_layer_sizes']),
-            # 'prior_kernel_initializer': tf.random_normal_initializer(stddev=0.3),
             'prior_kernel_initializer': (spec.get('config', spec)
                                          ['Q_params']
                                          ['kwargs']

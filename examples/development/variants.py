@@ -527,14 +527,14 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             #     ['pretrained_checkpoint_dir'])),
 
             'kwargs': {
-                'ensemble_size': tune.grid_search([4]),
+                'ensemble_size': tune.grid_search([8]),
                 'prior_kernel_initializer': {
                     'class_name': 'random_normal_initializer',
                     'config': {
                         'mean': 0.0,
                         # 'stddev': tune.grid_search([1e-4, 1e-3, 1e-2, 1e-1, 1.0]),
                         # 'stddev': tune.grid_search([1e-1, 0.25, 0.5, 0.75, 1.0]),
-                        'stddev': tune.grid_search([3e-1]),
+                        'stddev': tune.grid_search([1e-1]),
                     },
                  },
                 'hidden_layer_sizes': tune.sample_from(lambda spec: (
