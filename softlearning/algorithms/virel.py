@@ -445,9 +445,9 @@ class VIREL(RLAlgorithm):
             uncertainty_batch['actions'],
             uncertainty_batch['next_observations'])
         epistemic_uncertainties = self._update_epistemic_uncertainty(
-            uncertainty_batch['observations'],
-            uncertainty_batch['actions'],
-            uncertainty_batch['next_observations'])
+            batch['observations'],
+            batch['actions'],
+            batch['next_observations'])
 
         beta_losses = self._update_beta(
             uncertainty_batch['observations'],
@@ -467,15 +467,15 @@ class VIREL(RLAlgorithm):
         policy_losses = self._update_actor(batch['observations'])
 
         random_actions = tf.random.uniform(
-            uncertainty_batch['actions'].shape,
+            batch['actions'].shape,
             minval=self._training_environment.action_space.low,
             maxval=self._training_environment.action_space.high)
         epistemic_uncertainty_random_actions = (
             self._compute_epistemic_uncertainties(
-                uncertainty_batch['observations'], random_actions))
+                batch['observations'], random_actions))
         epistemic_uncertainty_pool_action = (
             self._compute_epistemic_uncertainties(
-                uncertainty_batch['observations'], uncertainty_batch['actions']))
+                batch['observations'], batch['actions']))
 
         diagnostics = OrderedDict((
             ('Q_value-mean', tf.reduce_mean(Qs_values)),
