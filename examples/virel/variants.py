@@ -23,8 +23,8 @@ def get_variant_spec(args):
             'reward_scale': 1.0,
             'discount': 0.99,
             'tau': 5e-3,
-            'beta_scale': tune.grid_search([1e-6, 1e-4, 1e-2, 1e-1, 1.0]),
-            'beta_update_type': tune.grid_search(['MSBE', None]),
+            'beta_scale': tune.grid_search([3e-3]),
+            'beta_update_type': tune.grid_search([None]),
             'target_update_interval': 1,
 
             'n_initial_exploration_steps': int(1e3),
