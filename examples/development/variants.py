@@ -490,7 +490,10 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             },
         },
         'Q_params': {
-            'type': 'feedforward_Q_function',
+            'type': tune.grid_search([
+                'feedforward_Q_function',
+                'double_feedforward_Q_function',
+            ]),
             'kwargs': {
                 'hidden_layer_sizes': (M, M),
                 'observation_keys': None,
