@@ -23,12 +23,12 @@ def get_variant_spec(args):
             'Q_lr': 3e-4,
             'tau': 5e-3,
             # 'beta_scale': tune.grid_search([1e-4, 1e-3, 1e-2, 1e-1, 1.0]),
-            'beta_scale': tune.grid_search([1.0]),
+            'beta_scale': tune.grid_search([3e-3]),
             'beta_update_type': tune.grid_search([
-                # None,
+                None,
                 # 'MSBE',
                 # 'MSBBE',
-                'uncertainty',
+                # 'uncertainty',
             ]),
             'target_update_interval': 1,
 
