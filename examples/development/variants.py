@@ -348,9 +348,11 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'velocity_reward_weight': velocity_reward_weight,
                     # 'after_bridge_reward': 20.0,
                     'bridge_width': bridge_width,
+                    'after_bridge_max_velocity': after_bridge_max_velocity,
                 }
                 for bridge_width in [0.3]
                 for velocity_reward_weight in [5.0]
+                for after_bridge_max_velocity in [1.0, 2.0, float('inf')]
             ]),
             'Pond-v0': tune.grid_search([
                 {
