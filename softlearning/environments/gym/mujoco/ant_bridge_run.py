@@ -17,8 +17,11 @@ class AntBridgeRunEnv(AntEnv):
                  exclude_current_positions_from_observation=False,
                  on_bridge_max_velocity=float('inf'),
                  after_bridge_max_velocity=float('inf'),
-                 velocity_reward_weight=3.0,
+                 max_velocity=None,
+                 on_bridge_velocity_reward_weight=3.0,
+                 after_bridge_velocity_reward_weight=None,
                  after_bridge_reward=None,
+                 after_bridge_ctrl_cost_weight=1.0,
                  bridge_length=10.0,
                  bridge_width=2.0,
                  **kwargs):
@@ -27,7 +30,11 @@ class AntBridgeRunEnv(AntEnv):
         self.bridge_width = bridge_width
         self.on_bridge_max_velocity = on_bridge_max_velocity
         self.after_bridge_max_velocity = after_bridge_max_velocity
-        self.velocity_reward_weight = velocity_reward_weight
+        self.on_bridge_velocity_reward_weight = (
+            on_bridge_velocity_reward_weight)
+        self.after_bridge_velocity_reward_weight = (
+            after_bridge_velocity_reward_weight)
+        self.after_bridge_ctrl_cost_weight = after_bridge_ctrl_cost_weight
         assert after_bridge_reward is None, after_bridge_reward
         self.after_bridge_reward = after_bridge_reward
         return super(AntBridgeRunEnv, self).__init__(
@@ -54,11 +61,14 @@ class AntBridgeRunEnv(AntEnv):
 
         if after_bridge:
             max_velocity = self.after_bridge_max_velocity
-            velocity_reward = self.velocity_reward_weight * (
+            velocity_reward_weight = self.after_bridge_velocity_reward_weight
+            velocity_reward = velocity_reward_weight * (
                 np.minimum(xy_velocity, max_velocity))
+            ctrl_cost = self.after_bridge_ctrl_cost_weight * ctrl_cost
         else:
             max_velocity = self.on_bridge_max_velocity
-            velocity_reward = self.velocity_reward_weight * (
+            velocity_reward_weight = self.on_bridge_velocity_reward_weight
+            velocity_reward = velocity_reward_weight * (
                 np.minimum(np.sign(x_velocity) * xy_velocity, max_velocity))
 
         healthy_reward = self.healthy_reward
