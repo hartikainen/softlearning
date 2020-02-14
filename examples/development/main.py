@@ -91,6 +91,12 @@ class ExperimentRunner(tune.Trainable):
         policy = self.policy = get_policy_from_variant(
             variant, training_environment)
 
+        if ('point1d' in training_environment.unwrapped.__class__.__name__.lower()
+            or 'AntBridgeRunEnv' == training_environment.unwrapped.__class__.__name__):
+            training_environment.unwrapped.policy = policy
+            for env in evaluation_environments:
+                env.unwrapped.policy = policy
+
         initial_exploration_policy = self.initial_exploration_policy = (
             get_policy_from_params(
                 variant['exploration_policy_params'], training_environment))
