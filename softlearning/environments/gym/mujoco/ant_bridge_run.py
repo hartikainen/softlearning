@@ -107,6 +107,43 @@ class AntBridgeRunEnv(AntEnv):
 
     def get_path_infos(self, paths, evaluation_type='training'):
         infos = {}
+
+        all_observations = np.concatenate([
+            path['observations']['observations']
+            for path in paths
+        ], axis=0)
+        all_actions = np.concatenate([
+            path['actions']
+            for path in paths
+        ], axis=0)
+
+        where_on_bridge = np.flatnonzero(
+            all_observations[:, 0] <= self.bridge_length)
+        where_after_bridge = np.flatnonzero(
+            self.bridge_length < all_observations[:, 0])
+
+        on_bridge_observations = all_observations[where_on_bridge]
+        on_bridge_actions = all_actions[where_on_bridge]
+        after_bridge_observations = all_observations[where_after_bridge]
+        after_bridge_actions = all_actions[where_after_bridge]
+
+        if 0 < where_on_bridge.size:
+            on_bridge_entropy = self.policy.log_pis_np(
+                [on_bridge_observations], on_bridge_actions)
+        else:
+            on_bridge_entropy = np.nan
+
+        if 0 < where_after_bridge.size:
+            after_bridge_entropy = self.policy.log_pis_np(
+                [after_bridge_observations], after_bridge_actions)
+        else:
+            after_bridge_entropy = np.nan
+
+        infos.update({
+            'on_bridge_entropy-mean': np.mean(on_bridge_entropy),
+            'after_bridge_entropy-mean': np.mean(after_bridge_entropy),
+        })
+
         x, y = np.split(np.concatenate(tuple(itertools.chain(*[
             [
                 path['observations']['observations'][:, :2],
