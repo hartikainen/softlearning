@@ -46,6 +46,14 @@ def add_ray_init_args(parser):
         help=init_help_string("Boolean flag indicating whether to start the"
                               "web UI, which is a Jupyter notebook."))
     parser.add_argument(
+        '--webui-host',
+        type=str,
+        help=init_help_string(
+            "The host to bind the web UI server to. Can either be localhost"
+            " (127.0.0.1) or 0.0.0.0 (available from all interfaces). By"
+            " default, this is set to localhost to prevent access from"
+            " external machines."))
+    parser.add_argument(
         '--temp-dir',
         type=str,
         default=None,
