@@ -244,6 +244,7 @@ class RLAlgorithm(Checkpointable):
             self._epoch_before_hook()
             gt.stamp('epoch_before_hook')
 
+            start_n_episodes = self.sampler._n_episodes
             start_samples = self.sampler._total_samples
             for i in count():
                 samples_now = self.sampler._total_samples
@@ -266,8 +267,10 @@ class RLAlgorithm(Checkpointable):
                 self._timestep_after_hook()
                 gt.stamp('timestep_after_hook')
 
+            end_n_episodes = self.sampler._n_episodes
+
             training_paths = self.sampler.get_last_n_paths(
-                math.ceil(self._epoch_length / self.sampler._max_path_length))
+                end_n_episodes - start_n_episodes)
             gt.stamp('training_paths')
             evaluation_paths = self._evaluation_paths(
                 policy, evaluation_environment)
