@@ -28,10 +28,10 @@ def make_model(base_model_string,
     floor_size = float(size_multiplier * 15 + bridge_length)
     floor_geom.attrib['size'] = f'{floor_size} {floor_size} .1'
 
-    floor_x = floor_size - 2 * size_multiplier
-    floor_geom.attrib['pos'] = f"{floor_x} 0 0"
+    before_bridge_length = 0 * size_multiplier
 
-    before_bridge_length = 2 * size_multiplier
+    floor_x = floor_size - before_bridge_length
+    floor_geom.attrib['pos'] = f"{floor_x} 0 0"
 
     bridge_x = (bridge_length + before_bridge_length) / 2
     water_width = floor_size - bridge_width / 2
