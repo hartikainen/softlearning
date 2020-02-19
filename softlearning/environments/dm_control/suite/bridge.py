@@ -199,9 +199,17 @@ class MovePhysicsMixin:
         com_x, com_y = self.center_of_mass()[:2]
         water_map_x = com_x + length / 4
         water_map_y = com_y
+        nx = int(length / dx)
+        ny = int(width / dy)
         water_map_xy = np.stack(np.meshgrid(
-            np.arange(water_map_x - length / 2, water_map_x + length / 2, dx),
-            np.arange(water_map_y - width / 2, water_map_y + width / 2, dy),
+            np.linspace(
+                water_map_x - length / 2,
+                water_map_x + length / 2 - dx,
+                nx),
+            np.linspace(
+                water_map_y - width / 2,
+                water_map_y + width / 2 - dy,
+                ny),
             indexing='ij',
         ), axis=-1)
 
