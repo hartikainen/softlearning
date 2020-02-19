@@ -12,7 +12,6 @@ from dm_control.utils import xml_tools
 from lxml import etree
 
 import numpy as np
-from scipy.spatial.transform import Rotation
 from .pond import (
     PondPhysicsMixin,
     make_pond_model,
@@ -90,8 +89,8 @@ def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
     xml_string = bridge.make_model(
         base_model_string,
         size_multiplier=0.1,
-        bridge_length=bridge_length * 0.1,
-        bridge_width=bridge_width * 0.1)
+        bridge_length=bridge_length * 0.05,
+        bridge_width=bridge_width * 0.01)
     physics = BridgeMovePhysics.from_xml_string(xml_string, common.ASSETS)
     task = BridgeMove(
         random=random,
