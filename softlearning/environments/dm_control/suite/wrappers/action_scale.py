@@ -92,8 +92,8 @@ class Wrapper(dm_env.Environment):
         minimum_unscaled = self._minimum_unscaled
         maximum_unscaled = self._maximum_unscaled
 
-        assert np.all(np.less_equal(minimum, action)), (action, minimum)
-        assert np.all(np.less_equal(action, maximum)), (action, maximum)
+        # assert np.all(np.less_equal(minimum, action)), (action, minimum)
+        # assert np.all(np.less_equal(action, maximum)), (action, maximum)
 
         action = (
             minimum_unscaled
@@ -114,4 +114,7 @@ class Wrapper(dm_env.Environment):
         return self._action_spec
 
     def __getattr__(self, name):
+        if name == '_env':
+            return self.__getattribute__('_env')
+
         return getattr(self._env, name)
