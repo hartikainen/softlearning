@@ -168,8 +168,9 @@ class MovePhysicsMixin:
             np.stack((water_left_xy, water_right_xy)),
             np.stack((water_left_size, water_right_size)))
 
-        assert key_geoms_in_waters.shape == (4, 2), (
-            key_geoms_in_waters, key_geoms_in_waters.shape)
+        assert key_geoms_in_waters.shape == (
+            *key_geoms_xy.shape[:-1], 2), (
+                key_geoms_in_waters, key_geoms_in_waters.shape)
 
         any_key_geom_in_water = np.any(key_geoms_in_waters)
 
