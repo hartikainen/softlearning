@@ -7,6 +7,7 @@ import pickle
 
 import numpy as np
 import tensorflow as tf
+import tree
 import pandas as pd
 
 from softlearning.environments.utils import (
@@ -53,7 +54,7 @@ def parse_args():
 
 
 def load_checkpoint(checkpoint_path, session=None):
-    session = session or tf.keras.backend.get_session()
+    session = session or tf.compat.v1.keras.backend.get_session()
     checkpoint_path = checkpoint_path.rstrip('/')
     trial_path = os.path.dirname(checkpoint_path)
 
@@ -93,6 +94,33 @@ def load_policy_and_environment(picklable, variant):
     return policy, environment
 
 
+def simulate_policy_dm_control(policy, environment_params):
+    universe = environment_params['universe']
+    assert universe == 'dm_control'
+    domain, task = environment_params['domain'], environment_params['task']
+
+    environment = get_environment(
+        universe,
+        domain,
+        task,
+        {
+            **environment_params['kwargs'],
+        },
+    )
+
+    def policy_fn(time_step):
+        observation = time_step.observation
+        observation = tree.map_structure(lambda x: np.ravel(x), observation)
+        observations = tree.map_structure(lambda x: x[None, ...], observation)
+        actions = policy.actions_np(observations)
+        action = tree.map_structure(lambda x: x[0], actions)
+        return action
+
+    from dm_control import viewer
+
+    viewer.launch(environment._env, policy=policy_fn)
+
+
 def simulate_policy(checkpoint_path,
                     deterministic,
                     num_rollouts,
@@ -113,6 +141,11 @@ def simulate_policy(checkpoint_path,
     render_kwargs = {**DEFAULT_RENDER_KWARGS, **render_kwargs}
 
     environment_params = variant['environment_params']['training']
+    universe = environment_params['universe']
+
+    if universe == 'dm_control':
+        return simulate_policy_dm_control(policy, environment_params)
+
     domain, task = environment_params['domain'], environment_params['task']
 
     # assert domain in ('Humanoid', 'Hopper', 'Walker2d'), domain
