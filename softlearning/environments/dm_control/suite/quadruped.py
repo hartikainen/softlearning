@@ -49,6 +49,8 @@ def make_pond_model(pond_radius, pond_xy=_DEFAULT_POND_XY, *args, **kwargs):
         name="pond",
         pos=" ".join((str(x) for x in (*pond_xy, 0))),
         size=f"{pond_radius} 0.01",
+        contype="96",
+        conaffinity="66",
         rgba="0 0 1 1")
     worldbody.insert(0, pond_element)
 
@@ -81,6 +83,8 @@ def make_bridge_model(bridge_length=_DEFAULT_BRIDGE_LENGTH,
         name="water-left",
         pos=f"{bridge_x} {bridge_y_abs} 0",
         size=f"{bridge_length / 2} {water_width / 2} 0.01",
+        contype="96",
+        conaffinity="66",
         rgba="0 0 1 1")
     right_water_element = etree.Element(
         "geom",
@@ -88,12 +92,15 @@ def make_bridge_model(bridge_length=_DEFAULT_BRIDGE_LENGTH,
         name="water-right",
         pos=f"{bridge_x} {-bridge_y_abs} 0",
         size=f"{bridge_length / 2} {water_width / 2} 0.01",
+        contype="96",
         rgba="0 0 1 1")
     bridge_element = etree.Element(
         "geom",
         type="box",
         name="bridge",
         pos=f"{bridge_x} 0 0",
+        contype="97",
+        conaffinity="67",
         size=f"{bridge_length / 2} {bridge_width / 2} 0.01",
         rgba="0.247 0.165 0.078 1")
     grass_length = floor_size - (bridge_length + 2) / 2
@@ -105,6 +112,8 @@ def make_bridge_model(bridge_length=_DEFAULT_BRIDGE_LENGTH,
         name="grass",
         pos=f"{grass_x} 0 0",
         size=f"{grass_length} {grass_width} 0.01",
+        contype="98",
+        conaffinity="68",
         rgba="0 0.502 0 1")
     worldbody.insert(0, left_water_element)
     worldbody.insert(1, right_water_element)
@@ -129,6 +138,8 @@ def make_bridge_model(bridge_length=_DEFAULT_BRIDGE_LENGTH,
             water_map_cell_element = etree.Element(
                 "geom",
                 type="box",
+                contype="99",
+                conaffinity="69",
                 name=f"water-map-{x}-{y}",
                 pos=f"0 0 0.2",
                 size=f"{water_map_dx / 2} {water_map_dy / 2} 0.01",
