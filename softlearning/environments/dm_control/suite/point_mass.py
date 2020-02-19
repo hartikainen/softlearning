@@ -18,7 +18,7 @@ from .pond import (
     DEFAULT_POND_XY,
     DEFAULT_POND_RADIUS,
     OrbitTaskMixin)
-from . import bridge
+from . import bridge, visualization
 
 
 _WALLS = ('wall_x', 'wall_y', 'wall_neg_x', 'wall_neg_y')
@@ -128,6 +128,9 @@ class PondPhysics(PondPhysicsMixin, PointMassPhysics):
             np.cos(angle_to_pond_center)))
         return sin_cos_encoded_angle_to_pond_center
 
+    def get_path_infos(self, *args, **kwargs):
+        return visualization.get_path_infos_orbit_pond(self, *args, **kwargs)
+
 
 class Orbit(OrbitTaskMixin):
     def common_observations(self, physics):
@@ -157,6 +160,9 @@ class BridgeMovePhysics(bridge.MovePhysicsMixin, PointMassPhysics):
 
     def center_of_mass(self):
         return self.named.data.geom_xpos['pointmass']
+
+    def get_path_infos(self, *args, **kwargs):
+        return visualization.get_path_infos_bridge_move(self, *args, **kwargs)
 
 
 class BridgeMove(bridge.MoveTaskMixin):
