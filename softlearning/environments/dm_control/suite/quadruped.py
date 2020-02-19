@@ -89,7 +89,9 @@ class Orbit(OrbitTaskMixin):
     def initialize_episode(self, physics):
         # Make the agent initially face tangent relative to pond.
         orientation = np.roll(Rotation.from_euler('z', np.pi/2).as_quat(), 1)
-        _find_non_contacting_height(physics, orientation, x_pos=6.0)
+        pond_radius = physics.named.model.geom_size['pond'][0]
+        _find_non_contacting_height(
+            physics, orientation, x_pos=pond_radius + 1.0)
         return super(Orbit, self).initialize_episode(physics)
 
 
