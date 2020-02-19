@@ -698,6 +698,9 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                 # 0.3,
                 # -0.5
             ]),
+            'point_mass': tune.grid_search([
+                -8.0, -4.0, -2.0, -1.0, -0.5, 0.0, 0.25, 0.5, 0.75, 1.0,
+            ]),
         }.get(domain, 'auto')
 
     sampler_params = {
