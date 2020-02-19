@@ -239,7 +239,12 @@ class SoftlearningEnv(metaclass=ABCMeta):
         if hasattr(self.unwrapped, 'get_path_infos'):
             env_path_infos = self.unwrapped.get_path_infos(
                 paths, *args, **kwargs)
+            aggregated_results.update(env_path_infos)
 
+        elif (hasattr(self.unwrapped, 'physics')
+              and hasattr(self.unwrapped.physics, 'get_path_infos')):
+            env_path_infos = self.unwrapped.physics.get_path_infos(
+                paths, *args, **kwargs)
             aggregated_results.update(env_path_infos)
 
         return aggregated_results
