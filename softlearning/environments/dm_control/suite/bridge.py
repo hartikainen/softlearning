@@ -8,22 +8,32 @@ DEFAULT_BRIDGE_LENGTH = 10.0
 DEFAULT_BRIDGE_WIDTH = 2.0
 
 
+def stringify(value):
+    return ' '.join(np.array(value).astype(str))
+
+
 def make_model(base_model_string,
+               size_multiplier=1.0,
                bridge_length=DEFAULT_BRIDGE_LENGTH,
                bridge_width=DEFAULT_BRIDGE_WIDTH,
+               floor_geom_name='floor',
                *args,
                **kwargs):
+    size_multiplier = np.array(size_multiplier)
+
     mjcf = etree.fromstring(base_model_string)
     worldbody = mjcf.find('worldbody')
 
-    floor_size = 15 + bridge_length
-    floor_geom = mjcf.find('.//geom[@name={!r}]'.format('floor'))
-    floor_geom.attrib['size'] = '{} {} .5'.format(floor_size, floor_size)
+    floor_geom = mjcf.find(".//geom[@name='floor']")
+    floor_size = float(size_multiplier * 15 + bridge_length)
+    floor_geom.attrib['size'] = f'{floor_size} {floor_size} .1'
 
-    floor_x = floor_size - 2
+    floor_x = floor_size - 2 * size_multiplier
     floor_geom.attrib['pos'] = f"{floor_x} 0 0"
 
-    bridge_x = (bridge_length + 2) / 2
+    before_bridge_length = 2 * size_multiplier
+
+    bridge_x = (bridge_length + before_bridge_length) / 2
     water_width = floor_size - bridge_width / 2
     bridge_y_abs = (bridge_width + water_width) / 2
 
@@ -31,8 +41,9 @@ def make_model(base_model_string,
         "geom",
         type="box",
         name="water-left",
-        pos=f"{bridge_x} {bridge_y_abs} 0",
-        size=f"{bridge_length / 2} {water_width / 2} 0.01",
+        pos=stringify((bridge_x, bridge_y_abs, 0)),
+        size=stringify((
+            bridge_length / 2, water_width / 2, 0.01)),
         contype="96",
         conaffinity="66",
         rgba="0 0 1 1")
@@ -40,28 +51,28 @@ def make_model(base_model_string,
         "geom",
         type="box",
         name="water-right",
-        pos=f"{bridge_x} {-bridge_y_abs} 0",
-        size=f"{bridge_length / 2} {water_width / 2} 0.01",
+        pos=stringify((bridge_x, -bridge_y_abs, 0)),
+        size=stringify((bridge_length / 2, water_width / 2, 0.01)),
         contype="96",
         rgba="0 0 1 1")
     bridge_element = etree.Element(
         "geom",
         type="box",
         name="bridge",
-        pos=f"{bridge_x} 0 0",
+        pos=stringify((bridge_x, 0, 0)),
+        size=stringify((bridge_length / 2, bridge_width / 2, 0.01)),
         contype="97",
         conaffinity="67",
-        size=f"{bridge_length / 2} {bridge_width / 2} 0.01",
         rgba="0.247 0.165 0.078 1")
-    grass_length = floor_size - (bridge_length + 2) / 2
+    grass_length = floor_size - (bridge_length + before_bridge_length) / 2
     grass_width = floor_size
-    grass_x = 1 + bridge_length + grass_length
+    grass_x = before_bridge_length / 2 + bridge_length + grass_length
     grass_element = etree.Element(
         "geom",
         type="box",
         name="grass",
-        pos=f"{grass_x} 0 0",
-        size=f"{grass_length} {grass_width} 0.01",
+        pos=stringify((grass_x, 0, 0)),
+        size=stringify((grass_length, grass_width, 0.01)),
         contype="98",
         conaffinity="68",
         rgba="0 0.502 0 1")
@@ -75,7 +86,6 @@ def make_model(base_model_string,
         njmax="5000",
         nconmax="2000")
 
-    # <size njmax="8000" nconmax="4000"/>
     mjcf.insert(0, size_element)
 
     water_map_length = 4
@@ -91,8 +101,9 @@ def make_model(base_model_string,
                 contype="99",
                 conaffinity="69",
                 name=f"water-map-{x}-{y}",
-                pos=f"0 0 0.2",
-                size=f"{water_map_dx / 2} {water_map_dy / 2} 0.01",
+                pos="0 0 0.1",
+                size=stringify(size_multiplier * (
+                    water_map_dx / 2, water_map_dy / 2, 0.01)),
                 rgba="0 0 0 1")
             worldbody.insert(-1, water_map_cell_element)
 
@@ -207,7 +218,7 @@ class MovePhysicsMixin:
 
         water_map = np.any(cells_in_waters, axis=-1)
 
-        return water_map
+        return water_map_xy, water_map
 
 
 class MoveTaskMixin(base.Task):
@@ -249,7 +260,7 @@ class MoveTaskMixin(base.Task):
     def get_observation(self, physics):
         """Returns an observation to the agent."""
         common_observations = self.common_observations(physics)
-        water_map = physics.water_map(
+        water_map_xy, water_map = physics.water_map(
             length=self._water_map_length,
             width=self._water_map_width,
             dx=self._water_map_dx,
@@ -263,7 +274,8 @@ class MoveTaskMixin(base.Task):
         #     for j in range(int(self._water_map_width / self._water_map_dy)):
         #         cell_id = f'water-map-{i}-{j}'
         #         physics.named.data.geom_xpos[
-        #             cell_id][:2] = water_map_xy[i, j] - (self._water_map_dx / 2, self._water_map_dy / 2)
+        #             cell_id][:2] = water_map_xy[i, j] + (
+        #                 self._water_map_dx / 2, self._water_map_dy / 2)
         #         physics.named.model.geom_rgba[cell_id] = (
         #             (1, 0, 0, 1)
         #             if water_map[i, j]

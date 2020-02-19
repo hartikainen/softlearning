@@ -11,16 +11,29 @@ DEFAULT_POND_XY = (0, 0)
 DEFAULT_POND_RADIUS = 5
 
 
-def make_pond_model(base_model_string, pond_radius, pond_xy=DEFAULT_POND_XY):
-    mjcf = etree.fromstring(base_model_string)
+def stringify(value):
+    return ' '.join(np.array(value).astype(str))
 
+
+def make_pond_model(base_model_string,
+                    pond_radius,
+                    size_multiplier=1.0,
+                    pond_xy=DEFAULT_POND_XY):
+    size_multiplier = np.array(size_multiplier)
+
+    mjcf = etree.fromstring(base_model_string)
     worldbody = mjcf.find('worldbody')
+
+    floor_geom = mjcf.find(".//geom[@name='floor']")
+    floor_size = float(pond_radius * 4)
+    floor_geom.attrib['size'] = f'{floor_size} {floor_size} .1'
 
     pond_element = etree.Element(
         "geom",
         type="cylinder",
         name="pond",
-        pos=" ".join((str(x) for x in (*pond_xy, 0))),
+        pos=stringify((*pond_xy, 0)),
+        # pos=" ".join((str(x) for x in (*pond_xy, 0))),
         size=f"{pond_radius} 0.01",
         contype="96",
         conaffinity="66",
