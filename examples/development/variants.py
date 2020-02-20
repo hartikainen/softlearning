@@ -271,6 +271,7 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: 1000,
             'BridgeRun-v0': 200,
             'Pond-v0': 250,
+            'RiverRun-v0': 1000,
         },
         'Point2DEnv': {
             DEFAULT_KEY: 20,
@@ -303,6 +304,7 @@ EPOCH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
             'v3': int(5e4),
             'BridgeRun-v0': int(1e4),
             'Pond-v0': int(1e4),
+            'RiverRun-v0': int(2.5e4),
         },
         'Humanoid': {
             DEFAULT_KEY: int(5e4),
@@ -372,6 +374,11 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 }
                 for pond_radius in [30.0]
                 for velocity_reward_weight in [5.0]
+            ]),
+            'RiverRun-v0': tune.grid_search([
+                {
+                    'exclude_current_positions_from_observation': True,
+                },
             ]),
         },
         'Humanoid': {  # 17 DoF
