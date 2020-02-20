@@ -165,8 +165,8 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
             'v3': int(1e4),
         },
         'Point2DEnv': {
-            DEFAULT_KEY: int(5e4),
-        }
+            DEFAULT_KEY: int(1.5e5),
+        },
     },
     'dm_control': {
         # BENCHMARKING
@@ -229,7 +229,8 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'point_mass': {
             DEFAULT_KEY: int(3e6),
-            # 'easy': int(None),
+            'orbit_pond': int(2e5),
+            'bridge_run': int(2e5),
             # 'hard': int(None),
         },
         'reacher': {
@@ -258,6 +259,8 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: int(3e6),
             'run': int(1e7),
             'walk': int(1e7),
+            'orbit_pond': int(2e7),
+            'bridge_run': int(2e7),
         },
     },
 }
@@ -270,7 +273,7 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
         'Ant': {
             DEFAULT_KEY: 1000,
             'BridgeRun-v0': 200,
-            'Pond-v0': 250,
+            'Pond-v0': 1000,
             'RiverRun-v0': 1000,
         },
         'Point2DEnv': {
@@ -310,6 +313,13 @@ EPOCH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: int(5e4),
             'v3': int(5e4),
             'Pond-v0': int(2.5e4),
+        },
+    },
+    'dm_control': {
+        DEFAULT_KEY: int(1e3),
+        'quadruped': {
+            'orbit_pond': int(2.5e4),
+            'bridge_run': int(2.5e4),
         },
     },
 }
@@ -372,7 +382,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'exclude_current_positions_from_observation': False,
                     'experimental_angular_velocity_type': 1,
                 }
-                for pond_radius in [30.0]
+                for pond_radius in [25.0]
                 for velocity_reward_weight in [5.0]
             ]),
             'RiverRun-v0': tune.grid_search([
@@ -480,7 +490,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'angular_velocity_max': 1.0,
                     'velocity_reward_weight': 1.0,
                 }
-                for pond_radius in [10.0]
+                for pond_radius in [5.0]
             ]),
         },
         'Sawyer': {
@@ -548,6 +558,10 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     },
                 },
             },
+        },
+        'quadruped': {
+            'orbit_pond': {},
+            'bridge_run': {},
         },
     },
 }
@@ -619,7 +633,11 @@ def get_policy_params(spec):
     policy_params = GAUSSIAN_POLICY_PARAMS_BASE.copy()
     if algorithm.lower() == 'ddpg':
         policy_params['kwargs']['scale_identity_multiplier'] = (
-            tune.grid_search([0.2]))
+            config
+            ['sampler_params']
+            ['kwargs']
+            ['exploration_noise']
+        )
         policy_params['kwargs']['activation'] = 'tanh'
         policy_params['type'] = 'ConstantScaleGaussianPolicy'
     return policy_params
@@ -692,18 +710,16 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                 # np.arange(5, 10).astype(np.float32).tolist()
             ),
             'Point2DEnv': tune.grid_search([
-                # -2, -1, *np.round(np.linspace(0.0, 1.2, 7).tolist(), 2), 1.3,
-                -10.0,
-                -3.0,
+                -8.0,
+                -4.0,
                 -2.0,
                 -1.0,
                 -0.5,
                 0.0,
+                0.25,
                 0.5,
+                0.75,
                 1.0,
-                # *np.round(np.linspace(-1.0, 0.0, 6).tolist(), 2),
-                # 0.3,
-                # -0.5
             ]),
             'point_mass': tune.grid_search([
                 -8.0, -4.0, -2.0, -1.0, -0.5, 0.0, 0.25, 0.5, 0.75, 1.0,
