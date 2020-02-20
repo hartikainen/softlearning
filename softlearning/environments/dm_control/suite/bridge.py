@@ -298,21 +298,24 @@ class MoveTaskMixin(base.Task):
     def get_reward(self, physics):
         """Returns a reward to the agent."""
 
-        if physics.after_bridge():
-            xy_velocity = np.linalg.norm(physics.torso_velocity(), ord=2)
-            move_reward = rewards.tolerance(
-                xy_velocity,
-                bounds=(self._desired_speed_after_bridge, float('inf')),
-                margin=self._desired_speed_after_bridge,
-                value_at_margin=0.5,
-                sigmoid='linear')
-        else:
+        if physics.before_bridge():
+            move_reward = -1.0
+        elif physics.on_bridge():
             x_velocity = physics.torso_velocity()[0]
             move_reward = rewards.tolerance(
                 x_velocity,
                 bounds=(self._desired_speed_on_bridge, float('inf')),
                 margin=self._desired_speed_on_bridge,
-                value_at_margin=0.5,
+                value_at_margin=0.0,
+                sigmoid='linear')
+
+        elif physics.after_bridge():
+            xy_velocity = np.linalg.norm(physics.torso_velocity(), ord=2)
+            move_reward = rewards.tolerance(
+                xy_velocity,
+                bounds=(self._desired_speed_after_bridge, float('inf')),
+                margin=self._desired_speed_after_bridge,
+                value_at_margin=0.0,
                 sigmoid='linear')
 
         return self.upright_reward(physics) * move_reward
