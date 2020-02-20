@@ -14,7 +14,7 @@ from gym.envs.mujoco.ant_v3 import AntEnv
 class AntRiverRunEnv(AntEnv):
     def __init__(self,
                  *args,
-                 exclude_current_positions_from_observation=False,
+                 exclude_current_positions_from_observation=True,
                  river_y=-1.0,
                  **kwargs):
         utils.EzPickle.__init__(**locals())
@@ -27,7 +27,7 @@ class AntRiverRunEnv(AntEnv):
 
     @property
     def is_healthy(self):
-        is_healthy = super(AntRiverRunEnv, self).is_healthy()
+        is_healthy = super(AntRiverRunEnv, self).is_healthy
         in_water = self.in_water(self.state_vector())
         is_healthy |= in_water
         return is_healthy
@@ -50,15 +50,15 @@ class AntRiverRunEnv(AntEnv):
         reward *= reward_multiplier
 
         info.update({
-            'distance_from_origin': np.abs(y - self.river_y, ord=2),
-            'in_water': self.in_water(self.state_vector()),
+            'distance_from_river': np.abs(y - self.river_y),
+            'in_water': self.in_water(self.state_vector()).item(),
             'raw_reward': raw_reward
         })
 
         return observation, reward, done, info
 
     def in_waters(self, states):
-        in_waters = states[1:2] < self.river_y
+        in_waters = states[..., 1:2] < self.river_y
         return in_waters
 
     def in_water(self, state):
