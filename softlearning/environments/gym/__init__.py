@@ -161,9 +161,6 @@ MULTIWORLD_ENVIRONMENT_SPECS = (
     {
         'id': 'Point2DEnv-Bridge-v0',
         'entry_point': 'multiworld.envs.pygame.point2d:Point2DBridgeEnv',
-        'tags': {
-            'author': 'Kristian Hartikainen'
-        },
         'kwargs': {
             'terminate_on_success': True,
         },
@@ -171,9 +168,6 @@ MULTIWORLD_ENVIRONMENT_SPECS = (
     {
         'id': 'Point2DEnv-BridgeRun-v0',
         'entry_point': 'multiworld.envs.pygame.point2d:Point2DBridgeRunEnv',
-        'tags': {
-            'author': 'Kristian Hartikainen'
-        },
         'kwargs': {
             'terminate_on_success': False,
         },
@@ -181,8 +175,8 @@ MULTIWORLD_ENVIRONMENT_SPECS = (
     {
         'id': 'Point2DEnv-Pond-v0',
         'entry_point': 'multiworld.envs.pygame.point2d:Point2DPondEnv',
-        'tags': {
-            'author': 'Kristian Hartikainen'
+        'kwargs': {
+            'terminate_on_success': False,
         },
         'kwargs': {
             'terminate_on_success': False,
