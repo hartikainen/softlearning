@@ -53,6 +53,11 @@ MUJOCO_ENVIRONMENT_SPECS = (
         'entry_point': (f'gym.envs.mujoco.ant_v3:AntEnv'),
     },
     {
+        'id': 'Ant-RiverRun-v0',
+        'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
+                        '.ant_river_run:AntRiverRunEnv'),
+    },
+    {
         'id': 'Ant-BridgeRun-v0',
         'entry_point': (f'{MUJOCO_ENVIRONMENTS_PATH}'
                         '.ant_bridge_run:AntBridgeRunEnv'),
