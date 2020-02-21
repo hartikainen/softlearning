@@ -91,10 +91,20 @@ class Orbit(OrbitTaskMixin):
 
     def initialize_episode(self, physics):
         # Make the agent initially face tangent relative to pond.
-        orientation = np.roll(Rotation.from_euler('z', np.pi/2).as_quat(), 1)
         pond_radius = physics.named.model.geom_size['pond'][0]
-        _find_non_contacting_height(
-            physics, orientation, x_pos=pond_radius + 1.0)
+        pond_center_x, pond_center_y = physics.pond_center_xyz[:2]
+
+        random_angle = np.random.uniform(0, 2 * np.pi)
+        orientation = np.roll((
+            Rotation.from_euler('z', random_angle)
+            * Rotation.from_euler('z', np.pi / 2)
+        ).as_quat(), 1)
+        distance_from_pond = pond_radius / np.random.uniform(2.0, 10.0)
+        distance_from_origin = pond_radius + distance_from_pond
+        x = pond_center_x + distance_from_origin * np.cos(random_angle)
+        y = pond_center_y + distance_from_origin * np.sin(random_angle)
+        _find_non_contacting_height(physics, orientation, x_pos=x, y_pos=y)
+
         return super(Orbit, self).initialize_episode(physics)
 
 

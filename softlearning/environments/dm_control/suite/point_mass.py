@@ -142,14 +142,19 @@ class Orbit(OrbitTaskMixin):
         return 1.0
 
     def initialize_episode(self, physics):
-        randomizers.randomize_limited_and_rotational_joints(
-            physics, self.random)
         pond_radius = physics.named.model.geom_size['pond'][0]
-        reset_x = pond_radius + 0.1
-        reset_y = 0.0
-        physics.named.data.qpos['root_x'] = reset_x
-        physics.named.data.qpos['root_y'] = reset_y
-        physics.named.data.geom_xpos['pointmass'][:2] = (reset_x, reset_y)
+        pond_center_x, pond_center_y = physics.pond_center_xyz[:2]
+
+        random_angle = np.random.uniform(0, 2 * np.pi)
+        distance_from_pond = pond_radius / np.random.uniform(2.0, 10.0)
+        distance_from_origin = pond_radius + distance_from_pond
+        x = pond_center_x + distance_from_origin * np.cos(random_angle)
+        y = pond_center_y + distance_from_origin * np.sin(random_angle)
+
+        physics.named.data.qpos['root_x'] = x
+        physics.named.data.qpos['root_y'] = y
+        physics.named.data.geom_xpos['pointmass'][:2] = (x, y)
+
         return super(Orbit, self).initialize_episode(physics)
 
 
