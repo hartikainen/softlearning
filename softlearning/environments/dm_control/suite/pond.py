@@ -134,7 +134,10 @@ class PondPhysicsMixin:
 class OrbitTaskMixin(base.Task):
     """A task to orbit around a pond with designated speed."""
 
-    def __init__(self, desired_angular_velocity, random=None):
+    def __init__(self,
+                 desired_angular_velocity,
+                 angular_velocity_reward_weight,
+                 random=None):
         """Initializes an instance of `Orbit`.
 
         Args:
@@ -147,6 +150,7 @@ class OrbitTaskMixin(base.Task):
             seed automatically (default).
         """
         self._desired_angular_velocity = desired_angular_velocity
+        self._angular_velocity_reward_weight = angular_velocity_reward_weight
         return super(OrbitTaskMixin, self).__init__(random=random)
 
     @abc.abstractmethod
@@ -183,13 +187,14 @@ class OrbitTaskMixin(base.Task):
 
     def get_reward(self, physics):
         """Returns a reward to the agent."""
-
-        angular_velocity_reward = rewards.tolerance(
-            physics.angular_velocity(),
-            bounds=(self._desired_angular_velocity, float('inf')),
-            margin=self._desired_angular_velocity,
-            value_at_margin=0.0,
-            sigmoid='linear')
+        angular_velocity_reward = (
+            self._angular_velocity_reward_weight
+            * rewards.tolerance(
+                physics.angular_velocity(),
+                bounds=(self._desired_angular_velocity, float('inf')),
+                margin=self._desired_angular_velocity,
+                value_at_margin=0.0,
+                sigmoid='linear'))
 
         return self.upright_reward(physics) * angular_velocity_reward
 

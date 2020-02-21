@@ -27,6 +27,7 @@ from . import bridge
 
 @SUITE.add()
 def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
+               angular_velocity_reward_weight=1.0,
                random=None,
                environment_kwargs=None):
     """Returns the Orbit task."""
@@ -40,7 +41,9 @@ def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
         pond_xy=pond_xy)
     physics = PondPhysics.from_xml_string(xml_string, common.ASSETS)
     task = Orbit(
-        desired_angular_velocity=_WALK_SPEED, random=random)
+        desired_angular_velocity=_WALK_SPEED,
+        angular_velocity_reward_weight=angular_velocity_reward_weight,
+        random=random)
     return control.Environment(physics, task, time_limit=time_limit,
                                control_timestep=_CONTROL_TIMESTEP,
                                **environment_kwargs)
