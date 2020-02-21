@@ -39,21 +39,54 @@ class AntRiverRunEnv(AntEnv):
         return observation
 
     def step(self, action):
-        observation, reward, done, info = super(
-            AntRiverRunEnv, self).step(action)
-        assert observation.shape == (112, ), observation.shape
-        y = observation[0]
-        distance_from_river = np.abs(y - self.river_y)
-        # reward_multiplier = - np.log(distance_from_river + 1e-1) + 1.5
-        raw_reward = reward
-        reward_multiplier = - 1.0 * distance_from_river + 2.0
-        reward *= reward_multiplier
+        xy_position_before = self.get_body_com("torso")[:2].copy()
+        self.do_simulation(action, self.frame_skip)
+        xy_position_after = self.get_body_com("torso")[:2].copy()
 
-        info.update({
-            'distance_from_river': np.abs(y - self.river_y),
+        x_position, y_position = xy_position_after
+
+        x_velocity, y_velocity = (
+            xy_position_after - xy_position_before) / self.dt
+        xy_velocity = np.linalg.norm((x_velocity, y_velocity), ord=2)
+
+        ctrl_cost = self.control_cost(action)
+        contact_cost = self.contact_cost
+
+        distance_from_river = np.abs(y_position - self.river_y)
+
+        velocity_reward_multiplier = - 1.0 * distance_from_river + 2.0
+        velocity_reward = np.minimum(
+            velocity_reward_multiplier * x_velocity, 0)
+
+        healthy_reward = self.healthy_reward
+
+        rewards = velocity_reward + healthy_reward
+        costs = ctrl_cost + contact_cost
+
+        reward = rewards - costs
+        observation = self._get_obs()
+
+        assert observation.shape == (112, ), observation.shape
+
+        done = self.done
+
+        info = {
+            'velocity_reward': velocity_reward,
+            'reward_ctrl': -ctrl_cost,
+            'reward_contact': -contact_cost,
+            'reward_survive': healthy_reward,
+
+            'x_position': xy_position_after[0],
+            'y_position': xy_position_after[1],
+            'distance_from_origin': np.linalg.norm(xy_position_after, ord=2),
+
+            'x_velocity': x_velocity,
+            'y_velocity': y_velocity,
+            'xy_velocity': xy_velocity,
+
+            'distance_from_river': distance_from_river,
             'in_water': self.in_water(self.state_vector()).item(),
-            'raw_reward': raw_reward
-        })
+        }
 
         return observation, reward, done, info
 
@@ -101,8 +134,8 @@ class AntRiverRunEnv(AntEnv):
                 figure_save_dir,
                 f'{evaluation_type}-iteration-{iteration:05}.png')
 
-        x_min, x_max = (-1.0, 200)
-        y_min, y_max = (-1.0, 3.0)
+        x_min, x_max = (-2.0, 50)
+        y_min, y_max = (-2.0, 5.0)
 
         base_size = 12.8
         width = x_max - x_min
@@ -176,8 +209,8 @@ class AntRiverRunEnv(AntEnv):
                 )
 
         river_patch = mpl.patches.Rectangle(
-            (-1.0, -1.0),
-            200.0,
+            (-1.0, -2.0),
+            50.0,
             1.0,
             facecolor=(0.0, 0.0, 1.0, 0.5),
             edgecolor='blue',
