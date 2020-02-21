@@ -321,6 +321,6 @@ class MoveTaskMixin(base.Task):
         return self.upright_reward(physics) * move_reward
 
     def get_termination(self, physics):
-        """Terminates when the state norm is smaller than epsilon."""
+        """Terminates when any of the key geoms are in the water."""
         if physics.any_key_geom_in_water():
             return 0

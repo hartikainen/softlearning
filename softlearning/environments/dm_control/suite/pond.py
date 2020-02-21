@@ -199,6 +199,6 @@ class OrbitTaskMixin(base.Task):
         return self.upright_reward(physics) * angular_velocity_reward
 
     def get_termination(self, physics):
-        """Terminates when the state norm is smaller than epsilon."""
+        """Terminates when the agent falls into pond."""
         if physics.distance_from_pond() < 0:
             return 0
