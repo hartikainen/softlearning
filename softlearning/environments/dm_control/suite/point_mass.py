@@ -60,7 +60,7 @@ def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
     """Returns the Orbit task."""
     environment_kwargs = environment_kwargs or {}
     pond_radius = environment_kwargs.get(
-        'pond_radius', DEFAULT_POND_RADIUS * 0.1)
+        'pond_radius', DEFAULT_POND_RADIUS * 0.05)
     pond_xy = environment_kwargs.get('pond_xy', DEFAULT_POND_XY)
     # base_model_string, assets = get_model_and_assets_common()
     base_model_string = make_model(walls_and_target=False)
