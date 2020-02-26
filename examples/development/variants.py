@@ -369,22 +369,28 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'after_bridge_ctrl_cost_weight': (
                         after_bridge_ctrl_cost_weight),
                 }
-                for bridge_width in [0.3]
+                for bridge_width in [0.2]
                 for on_bridge_max_velocity in [float('inf')]
                 for on_bridge_velocity_reward_weight in [5.0]
                 for after_bridge_max_velocity in [float('inf')]
-                for after_bridge_velocity_reward_weight in [0.0, 5.0, 20.0]
-                for after_bridge_ctrl_cost_weight in [0.0, 0.3, 1.0]
+                for after_bridge_velocity_reward_weight in [1.0]
+                for after_bridge_ctrl_cost_weight in [0.0]
             ]),
             'Pond-v0': tune.grid_search([
                 {
+                    # 'healthy_reward': healthy_reward,
                     'pond_radius': pond_radius,
+                    'angular_velocity_max': angular_velocity_max,
                     'velocity_reward_weight': velocity_reward_weight,
                     'exclude_current_positions_from_observation': False,
                     'experimental_angular_velocity_type': 1,
+                    # 'ctrl_cost_weight': ctrl_cost_weight,
                 }
-                for pond_radius in [25.0]
-                for velocity_reward_weight in [5.0]
+                # for healthy_reward in [1.0]
+                for pond_radius in [5.0]
+                for angular_velocity_max in [float('inf')]
+                for velocity_reward_weight in [10.0]
+                # for ctrl_cost_weight in [0.5]
             ]),
             'RiverRun-v0': tune.grid_search([
                 {
@@ -689,7 +695,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
         get_algorithm_params(universe, domain, task),
     )
 
-    if algorithm != 'DDPG':
+    if algorithm.lower() != 'ddpg':
         algorithm_params['kwargs']['target_entropy'] = {
             'Walker2d': tune.grid_search(
                 [-12.0] + np.linspace(-6, np.floor(6 * np.log(2)), 6).tolist()
@@ -698,7 +704,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                 [-6.0, -3.0, -1.5, 0.0, 1.0, 2.0],
             ),
             'Ant': tune.grid_search(
-                [-16.0, -8.0, -4.0, -2.0, 0.0, 2.0, 4.0]
+                [-12.0, -8.0, -4.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0]
             ),
             'humanoid': tune.grid_search(
                 # np.round(np.linspace(1, 5, 11), 2).tolist()
