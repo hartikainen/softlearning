@@ -48,6 +48,23 @@ class AntPondEnv(AntEnv):
     def reset_model(self, *args, **kwargs):
         self.cumulative_angle_travelled = 0.0
         self.cumulative_angular_velocity = 0.0
+
+        random_angle = np.random.uniform(0, 2 * np.pi)
+        rotate_by_angle_quaternion = np.roll(
+            Rotation.from_euler('z', random_angle).as_quat(), 1)
+
+        default_quaternion = np.array([1., 0., 0., 0.])
+        self.init_qpos[3:7] = quaternion_multiply(
+            rotate_by_angle_quaternion, default_quaternion)
+
+        random_distance = np.random.uniform(0.5, 2.0)
+
+        xy = ((self.pond_radius + random_distance) * np.array((
+            np.cos(random_angle),
+            np.sin(random_angle),
+        ))) + self.pond_center
+        self.init_qpos[:2] = xy
+
         return super(AntPondEnv, self).reset_model(*args, **kwargs)
 
     def _get_obs(self):
@@ -61,12 +78,11 @@ class AntPondEnv(AntEnv):
         xy_from_pond_center = xyz[:2] - self.pond_center
         angle_to_pond_center = np.arctan2(*xy_from_pond_center[::-1])
         pond_quaternion = np.roll(
-            Rotation.from_euler('z', angle_to_pond_center).as_quat(), 1)
-
-        if pond_quaternion[-1] < 0:
-            pond_quaternion[-1] *= -1
+            Rotation.from_euler('z', angle_to_pond_center).inv().as_quat(), 1)
 
         new_quaternion = quaternion_multiply(pond_quaternion, rotation)
+
+        new_quaternion[-1] = np.abs(new_quaternion[-1])
 
         distance_from_water = self.distance_from_pond_center(
             xyz[:2]

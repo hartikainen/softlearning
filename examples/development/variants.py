@@ -305,8 +305,8 @@ EPOCH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
         'Ant': {
             DEFAULT_KEY: int(5e4),
             'v3': int(5e4),
-            'BridgeRun-v0': int(1e4),
-            'Pond-v0': int(1e4),
+            'BridgeRun-v0': int(2.5e4),
+            'Pond-v0': int(2.5e4),
             'RiverRun-v0': int(2.5e4),
         },
         'Humanoid': {
@@ -358,6 +358,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'exclude_current_positions_from_observation': False,
                     'healthy_reward': 1.0,
                     # 'after_bridge_reward': 20.0,
+                    # 'bridge_length': 5.0,
                     'bridge_width': bridge_width,
                     'on_bridge_max_velocity': on_bridge_max_velocity,
                     'on_bridge_velocity_reward_weight': (
