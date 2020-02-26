@@ -229,6 +229,7 @@ class SoftlearningEnv(metaclass=ABCMeta):
                 results[info_key + '-last'].append(info_values[-1])
                 results[info_key + '-mean'].append(np.mean(info_values))
                 results[info_key + '-median'].append(np.median(info_values))
+                results[info_key + '-sum'].append(np.sum(info_values))
                 if np.array(info_values).dtype != np.dtype('bool'):
                     results[info_key + '-range'].append(np.ptp(info_values))
 
