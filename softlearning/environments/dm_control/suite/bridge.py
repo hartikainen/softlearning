@@ -81,32 +81,6 @@ def make_model(base_model_string,
     worldbody.insert(2, bridge_element)
     worldbody.insert(3, grass_element)
 
-    size_element = etree.Element(
-        "size",
-        njmax="5000",
-        nconmax="2000")
-
-    mjcf.insert(0, size_element)
-
-    water_map_length = 4
-    water_map_width = 4
-    water_map_dx = 0.5
-    water_map_dy = 0.5
-
-    for x in range(int(water_map_length / water_map_dx)):
-        for y in range(int(water_map_width / water_map_dy)):
-            water_map_cell_element = etree.Element(
-                "geom",
-                type="box",
-                contype="99",
-                conaffinity="69",
-                name=f"water-map-{x}-{y}",
-                pos="0 0 0.1",
-                size=stringify(size_multiplier * (
-                    water_map_dx / 2, water_map_dy / 2, 0.01)),
-                rgba="0 0 0 1")
-            worldbody.insert(-1, water_map_cell_element)
-
     return etree.tostring(mjcf, pretty_print=True)
 
 
@@ -277,17 +251,6 @@ class MoveTaskMixin(base.Task):
             *common_observations.items(),
             ('water_map', water_map),
         ))
-
-        # for i in range(int(self._water_map_length / self._water_map_dx)):
-        #     for j in range(int(self._water_map_width / self._water_map_dy)):
-        #         cell_id = f'water-map-{i}-{j}'
-        #         physics.named.data.geom_xpos[
-        #             cell_id][:2] = water_map_xy[i, j] + (
-        #                 self._water_map_dx / 2, self._water_map_dy / 2)
-        #         physics.named.model.geom_rgba[cell_id] = (
-        #             (1, 0, 0, 1)
-        #             if water_map[i, j]
-        #             else (1, 1, 1, 0.5))
 
         return bridge_observations
 
