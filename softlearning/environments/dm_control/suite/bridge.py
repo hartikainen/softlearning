@@ -136,11 +136,11 @@ class MovePhysicsMixin:
         key_geoms_x = self.key_geom_positions()[..., :1]
         bridge_x = self.named.data.geom_xpos['bridge'][:1]
         bridge_length = self.named.model.geom_size['bridge'][:1]
-        toes_after_bridge = key_geoms_x < bridge_x - bridge_length
+        toes_before_bridge = key_geoms_x < bridge_x - bridge_length
 
-        after_bridge = np.all(toes_after_bridge)
+        before_bridge = np.all(toes_before_bridge)
 
-        return after_bridge
+        return before_bridge
 
     def after_bridge(self):
         key_geoms_x = self.key_geom_positions()[..., :1]
@@ -149,7 +149,7 @@ class MovePhysicsMixin:
         bridge_length = self.named.model.geom_size['bridge'][:1]
         toes_after_bridge = bridge_x + bridge_length < key_geoms_x
 
-        after_bridge = np.all(toes_after_bridge)
+        after_bridge = np.any(toes_after_bridge)
 
         return after_bridge
 
@@ -162,7 +162,7 @@ class MovePhysicsMixin:
         toes_on_bridge = point_inside_2d_rectangle(
             key_geoms_xy, bridge_xy, bridge_size)
 
-        on_bridge = np.all(toes_on_bridge)
+        on_bridge = np.any(toes_on_bridge)
 
         return on_bridge
 
@@ -317,6 +317,8 @@ class MoveTaskMixin(base.Task):
                 margin=self._desired_speed_after_bridge,
                 value_at_margin=0.0,
                 sigmoid='linear')
+        else:
+            raise ValueError("The quadruped has to be somewhere!")
 
         return self.upright_reward(physics) * move_reward
 
