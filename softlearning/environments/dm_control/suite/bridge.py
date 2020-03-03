@@ -3,6 +3,7 @@ import numpy as np
 from lxml import etree
 from dm_control.suite import base
 from dm_control.utils import rewards
+import skimage.measure
 
 DEFAULT_BRIDGE_LENGTH = 10.0
 DEFAULT_BRIDGE_WIDTH = 2.0
@@ -161,14 +162,15 @@ class MovePhysicsMixin:
 
         return any_key_geom_in_water
 
-    def water_map(self, length, width, dx, dy):
+    def water_map(self, length, width, dx, dy, density=10):
         """Create a water map around the egocentric view.
 
-        Water map is a boolean array of shape (length / dx, width / dy)
-        with element value `True` if it overlaps with water and value `False`
-        otherwise. The water map is located around the agent, although not
-        necessarily centered around it. There are more cells in the egocentric
-        forward direction and fewer cells in the egocentric backward direction.
+        Water map is a float array of shape (length / dx, width / dy)
+        with element in [0, 1] representing the proportion of the are of
+        the cell in water. The water map is located around the agent, although
+        not necessarily centered around it. There are more cells in the
+        egocentric forward direction and fewer cells in the egocentric backward
+        direction.
         """
         com_x, com_y = self.center_of_mass()[:2]
         water_map_x = com_x + length / 4
@@ -178,12 +180,12 @@ class MovePhysicsMixin:
         water_map_xy = np.stack(np.meshgrid(
             np.linspace(
                 water_map_x - length / 2,
-                water_map_x + length / 2 - dx,
-                nx),
+                water_map_x + length / 2 - dx / density,
+                density * nx),
             np.linspace(
                 water_map_y - width / 2,
-                water_map_y + width / 2 - dy,
-                ny),
+                water_map_y + width / 2 - dy / density,
+                density * ny),
             indexing='ij',
         ), axis=-1)
 
@@ -199,8 +201,10 @@ class MovePhysicsMixin:
             np.stack((water_left_size, water_right_size)))
 
         water_map = np.any(cells_in_waters, axis=-1)
+        water_map = skimage.measure.block_reduce(
+            water_map, (density, density), np.mean)
 
-        return water_map_xy, water_map
+        return cell_centers[::density, ::density, ...], water_map
 
 
 class MoveTaskMixin(base.Task):
@@ -246,7 +250,8 @@ class MoveTaskMixin(base.Task):
             length=self._water_map_length,
             width=self._water_map_width,
             dx=self._water_map_dx,
-            dy=self._water_map_dy)
+            dy=self._water_map_dy,
+            density=10)
         bridge_observations = type(common_observations)((
             *common_observations.items(),
             ('water_map', water_map),
