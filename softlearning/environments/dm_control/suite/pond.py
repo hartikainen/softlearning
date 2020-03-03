@@ -116,17 +116,14 @@ class PondPhysicsMixin:
         xy_from_pond_center = xyz[:2] - self.pond_center_xyz[:2]
         angle_to_pond_center = np.arctan2(*xy_from_pond_center[::-1])
         origin_to_pond_transformation = np.roll(
-            Rotation.from_euler('z', angle_to_pond_center).as_quat(), 1)
-
-        # NOTE(hartikainen): This makes the whole 2 * pi rotation around the
-        # z-axis continuous.
-        # TODO(hartikainen): Check if this has some negative side effects on
-        # other rotation axes.
-        if origin_to_pond_transformation[-1] < 0:
-            origin_to_pond_transformation[-1] *= -1
+            Rotation.from_euler('z', angle_to_pond_center).inv().as_quat(), 1)
 
         orientation_to_pond = quaternion_multiply(
             origin_to_pond_transformation, orientation_to_origin)
+
+        # TODO(hartikainen): Check if this has some negative side effects on
+        # other rotation axes.
+        orientation_to_pond[-1] = np.abs(orientation_to_pond[-1])
 
         return orientation_to_pond
 
