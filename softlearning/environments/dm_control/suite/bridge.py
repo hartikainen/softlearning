@@ -213,10 +213,10 @@ class MoveTaskMixin(base.Task):
     def __init__(self,
                  desired_speed_on_bridge,
                  desired_speed_after_bridge,
-                 water_map_length=4,
-                 water_map_width=4,
-                 water_map_dx=0.5,
-                 water_map_dy=0.5,
+                 water_map_length=10,
+                 water_map_width=10,
+                 water_map_dx=1.0,
+                 water_map_dy=1.0,
                  random=None):
         """Initializes an instance of `BridgeMove`.
 
