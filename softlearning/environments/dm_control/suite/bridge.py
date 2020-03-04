@@ -5,12 +5,28 @@ from dm_control.suite import base
 from dm_control.utils import rewards
 import skimage.measure
 
+from scipy.spatial.transform import Rotation
+
 DEFAULT_BRIDGE_LENGTH = 10.0
 DEFAULT_BRIDGE_WIDTH = 2.0
 
 
 def stringify(value):
     return ' '.join(np.array(value).astype(str))
+
+
+def rotate_around_z(positions, quaternion):
+    z_rotation = Rotation.from_quat(
+        np.roll(quaternion, -1)
+    ).as_euler('xyz', degrees=False)[-1]
+
+    sin = np.sin(z_rotation)
+    cos = np.cos(z_rotation)
+
+    M = np.array(((cos, -sin), (sin, cos)))
+    new_positions = positions @ M.T
+
+    return new_positions
 
 
 def make_model(base_model_string,
@@ -173,30 +189,38 @@ class MovePhysicsMixin:
         direction.
         """
         com_x, com_y = self.center_of_mass()[:2]
-        water_map_x = com_x + length / 4
-        water_map_y = com_y
         nx = int(length / dx)
         ny = int(width / dy)
-        water_map_xy = np.stack(np.meshgrid(
+        water_map_origin_xy = np.stack(np.meshgrid(
             np.linspace(
-                water_map_x - length / 2,
-                water_map_x + length / 2 - dx / density,
+                - length / 2,
+                + length / 2 - dx / density,
                 density * nx),
             np.linspace(
-                water_map_y - width / 2,
-                water_map_y + width / 2 - dy / density,
+                - width / 2,
+                + width / 2 - dy / density,
                 density * ny),
             indexing='ij',
         ), axis=-1)
+        water_map_origin_xy += (length / 4, 0.0)
+        cell_centers_origin_xy = water_map_origin_xy + (
+            dx / (density * 2), dy / (density * 2))
+
+        water_map_xy = rotate_around_z(
+            water_map_origin_xy, self.named.data.qpos['root'][3:])
+        water_map_xy += (com_x, com_y)
+
+        cell_centers_xy = rotate_around_z(
+            cell_centers_origin_xy, self.named.data.qpos['root'][3:])
+        cell_centers_xy += (com_x, com_y)
 
         water_left_xy = self.named.model.geom_pos['water-left'][:2]
         water_left_size = self.named.model.geom_size['water-left'][:2]
         water_right_xy = self.named.model.geom_pos['water-right'][:2]
         water_right_size = self.named.model.geom_size['water-right'][:2]
 
-        cell_centers = water_map_xy + (dx / 2, dy / 2)
         cells_in_waters = point_inside_2d_rectangle(
-            cell_centers,
+            cell_centers_xy,
             np.stack((water_left_xy, water_right_xy)),
             np.stack((water_left_size, water_right_size)))
 
@@ -204,7 +228,7 @@ class MovePhysicsMixin:
         water_map = skimage.measure.block_reduce(
             water_map, (density, density), np.mean)
 
-        return cell_centers[::density, ::density, ...], water_map
+        return cell_centers_xy[::density, ::density, ...], water_map
 
 
 class MoveTaskMixin(base.Task):
