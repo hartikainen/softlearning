@@ -82,23 +82,25 @@ def make_model(base_model_string,
         size=stringify((bridge_length / 2, bridge_width / 2, 0.01)),
         contype="97",
         conaffinity="67",
-        rgba="0.247 0.165 0.078 1")
-    grass_length = floor_size - (bridge_length + before_bridge_length) / 2
-    grass_width = floor_size
-    grass_x = before_bridge_length / 2 + bridge_length + grass_length + bridge_offset
-    grass_element = etree.Element(
-        "geom",
-        type="box",
-        name="grass",
-        pos=stringify((grass_x, 0, 0)),
-        size=stringify((grass_length, grass_width, 0.01)),
-        contype="98",
-        conaffinity="68",
-        rgba="0 0.502 0 1")
+        # rgba="0.247 0.165 0.078 1",
+        rgba="0 0 0 0",
+    )
+    # grass_length = floor_size - (bridge_length + before_bridge_length) / 2
+    # grass_width = floor_size
+    # grass_x = before_bridge_length / 2 + bridge_length + grass_length + bridge_offset
+    # grass_element = etree.Element(
+    #     "geom",
+    #     type="box",
+    #     name="grass",
+    #     pos=stringify((grass_x, 0, 0)),
+    #     size=stringify((grass_length, grass_width, 0.01)),
+    #     contype="98",
+    #     conaffinity="68",
+    #     rgba="0 0.502 0 1")
     worldbody.insert(0, left_water_element)
     worldbody.insert(1, right_water_element)
     worldbody.insert(2, bridge_element)
-    worldbody.insert(3, grass_element)
+    # worldbody.insert(3, grass_element)
 
     return etree.tostring(mjcf, pretty_print=True)
 
