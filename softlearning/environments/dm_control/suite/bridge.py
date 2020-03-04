@@ -306,9 +306,9 @@ class MoveTaskMixin(base.Task):
                 sigmoid='linear')
 
         elif physics.after_bridge():
-            xy_velocity = np.linalg.norm(physics.torso_velocity(), ord=2)
+            x_velocity = physics.torso_velocity()[0]
             move_reward = rewards.tolerance(
-                xy_velocity,
+                x_velocity,
                 bounds=(self._desired_speed_after_bridge, float('inf')),
                 margin=self._desired_speed_after_bridge,
                 value_at_margin=0.0,
