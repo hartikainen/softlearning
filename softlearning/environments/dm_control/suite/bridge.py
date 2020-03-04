@@ -47,10 +47,12 @@ def make_model(base_model_string,
 
     before_bridge_length = 0 * size_multiplier
 
-    floor_x = floor_size - before_bridge_length
+    bridge_offset = -1.0
+
+    floor_x = floor_size - before_bridge_length + bridge_offset
     floor_geom.attrib['pos'] = f"{floor_x} 0 0"
 
-    bridge_x = (bridge_length + before_bridge_length) / 2
+    bridge_x = (bridge_length + before_bridge_length) / 2 + bridge_offset
     water_width = floor_size - bridge_width / 2
     bridge_y_abs = (bridge_width + water_width) / 2
 
@@ -83,7 +85,7 @@ def make_model(base_model_string,
         rgba="0.247 0.165 0.078 1")
     grass_length = floor_size - (bridge_length + before_bridge_length) / 2
     grass_width = floor_size
-    grass_x = before_bridge_length / 2 + bridge_length + grass_length
+    grass_x = before_bridge_length / 2 + bridge_length + grass_length + bridge_offset
     grass_element = etree.Element(
         "geom",
         type="box",
