@@ -86,7 +86,6 @@ class PondPhysicsMixin:
         distance_from_pond = self.distances_from_pond()[0]
         return distance_from_pond
 
-    # def angular_velocities(self, positions1, positions2):
     def angular_velocities(self):
         velocity = self.torso_velocity()[:2]
         positions2 = self.center_of_mass()[:2][None]
@@ -186,6 +185,7 @@ class OrbitTaskMixin(base.Task):
         """Returns a reward to the agent."""
         angular_velocity_reward = (
             self._angular_velocity_reward_weight
+            * np.sign(physics.torso_velocity()[0])
             * rewards.tolerance(
                 physics.angular_velocity(),
                 bounds=(self._desired_angular_velocity, float('inf')),
