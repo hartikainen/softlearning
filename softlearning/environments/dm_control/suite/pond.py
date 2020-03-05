@@ -7,7 +7,7 @@ from dm_control.suite import base
 from dm_control.utils import rewards
 
 
-DEFAULT_POND_XY = (0, 0)
+DEFAULT_POND_XY = (-10, 0)
 DEFAULT_POND_RADIUS = 5
 
 
@@ -26,7 +26,20 @@ def make_pond_model(base_model_string,
 
     floor_geom = mjcf.find(".//geom[@name='floor']")
     floor_size = float(pond_radius * 4)
-    floor_geom.attrib['size'] = f'{floor_size} {floor_size} .1'
+    floor_size_str = f'{floor_size} {floor_size} .1'
+
+    if floor_geom is None:
+        floor_element = etree.Element(
+            'geom',
+            type='plane',
+            # material='grid',
+            rgba=stringify([.1, .1, .1, .8]),
+            pos=stringify((*pond_xy, 0)),
+            size=floor_size_str,
+        )
+        worldbody.insert(0, floor_element)
+
+    floor_element.attrib['size'] = floor_size_str
 
     pond_element = etree.Element(
         "geom",
