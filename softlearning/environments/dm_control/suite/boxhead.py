@@ -1,16 +1,12 @@
 import collections
 import sys
 
+from dm_control import mujoco
 from dm_control.rl import control
 from dm_control.locomotion.soccer import boxhead
 from dm_control import suite
 from dm_control.suite import common
 from dm_control.suite.utils import randomizers
-from dm_control.suite.point_mass import (
-    _DEFAULT_TIME_LIMIT,
-    # SUITE,
-    get_model_and_assets as get_model_and_assets_common,
-    Physics as PointMassPhysics)
 from dm_control.utils import xml_tools, containers
 
 from lxml import etree
@@ -27,7 +23,7 @@ from . import bridge, visualization
 suite._DOMAINS['boxhead'] = sys.modules[__name__]
 SUITE = containers.TaggedTasks()
 
-
+DEFAULT_TIME_LIMIT = 20
 DEFAULT_DESIRED_ANGULAR_VELOCITY = 3.0
 DEFAULT_DESIRED_SPEED_ON_BRIDGE = 3.0
 DEFAULT_DESIRED_SPEED_AFTER_BRIDGE = 1.0
@@ -86,7 +82,7 @@ def make_model():
 
 
 @SUITE.add()
-def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
+def orbit_pond(time_limit=DEFAULT_TIME_LIMIT,
                angular_velocity_reward_weight=1.0,
                random=None,
                environment_kwargs=None):
@@ -111,7 +107,7 @@ def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
 
 
 @SUITE.add()
-def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
+def bridge_run(time_limit=DEFAULT_TIME_LIMIT,
                random=None,
                environment_kwargs=None):
     """Returns the BridgeRun task."""
@@ -147,7 +143,15 @@ def _common_observations(physics):
     return observation
 
 
-class PondPhysics(PondPhysicsMixin, PointMassPhysics):
+class Physics(mujoco.Physics):
+    def position(self):
+        return self.named.data.qpos[['root_x', 'root_y']].copy()
+
+    def velocity(self):
+        return self.named.data.qvel[['root_x', 'root_y']].copy()
+
+
+class PondPhysics(PondPhysicsMixin, Physics):
     def torso_velocity(self):
         return self.velocity()
 
@@ -194,7 +198,7 @@ class Orbit(OrbitTaskMixin):
         return result
 
 
-class BridgeMovePhysics(bridge.MovePhysicsMixin, PointMassPhysics):
+class BridgeMovePhysics(bridge.MovePhysicsMixin, Physics):
     def torso_velocity(self):
         return self.velocity()
 

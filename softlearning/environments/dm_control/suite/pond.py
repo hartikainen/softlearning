@@ -188,6 +188,7 @@ class OrbitTaskMixin(base.Task):
             ('orientation_to_pond', orientation_to_pond),
             ('distance_from_pond', distance_from_pond),
         ))
+
         return pond_observations
 
     @abc.abstractmethod
