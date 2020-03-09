@@ -227,6 +227,12 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: int(3e6),
             # 'swingup': int(None),
         },
+        'boxhead': {
+            DEFAULT_KEY: int(3e6),
+            'orbit_pond': int(2e5),
+            'bridge_run': int(2e5),
+            # 'hard': int(None),
+        },
         'point_mass': {
             DEFAULT_KEY: int(3e6),
             'orbit_pond': int(2e5),
@@ -320,6 +326,10 @@ EPOCH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
         'quadruped': {
             'orbit_pond': int(2.5e4),
             'bridge_run': int(2.5e4),
+        },
+        'boxhead': {
+            'orbit_pond': int(1e4),
+            'bridge_run': int(1e4),
         },
     },
 }
@@ -729,6 +739,9 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                 1.0,
             ]),
             'point_mass': tune.grid_search([
+                -8.0, -4.0, -2.0, -1.0, -0.5, 0.0, 0.25, 0.5, 0.75, 1.0,
+            ]),
+            'boxhead': tune.grid_search([
                 -8.0, -4.0, -2.0, -1.0, -0.5, 0.0, 0.25, 0.5, 0.75, 1.0,
             ]),
         }.get(domain, 'auto')
