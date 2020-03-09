@@ -40,7 +40,11 @@ def make_model():
     parser = etree.XMLParser(remove_blank_text=True)
     mjcf = etree.XML(xml_string, parser)
 
-    torso = mjcf.find(".//body[@name='torso']")
+    head_body = mjcf.find(".//body[@name='head_body']")
+    mjcf.find(".//worldbody").remove(head_body)
+
+    main_body = etree.Element('body',  name='main_body')
+    main_body.insert(0, head_body)
     x_slide = etree.Element(
         'joint',
         name='root_x',
@@ -53,8 +57,30 @@ def make_model():
         type='slide',
         axis='0 1 0',
     )
-    torso.insert(0, x_slide)
-    torso.insert(0, y_slide)
+
+    main_body.insert(0, x_slide)
+    main_body.insert(0, y_slide)
+    mjcf.find(".//worldbody").insert(0, main_body)
+
+    compiler_element = etree.Element(
+        'compiler',
+        boundmass="1e-05",
+        boundinertia="1e-11",
+        coordinate="local",
+        angle="radian",
+        eulerseq="xyz",
+    )
+    option_element = etree.Element(
+        'option',
+        timestep="0.002",
+        cone="elliptic",
+        noslip_iterations="5",
+        noslip_tolerance="0.0",
+    )
+    mjcf.insert(0, compiler_element)
+    mjcf.insert(1, option_element)
+
+    # print(etree.tostring(mjcf, pretty_print=True, encoding='unicode', method='xml'))
 
     return etree.tostring(mjcf, pretty_print=True)
 
@@ -126,10 +152,15 @@ class PondPhysics(PondPhysicsMixin, PointMassPhysics):
         return self.velocity()
 
     def center_of_mass(self):
-        return self.named.data.geom_xpos['head'].copy()
+        return self.named.data.xpos['torso'].copy()
 
     def orientation_to_pond(self):
-        x, y = self.named.data.geom_xpos['head'][:2].copy()
+        print(", ".join((
+            f"torso: {self.named.data.xpos['torso'][:2]}",
+            f"head_body: {self.named.data.xpos['head_body'][:2]}",
+            f"ball: {self.named.data.xpos['ball'][:2]}",
+        )))
+        x, y = self.center_of_mass()[:2].copy()
         angle_to_pond_center = np.arctan2(y, x)
         sin_cos_encoded_angle_to_pond_center = np.array((
             np.sin(angle_to_pond_center),
@@ -157,12 +188,13 @@ class Orbit(OrbitTaskMixin):
         x = pond_center_x + distance_from_origin * np.cos(random_angle)
         y = pond_center_y + distance_from_origin * np.sin(random_angle)
 
-        physics.named.model.geom_pos['head'][:2] = (x, y)
-        physics.named.data.geom_xpos['head'][:2] = (x, y)
+        # physics.named.model.geom_pos['head'][:2] = (x, y)
+        # physics.named.data.geom_xpos['head'][:2] = (x, y)
         physics.named.data.xpos['torso'][:2] = (x, y)
-        physics.named.data.xpos['head_body'][:2] = (x, y)
+        # physics.named.data.xpos['head_body'][:2] = (x, y)
         physics.named.data.xpos['ball'][:2] = (x, y)
-        physics.named.data.qpos[['root_x', 'root_y']][:] = (x, y)
+        physics.named.data.qpos['root_x'][:] = x
+        physics.named.data.qpos['root_y'][:] = y
         result = super(Orbit, self).initialize_episode(physics)
         return result
 
