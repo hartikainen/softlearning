@@ -7,7 +7,7 @@ from dm_control.suite import base
 from dm_control.utils import rewards
 
 
-DEFAULT_POND_XY = (-10, 0)
+DEFAULT_POND_XY = (0, 0)
 DEFAULT_POND_RADIUS = 5
 
 
