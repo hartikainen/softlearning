@@ -155,11 +155,6 @@ class PondPhysics(PondPhysicsMixin, PointMassPhysics):
         return self.named.data.xpos['torso'].copy()
 
     def orientation_to_pond(self):
-        print(", ".join((
-            f"torso: {self.named.data.xpos['torso'][:2]}",
-            f"head_body: {self.named.data.xpos['head_body'][:2]}",
-            f"ball: {self.named.data.xpos['ball'][:2]}",
-        )))
         x, y = self.center_of_mass()[:2].copy()
         angle_to_pond_center = np.arctan2(y, x)
         sin_cos_encoded_angle_to_pond_center = np.array((
