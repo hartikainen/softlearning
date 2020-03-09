@@ -1,5 +1,4 @@
 import collections
-import os
 import sys
 
 from dm_control.rl import control
@@ -13,7 +12,6 @@ from dm_control.suite.point_mass import (
     get_model_and_assets as get_model_and_assets_common,
     Physics as PointMassPhysics)
 from dm_control.utils import xml_tools, containers
-from dm_control.utils import io as resources
 
 from lxml import etree
 
@@ -36,13 +34,13 @@ DEFAULT_DESIRED_SPEED_AFTER_BRIDGE = 1.0
 
 
 def make_model():
-    current_dir = os.path.dirname(__file__)
-    xml_string = resources.GetResource(
-        os.path.join(current_dir, 'boxhead.xml'))
+    walker = boxhead.BoxHead(name='boxhead')
+    xml_string = walker.mjcf_model.to_xml_string()
+
     parser = etree.XMLParser(remove_blank_text=True)
     mjcf = etree.XML(xml_string, parser)
 
-    torso = mjcf.find(".//body[@name='head_body']")
+    torso = mjcf.find(".//body[@name='torso']")
     x_slide = etree.Element(
         'joint',
         name='root_x',
@@ -128,17 +126,10 @@ class PondPhysics(PondPhysicsMixin, PointMassPhysics):
         return self.velocity()
 
     def center_of_mass(self):
-        return self.named.data.xpos['torso'].copy()
+        return self.named.data.geom_xpos['head'].copy()
 
     def orientation_to_pond(self):
-        x, y = self.center_of_mass()[:2]
-
-        np.testing.assert_equal(np.array((
-            np.all(self.named.data.xpos['torso'][:2] == (x, y)),
-            np.all(self.named.data.xpos['head_body'][:2] == (x, y)),
-            np.all(self.named.data.xpos['ball'][:2] == (x, y)),
-        )), True)
-
+        x, y = self.named.data.geom_xpos['head'][:2].copy()
         angle_to_pond_center = np.arctan2(y, x)
         sin_cos_encoded_angle_to_pond_center = np.array((
             np.sin(angle_to_pond_center),
@@ -166,21 +157,12 @@ class Orbit(OrbitTaskMixin):
         x = pond_center_x + distance_from_origin * np.cos(random_angle)
         y = pond_center_y + distance_from_origin * np.sin(random_angle)
 
+        physics.named.model.geom_pos['head'][:2] = (x, y)
+        physics.named.data.geom_xpos['head'][:2] = (x, y)
         physics.named.data.xpos['torso'][:2] = (x, y)
         physics.named.data.xpos['head_body'][:2] = (x, y)
         physics.named.data.xpos['ball'][:2] = (x, y)
-        physics.named.data.qpos['root_x'][:] = x
-        physics.named.data.qpos['root_y'][:] = y
-        physics.named.data.qpos['steer'][:] = np.random.uniform(0, 2 * np.pi)
-
-        np.testing.assert_equal(np.array((
-            np.all(physics.named.data.xpos['torso'][:2] == (x, y)),
-            np.all(physics.named.data.xpos['head_body'][:2] == (x, y)),
-            np.all(physics.named.data.xpos['ball'][:2] == (x, y)),
-            physics.named.data.qpos['root_x'][:] == x,
-            physics.named.data.qpos['root_y'][:] == y,
-        )), True)
-
+        physics.named.data.qpos[['root_x', 'root_y']][:] = (x, y)
         result = super(Orbit, self).initialize_episode(physics)
         return result
 
@@ -190,7 +172,7 @@ class BridgeMovePhysics(bridge.MovePhysicsMixin, PointMassPhysics):
         return self.velocity()
 
     def key_geom_positions(self):
-        return self.named.data.xpos['torso'][np.newaxis, ...]
+        return self.named.data.xpos['head'][np.newaxis, ...]
 
     def center_of_mass(self):
         return self.named.data.geom_xpos['head']
@@ -207,6 +189,6 @@ class BridgeMove(bridge.MoveTaskMixin):
         return 1.0
 
     def initialize_episode(self, physics):
-        # physics.named.data.geom_xpos['head'][:2] = 0.0
-        physics.named.data.xpos['torso'][:2] = 0.0
+        physics.named.data.geom_xpos['head'][:2] = 0.0
+        physics.named.model.geom_pos['head'][:2] = 0.0
         return super(BridgeMove, self).initialize_episode(physics)
