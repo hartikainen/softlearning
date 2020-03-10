@@ -100,9 +100,9 @@ class PondPhysicsMixin:
         return distance_from_pond
 
     def angular_velocities(self):
-        velocity = self.torso_velocity()[:2]
+        global_velocity = self.global_velocity()[:2]
         positions2 = self.center_of_mass()[:2][None]
-        positions1 = positions2 - velocity
+        positions1 = positions2 - global_velocity
 
         positions1 = positions1 - self.pond_center_xyz[:2]
         positions2 = positions2 - self.pond_center_xyz[:2]

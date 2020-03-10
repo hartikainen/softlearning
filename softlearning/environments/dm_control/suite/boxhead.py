@@ -12,6 +12,8 @@ from dm_control.utils import xml_tools, containers
 from lxml import etree
 
 import numpy as np
+from scipy.spatial.transform import Rotation
+
 from .pond import (
     PondPhysicsMixin,
     make_pond_model,
@@ -24,8 +26,8 @@ suite._DOMAINS['boxhead'] = sys.modules[__name__]
 SUITE = containers.TaggedTasks()
 
 DEFAULT_TIME_LIMIT = 20
-DEFAULT_DESIRED_ANGULAR_VELOCITY = 3.0
-DEFAULT_DESIRED_SPEED_ON_BRIDGE = 3.0
+DEFAULT_DESIRED_ANGULAR_VELOCITY = 5.0
+DEFAULT_DESIRED_SPEED_ON_BRIDGE = 10.0
 DEFAULT_DESIRED_SPEED_AFTER_BRIDGE = 1.0
 
 
@@ -75,6 +77,9 @@ def make_model():
     )
     mjcf.insert(0, compiler_element)
     mjcf.insert(1, option_element)
+
+    kick_actuator = mjcf.find(".//general[@name='kick']")
+    kick_actuator.getparent().remove(kick_actuator)
 
     # print(etree.tostring(mjcf, pretty_print=True, encoding='unicode', method='xml'))
 
@@ -137,18 +142,40 @@ def bridge_run(time_limit=DEFAULT_TIME_LIMIT,
 
 def _common_observations(physics):
     observation = collections.OrderedDict((
-        ('position', physics.position()),
         ('velocity', physics.velocity()),
+        ('orientation', physics.orientation()),
     ))
     return observation
 
 
 class Physics(mujoco.Physics):
+    def set_orientation(self, quaternion):
+        normalised_quaternion = quaternion / np.linalg.norm(quaternion)
+        xmat = Rotation.from_quat(
+            np.roll(normalised_quaternion, -1)
+        ).as_matrix().ravel()
+        self.named.data.xmat['torso'] = xmat
+        return self.orientation()
+
+    def orientation(self):
+        orientation = np.roll(Rotation.from_matrix(
+            self.named.data.xmat['torso'].reshape(3, 3)
+        ).as_quat(), 1)
+        return orientation
+
+    def set_position(self, position):
+        self.named.data.qpos['root_x'] = position[0]
+        self.named.data.qpos['root_y'] = position[1]
+        return self.position()
+
     def position(self):
         return self.named.data.qpos[['root_x', 'root_y']].copy()
 
-    def velocity(self):
+    def global_velocity(self):
         return self.named.data.qvel[['root_x', 'root_y']].copy()
+
+    def velocity(self):
+        return self.named.data.sensordata['sensor_torso_vel'].copy()
 
 
 class PondPhysics(PondPhysicsMixin, Physics):
@@ -186,15 +213,17 @@ class Orbit(OrbitTaskMixin):
         distance_from_origin = pond_radius + distance_from_pond
         x = pond_center_x + distance_from_origin * np.cos(random_angle)
         y = pond_center_y + distance_from_origin * np.sin(random_angle)
+        physics.set_position((x, y))
 
-        # physics.named.model.geom_pos['head'][:2] = (x, y)
-        # physics.named.data.geom_xpos['head'][:2] = (x, y)
-        physics.named.data.xpos['torso'][:2] = (x, y)
-        # physics.named.data.xpos['head_body'][:2] = (x, y)
-        physics.named.data.xpos['ball'][:2] = (x, y)
-        physics.named.data.qpos['root_x'][:] = x
-        physics.named.data.qpos['root_y'][:] = y
+        # TODO(hartikainen): set_orientation-method doesn't work at the moment.
+
+        # random_rotation = np.random.uniform(-np.pi, np.pi)
+        # random_orientation = [
+        #     np.cos(random_rotation / 2), 0, 0, np.sin(random_rotation / 2)]
+        # physics.set_orientation(random_orientation)
+
         result = super(Orbit, self).initialize_episode(physics)
+
         return result
 
 
