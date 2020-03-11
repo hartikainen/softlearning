@@ -290,6 +290,13 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: 200,
         },
     },
+    'dm_control': {
+        DEFAULT_KEY: 1000,
+        'boxhead': {
+            DEFAULT_KEY: 1000,
+            'orbit_pond': 1000,
+        }
+    }
 }
 
 EPOCH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
@@ -578,6 +585,18 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'quadruped': {
             'orbit_pond': {},
+            'bridge_run': {},
+        },
+        'boxhead': {
+            'orbit_pond': {
+                # 'pond_radius': 2.0,
+                'angular_velocity_reward_weight': tune.grid_search([
+                    1.0, 3.0, 10.0, 30.0
+                ]),
+                'desired_angular_velocity': tune.grid_search([
+                    1.0, 5.0, 10.0, 20.0
+                ]),
+            },
             'bridge_run': {},
         },
     },
