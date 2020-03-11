@@ -6,6 +6,8 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
+from .pond import compute_angular_deltas
+
 
 def get_path_infos_orbit_pond(physics,
                               paths,
@@ -21,6 +23,21 @@ def get_path_infos_orbit_pond(physics,
         for path in paths
     ]))), 2, axis=-1)
 
+    def compute_cumulative_angle_travelled(path):
+        xy = np.concatenate((
+            path['observations']['position'],
+            path['next_observations']['position'][[-1]]
+        ), axis=0)
+        angular_deltas = compute_angular_deltas(
+            xy[:-1, ...], xy[1:, ...], center=physics.pond_center_xyz)
+        cumulative_angle_travelled = np.sum(angular_deltas)
+        return cumulative_angle_travelled
+
+    cumulative_angles_travelled = np.array([
+        compute_cumulative_angle_travelled(path)
+        for path in paths
+    ])
+
     velocities_xy = np.concatenate(tuple(itertools.chain(*[
         [
             path['observations']['velocity'],
@@ -35,14 +52,16 @@ def get_path_infos_orbit_pond(physics,
         axis=1,
     ) - physics.pond_radius
     velocities = np.linalg.norm(velocities_xy, ord=2, axis=1)
-    infos.update((
-        ('distance_from_water-min', np.min(distances_from_water)),
-        ('distance_from_water-max', np.max(distances_from_water)),
-        ('distance_from_water-mean', np.mean(distances_from_water)),
-        ('velocity-min', np.min(velocities)),
-        ('velocity-max', np.max(velocities)),
-        ('velocity-mean', np.mean(velocities)),
-    ))
+
+    infos.update([
+        (f"{metric_name}-{metric_fn_name}",
+         getattr(np, metric_fn_name)(metric_values))
+        for metric_name, metric_values in (
+                ('distances_from_water', distances_from_water),
+                ('velocities', velocities),
+                ('cumulative_angles_travelled', cumulative_angles_travelled))
+        for metric_fn_name in ('mean', 'min', 'mean')
+    ])
 
     histogram_margin = 3.0
     bins_per_unit = 2
