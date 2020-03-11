@@ -23,8 +23,8 @@ def get_path_infos_orbit_pond(physics,
 
     velocities_xy = np.concatenate(tuple(itertools.chain(*[
         [
-            path['observations']['position'],
-            path['next_observations']['position'][[-1]]
+            path['observations']['velocity'],
+            path['next_observations']['velocity'][[-1]]
         ]
         for path in paths
     ])))
