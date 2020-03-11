@@ -19,7 +19,6 @@ from .pond import (
     make_pond_model,
     quaternion_multiply,
     DEFAULT_POND_XY,
-    DEFAULT_POND_RADIUS,
     OrbitTaskMixin)
 from . import bridge, visualization
 
@@ -28,6 +27,7 @@ SUITE = containers.TaggedTasks()
 
 DEFAULT_TIME_LIMIT = 25
 
+DEFAULT_POND_RADIUS = 10.0
 DEFAULT_DESIRED_ANGULAR_VELOCITY = 5.0
 DEFAULT_DESIRED_ANGULAR_VELOCITY = 10.0
 DEFAULT_ANGULAR_VELOCITY_REWARD_WEIGHT = 1.0
