@@ -27,7 +27,10 @@ suite._DOMAINS['boxhead'] = sys.modules[__name__]
 SUITE = containers.TaggedTasks()
 
 DEFAULT_TIME_LIMIT = 25
+
 DEFAULT_DESIRED_ANGULAR_VELOCITY = 5.0
+DEFAULT_DESIRED_ANGULAR_VELOCITY = 10.0
+DEFAULT_ANGULAR_VELOCITY_REWARD_WEIGHT = 1.0
 DEFAULT_DESIRED_SPEED_ON_BRIDGE = 10.0
 DEFAULT_DESIRED_SPEED_AFTER_BRIDGE = 1.0
 
@@ -89,7 +92,9 @@ def make_model():
 
 @SUITE.add()
 def orbit_pond(time_limit=DEFAULT_TIME_LIMIT,
-               angular_velocity_reward_weight=1.0,
+               desired_angular_velocity=DEFAULT_DESIRED_ANGULAR_VELOCITY,
+               angular_velocity_reward_weight=(
+                   DEFAULT_ANGULAR_VELOCITY_REWARD_WEIGHT),
                random=None,
                environment_kwargs=None):
     """Returns the Orbit task."""
@@ -105,7 +110,7 @@ def orbit_pond(time_limit=DEFAULT_TIME_LIMIT,
         pond_xy=pond_xy)
     physics = PondPhysics.from_xml_string(xml_string, common.ASSETS)
     task = Orbit(
-        desired_angular_velocity=DEFAULT_DESIRED_ANGULAR_VELOCITY,
+        desired_angular_velocity=desired_angular_velocity,
         angular_velocity_reward_weight=angular_velocity_reward_weight,
         random=random)
     return control.Environment(
