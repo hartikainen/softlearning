@@ -65,6 +65,19 @@ def quaternion_multiply(quaternion1, quaternion0):
                      x1 * y0 - y1 * x0 + z1 * w0 + w1 * z0), dtype=np.float64)
 
 
+def compute_angular_deltas(positions1, positions2, center=0.0):
+    center = np.array(center)
+    positions1 = positions1 - center[..., :positions1.shape[-1]]
+    positions2 = positions2 - center[..., :positions1.shape[-1]]
+    angles1 = np.arctan2(positions1[..., 1], positions1[..., 0])
+    angles2 = np.arctan2(positions2[..., 1], positions2[..., 0])
+    angular_deltas = np.arctan2(
+        np.sin(angles2 - angles1),
+        np.cos(angles2 - angles1)
+    )[..., np.newaxis]
+    return angular_deltas
+
+
 class PondPhysicsMixin:
     @property
     def pond_radius(self):
@@ -104,16 +117,10 @@ class PondPhysicsMixin:
         positions2 = self.center_of_mass()[:2][None]
         positions1 = positions2 - global_velocity
 
-        positions1 = positions1 - self.pond_center_xyz[:2]
-        positions2 = positions2 - self.pond_center_xyz[:2]
-        angles1 = np.arctan2(positions1[..., 1], positions1[..., 0])
-        angles2 = np.arctan2(positions2[..., 1], positions2[..., 0])
-        angles = np.arctan2(
-            np.sin(angles2 - angles1),
-            np.cos(angles2 - angles1)
-        )[..., np.newaxis]
+        angular_deltas = compute_angular_deltas(
+            positions1, positions2, self.pond_center_xyz)
 
-        angular_velocities = angles * self.pond_radius
+        angular_velocities = angular_deltas * self.pond_radius
 
         return angular_velocities
 
