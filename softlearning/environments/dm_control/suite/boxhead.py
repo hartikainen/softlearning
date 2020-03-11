@@ -142,7 +142,9 @@ def bridge_run(time_limit=DEFAULT_TIME_LIMIT,
 
 def _common_observations(physics):
     observation = collections.OrderedDict((
+        ('position', physics.position()),
         ('velocity', physics.velocity()),
+        ('global_velocity', physics.global_velocity()),
         ('orientation', physics.orientation()),
     ))
     return observation
@@ -215,12 +217,8 @@ class Orbit(OrbitTaskMixin):
         y = pond_center_y + distance_from_origin * np.sin(random_angle)
         physics.set_position((x, y))
 
-        # TODO(hartikainen): set_orientation-method doesn't work at the moment.
-
-        # random_rotation = np.random.uniform(-np.pi, np.pi)
-        # random_orientation = [
-        #     np.cos(random_rotation / 2), 0, 0, np.sin(random_rotation / 2)]
-        # physics.set_orientation(random_orientation)
+        random_rotation = np.random.uniform(-np.pi, np.pi)
+        physics.named.data.qpos['steer'] = random_rotation
 
         result = super(Orbit, self).initialize_episode(physics)
 
