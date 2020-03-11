@@ -17,6 +17,7 @@ from scipy.spatial.transform import Rotation
 from .pond import (
     PondPhysicsMixin,
     make_pond_model,
+    quaternion_multiply,
     DEFAULT_POND_XY,
     DEFAULT_POND_RADIUS,
     OrbitTaskMixin)
@@ -188,12 +189,21 @@ class PondPhysics(PondPhysicsMixin, Physics):
         return self.named.data.xpos['torso'].copy()
 
     def orientation_to_pond(self):
-        x, y = self.center_of_mass()[:2].copy()
-        angle_to_pond_center = np.arctan2(y, x)
-        sin_cos_encoded_angle_to_pond_center = np.array((
-            np.sin(angle_to_pond_center),
-            np.cos(angle_to_pond_center)))
-        return sin_cos_encoded_angle_to_pond_center
+        orientation_to_origin = self.orientation()
+
+        xy_from_pond_center = self.position()[:2] - self.pond_center_xyz[:2]
+        angle_to_pond_center = np.arctan2(*xy_from_pond_center[::-1])
+        origin_to_pond_transformation = np.roll(
+            Rotation.from_euler('z', angle_to_pond_center).inv().as_quat(), 1)
+
+        orientation_to_pond = quaternion_multiply(
+            origin_to_pond_transformation, orientation_to_origin)
+
+        # TODO(hartikainen): Check if this has some negative side effects on
+        # other rotation axes.
+        orientation_to_pond[-1] = np.abs(orientation_to_pond[-1])
+
+        return orientation_to_pond
 
     def get_path_infos(self, *args, **kwargs):
         return visualization.get_path_infos_orbit_pond(self, *args, **kwargs)
