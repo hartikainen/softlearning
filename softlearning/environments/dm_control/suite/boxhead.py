@@ -26,7 +26,7 @@ from . import bridge, visualization
 suite._DOMAINS['boxhead'] = sys.modules[__name__]
 SUITE = containers.TaggedTasks()
 
-DEFAULT_TIME_LIMIT = 20
+DEFAULT_TIME_LIMIT = 25
 DEFAULT_DESIRED_ANGULAR_VELOCITY = 5.0
 DEFAULT_DESIRED_SPEED_ON_BRIDGE = 10.0
 DEFAULT_DESIRED_SPEED_AFTER_BRIDGE = 1.0
@@ -71,7 +71,7 @@ def make_model():
     )
     option_element = etree.Element(
         'option',
-        timestep="0.002",
+        timestep="0.005",
         cone="elliptic",
         noslip_iterations="5",
         noslip_tolerance="0.0",
@@ -109,7 +109,11 @@ def orbit_pond(time_limit=DEFAULT_TIME_LIMIT,
         angular_velocity_reward_weight=angular_velocity_reward_weight,
         random=random)
     return control.Environment(
-        physics, task, time_limit=time_limit, **environment_kwargs)
+        physics,
+        task,
+        time_limit=time_limit,
+        control_timestep=0.025,
+        **environment_kwargs)
 
 
 @SUITE.add()
