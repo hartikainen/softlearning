@@ -584,6 +584,18 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
 }
 
 
+OBSERVATION_KEYS_PER_UNIVERSE_DOMAIN_TASK = {
+    ('dm_control', 'boxhead', 'orbit_pond'): (
+        # 'position',
+        'velocity',
+        # 'orientation',
+        'orientation_to_pond',
+        'distance_from_pond',
+    ),
+
+}
+
+
 def get_epoch_length(universe, domain, task):
     level_result = EPOCH_LENGTH_PER_UNIVERSE_DOMAIN_TASK.copy()
     for level_key in (universe, domain, task):
@@ -657,6 +669,16 @@ def get_policy_params(spec):
         )
         policy_params['kwargs']['activation'] = 'tanh'
         policy_params['type'] = 'ConstantScaleGaussianPolicy'
+
+    observation_keys = OBSERVATION_KEYS_PER_UNIVERSE_DOMAIN_TASK.get((
+        (config['environment_params']['training']['universe'],
+         config['environment_params']['training']['domain'],
+         config['environment_params']['training']['task'],)
+    ), None)
+
+    if observation_keys is not None:
+        policy_params['kwargs']['observation_keys'] = observation_keys
+
     return policy_params
 
 
@@ -785,7 +807,12 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             'type': 'double_feedforward_Q_function',
             'kwargs': {
                 'hidden_layer_sizes': (M, M),
-                'observation_keys': None,
+                'observation_keys': tune.sample_from(lambda spec: (
+                    spec.get('config', spec)
+                    ['policy_params']
+                    ['kwargs']
+                    .get('observation_keys')
+                )),
                 'observation_preprocessors_params': {}
             },
         },
