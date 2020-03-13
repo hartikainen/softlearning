@@ -35,7 +35,7 @@ DEFAULT_DESIRED_SPEED_ON_BRIDGE = 10.0
 DEFAULT_DESIRED_SPEED_AFTER_BRIDGE = 1.0
 
 
-def make_model():
+def make_model(friction=None):
     walker = boxhead.BoxHead(name='boxhead')
     xml_string = walker.mjcf_model.to_xml_string()
 
@@ -82,6 +82,11 @@ def make_model():
     mjcf.insert(0, compiler_element)
     mjcf.insert(1, option_element)
 
+    if friction is not None:
+        shell_geom = mjcf.find(".//geom[@name='shell']")
+        shell_geom.attrib['friction'] = " ".join(
+            np.array(friction).astype(str))
+
     kick_actuator = mjcf.find(".//general[@name='kick']")
     kick_actuator.getparent().remove(kick_actuator)
 
@@ -95,6 +100,7 @@ def orbit_pond(time_limit=DEFAULT_TIME_LIMIT,
                desired_angular_velocity=DEFAULT_DESIRED_ANGULAR_VELOCITY,
                angular_velocity_reward_weight=(
                    DEFAULT_ANGULAR_VELOCITY_REWARD_WEIGHT),
+               friction=None,
                random=None,
                environment_kwargs=None):
     """Returns the Orbit task."""
@@ -103,7 +109,7 @@ def orbit_pond(time_limit=DEFAULT_TIME_LIMIT,
         'pond_radius', DEFAULT_POND_RADIUS)
     pond_xy = environment_kwargs.get('pond_xy', DEFAULT_POND_XY)
     # base_model_string, assets = get_model_and_assets_common()
-    base_model_string = make_model()
+    base_model_string = make_model(friction=friction)
     xml_string = make_pond_model(
         base_model_string,
         pond_radius=pond_radius,
