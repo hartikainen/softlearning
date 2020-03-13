@@ -596,6 +596,11 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 'desired_angular_velocity': tune.grid_search([
                     1.0, 5.0, 10.0, 20.0
                 ]),
+                'friction': tune.grid_search([
+                    # default: (0.5, 0.02, 0.02)
+                    (x, 0.02, 0.02)
+                    for x in [0.5]
+                ])
             },
             'bridge_run': {},
         },
