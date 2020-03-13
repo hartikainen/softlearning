@@ -100,13 +100,12 @@ def orbit_pond(time_limit=DEFAULT_TIME_LIMIT,
                desired_angular_velocity=DEFAULT_DESIRED_ANGULAR_VELOCITY,
                angular_velocity_reward_weight=(
                    DEFAULT_ANGULAR_VELOCITY_REWARD_WEIGHT),
+               pond_radius=DEFAULT_POND_RADIUS,
                friction=None,
                random=None,
                environment_kwargs=None):
     """Returns the Orbit task."""
     environment_kwargs = environment_kwargs or {}
-    pond_radius = environment_kwargs.get(
-        'pond_radius', DEFAULT_POND_RADIUS)
     pond_xy = environment_kwargs.get('pond_xy', DEFAULT_POND_XY)
     # base_model_string, assets = get_model_and_assets_common()
     base_model_string = make_model(friction=friction)
