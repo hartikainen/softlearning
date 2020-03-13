@@ -120,7 +120,8 @@ class PondPhysicsMixin:
         angular_deltas = compute_angular_deltas(
             positions1, positions2, self.pond_center_xyz)
 
-        angular_velocities = angular_deltas * self.pond_radius
+        angular_velocities = angular_deltas
+        # angular_velocities = angular_deltas * self.pond_radius
 
         return angular_velocities
 
