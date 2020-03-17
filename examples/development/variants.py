@@ -121,7 +121,10 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'Point2DEnv': {
             DEFAULT_KEY: int(5e4),
-        }
+        },
+        'PointMass': {
+            DEFAULT_KEY: int(1e5),
+        },
     },
     'dm_control': {
         # BENCHMARKING
@@ -227,6 +230,9 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'Pendulum': {
             DEFAULT_KEY: 200,
+        },
+        'PointMass': {
+            'Sequential-v0': 25,
         },
     },
 }
