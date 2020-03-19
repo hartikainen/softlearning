@@ -612,6 +612,10 @@ OBSERVATION_KEYS_PER_UNIVERSE_DOMAIN_TASK = {
     ('dm_control', 'boxhead', 'orbit_pond'): (
         # 'position',
         'velocity',
+        'roll_velocity',
+        'acceleration',
+        'gyro',
+        # 'global_velocity',
         # 'orientation',
         'orientation_to_pond',
         'distance_from_pond',

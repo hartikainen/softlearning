@@ -159,6 +159,9 @@ def _common_observations(physics):
     observation = collections.OrderedDict((
         ('position', physics.position()),
         ('velocity', physics.velocity()),
+        ('roll_velocity', physics.named.data.qvel['roll']),
+        ('acceleration', physics.acceleration()),
+        ('gyro', physics.gyro()),
         ('global_velocity', physics.global_velocity()),
         ('orientation', physics.orientation()),
     ))
@@ -193,6 +196,12 @@ class Physics(mujoco.Physics):
 
     def velocity(self):
         return self.named.data.sensordata['sensor_torso_vel'].copy()
+
+    def acceleration(self):
+        return self.named.data.sensordata['sensor_torso_accel'].copy()
+
+    def gyro(self):
+        return self.named.data.sensordata['sensor_torso_gyro'].copy()
 
 
 class PondPhysics(PondPhysicsMixin, Physics):
