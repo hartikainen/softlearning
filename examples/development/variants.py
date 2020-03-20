@@ -16,7 +16,7 @@ NUM_COUPLING_LAYERS = 2
 
 ALGORITHM_PARAMS_BASE = {
     'config': {
-        'epoch_length': 1000,
+        'epoch_length': 250,
         'train_every_n_steps': 1,
         'n_train_repeat': 1,
         'eval_render_kwargs': {},
@@ -40,12 +40,13 @@ ALGORITHM_PARAMS_ADDITIONAL = {
             'alpha_lr': 3e-4,
             'target_update_interval': 1,
             'tau': 5e-3,
-            'target_entropy': tune.grid_search([
-                -8, -4, -2, -1, 0, 1, 2,
-            ]),
+            # 'target_entropy': tune.grid_search([
+            #     -4, -2, 0, 1
+            # ]),
+            'target_entropy': None,
 
             'discount': 0.99,
-            'reward_scale': 1.0,
+            'reward_scale': tune.grid_search([3.0, 10.0, 30]),
         },
     },
     'SQL': {
@@ -234,7 +235,7 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: 200,
         },
         'PointMass': {
-            'Sequential-v0': 25,
+            'Sequential-v0': 50,
         },
     },
 }

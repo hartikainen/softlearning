@@ -20,9 +20,9 @@ GOAL_ORDERS = np.array(sorted(itertools.permutations(range(4), 4)))
 class PointMassSequentialEnv(gym.Env):
 
     def __init__(self,
-                 goal_reward=150,
-                 actuation_cost_coeff=0.1,
-                 distance_cost_coeff=1,
+                 goal_reward=25,
+                 actuation_cost_coeff=0,
+                 distance_cost_coeff=0,
                  init_sigma=0.1,
                  mode='train'):
 
@@ -46,7 +46,8 @@ class PointMassSequentialEnv(gym.Env):
         if mode == 'train':
             # self.goal_orders = GOAL_ORDERS[:int(0.75 * number_of_goal_orders)]
             # self.goal_orders = GOAL_ORDERS[::6][:2]
-            self.goal_orders = GOAL_ORDERS[::6][:1]
+            # self.goal_orders = GOAL_ORDERS[::6][:1]
+            self.goal_orders = np.zeros_like(GOAL_ORDERS[::6][:1])
         elif mode == 'evaluation':
             self.goal_orders = GOAL_ORDERS[int(0.75 * number_of_goal_orders):]
         else:
@@ -62,6 +63,7 @@ class PointMassSequentialEnv(gym.Env):
         # variables to be set in self.reset()
         self.goal_counter = None
         self._timestep = 0
+        self._goal_reward_counter = 0
 
         self._ax = None
         self._env_lines = []
@@ -108,7 +110,8 @@ class PointMassSequentialEnv(gym.Env):
         observation = OrderedDict((
             ('position', self.position),
             ('task_id', one_hot_task_id),
-            ('timestep', self._timestep),
+            # ('timestep', (self._timestep - 50) / 50.0),
+            ('timestep', 40 < self._timestep),
         ))
         return observation
 
@@ -138,9 +141,12 @@ class PointMassSequentialEnv(gym.Env):
         if goal_done:
             self.goal_counter += 1
             self.goal_changed = True  # for plotting
-            reward += self.goal_reward * self.goal_counter
+            reward += self.goal_reward  # * np.maximum(self.goal_counter, 1.0)
+            # self._goal_reward_counter += 1
 
+        # done = goal_done
         done = self.current_goal_order.size <= self.goal_counter
+        # done = 3 <= self._goal_reward_counter
         one_hot_task_id = np.roll(
             np.eye(1, self.goal_positions.shape[0])[0], goal_index)
 
@@ -167,10 +173,12 @@ class PointMassSequentialEnv(gym.Env):
         # penalize staying with the log barriers
         costs = [action_cost, goal_cost]
         reward = -np.sum(costs)
+        reward += 1.0
         return reward
 
     def reset(self):
         self._timestep = 0
+        self._goal_reward_counter = 0
         unclipped_position = np.random.normal(
             loc=self.init_mu, scale=self.init_sigma, size=self.dynamics.s_dim)
         self.position = np.clip(
