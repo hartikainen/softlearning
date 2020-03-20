@@ -61,6 +61,7 @@ class PointMassSequentialEnv(gym.Env):
         self.vel_bound = 1.
         # variables to be set in self.reset()
         self.goal_counter = None
+        self._timestep = 0
 
         self._ax = None
         self._env_lines = []
@@ -86,7 +87,13 @@ class PointMassSequentialEnv(gym.Env):
                 high=np.array([1, 1, 1, 1]),
                 shape=None,
                 dtype=np.float32,
-            ))
+            )),
+            ('timestep', spaces.Box(
+                low=np.array([0]),
+                high=np.array([float('inf')]),
+                shape=None,
+                dtype=np.float32,
+            )),
         )))
 
     @property
@@ -101,6 +108,7 @@ class PointMassSequentialEnv(gym.Env):
         observation = OrderedDict((
             ('position', self.position),
             ('task_id', one_hot_task_id),
+            ('timestep', self._timestep),
         ))
         return observation
 
@@ -142,6 +150,7 @@ class PointMassSequentialEnv(gym.Env):
             'goal_position': goal_position,
             'goal_order': self.current_goal_order,
         }
+        self._timestep += 1
         return observation, reward, done, info
 
     def compute_reward(self, observation, action):
@@ -161,6 +170,7 @@ class PointMassSequentialEnv(gym.Env):
         return reward
 
     def reset(self):
+        self._timestep = 0
         unclipped_position = np.random.normal(
             loc=self.init_mu, scale=self.init_sigma, size=self.dynamics.s_dim)
         self.position = np.clip(

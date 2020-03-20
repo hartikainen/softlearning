@@ -40,7 +40,9 @@ ALGORITHM_PARAMS_ADDITIONAL = {
             'alpha_lr': 3e-4,
             'target_update_interval': 1,
             'tau': 5e-3,
-            'target_entropy': 'auto',
+            'target_entropy': tune.grid_search([
+                -8, -4, -2, -1, 0, 1, 2,
+            ]),
 
             'discount': 0.99,
             'reward_scale': 1.0,
