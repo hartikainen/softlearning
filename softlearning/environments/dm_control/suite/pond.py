@@ -168,9 +168,9 @@ class OrbitTaskMixin(base.Task):
         """
         self._desired_angular_velocity = desired_angular_velocity
         self._angular_velocity_reward_weight = angular_velocity_reward_weight
+        self._previous_action = None
         return super(OrbitTaskMixin, self).__init__(random=random)
 
-    @abc.abstractmethod
     def initialize_episode(self, physics):
         """Sets the state of the environment at the start of each episode.
 
@@ -178,7 +178,9 @@ class OrbitTaskMixin(base.Task):
           physics: An instance of `Physics`.
 
         """
-        pass
+        self._previous_action = np.zeros(
+            shape=self.action_spec(physics).shape,
+            dtype=self.action_spec(physics).dtype)
 
     @abc.abstractmethod
     def common_observations(self, physics):
@@ -191,13 +193,23 @@ class OrbitTaskMixin(base.Task):
         orientation_to_pond = physics.orientation_to_pond()
         distance_from_pond = physics.distance_from_pond()
 
+        previous_action = (
+            self._previous_action
+            if self._previous_action is not None
+            else np.zeros_like(physics.control()))
+
         pond_observations = type(common_observations)((
             *common_observations.items(),
             ('orientation_to_pond', orientation_to_pond),
             ('distance_from_pond', distance_from_pond),
+            ('previous_action', previous_action),
         ))
 
         return pond_observations
+
+    def after_step(self, physics, *args, **kwargs):
+        self._previous_action[:] = physics.control().copy()
+        return super(OrbitTaskMixin, self).after_step(physics, *args, **kwargs)
 
     @abc.abstractmethod
     def upright_reward(self, physics):
