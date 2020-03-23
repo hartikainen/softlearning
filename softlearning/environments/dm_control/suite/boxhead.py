@@ -250,8 +250,8 @@ class Orbit(OrbitTaskMixin):
         y = pond_center_y + distance_from_origin * np.sin(random_angle)
         physics.set_position((x, y))
 
-        random_rotation = np.random.uniform(-np.pi, np.pi)
-        physics.named.data.qpos['steer'] = random_rotation
+        tangent_to_pond_rotation = np.pi - random_angle
+        physics.named.data.qpos['steer'] = tangent_to_pond_rotation
 
         result = super(Orbit, self).initialize_episode(physics)
 
