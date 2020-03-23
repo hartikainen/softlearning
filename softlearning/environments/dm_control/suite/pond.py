@@ -31,6 +31,7 @@ def make_pond_model(base_model_string,
     if floor_geom is None:
         floor_element = etree.Element(
             'geom',
+            name='floor',
             type='plane',
             # material='grid',
             rgba=stringify([.1, .1, .1, .8]),
