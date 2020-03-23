@@ -59,9 +59,16 @@ def make_model(friction=None):
         type='slide',
         axis='0 1 0',
     )
+    z_slide = etree.Element(
+        'joint',
+        name='root_z',
+        type='slide',
+        axis='0 0 1',
+    )
 
-    main_body.insert(0, x_slide)
+    main_body.insert(0, z_slide)
     main_body.insert(0, y_slide)
+    main_body.insert(0, x_slide)
     mjcf.find(".//worldbody").insert(0, main_body)
 
     compiler_element = etree.Element(
