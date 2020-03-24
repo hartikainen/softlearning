@@ -15,7 +15,7 @@ def get_variant_spec(args):
     variant_spec = get_development_variant_spec(args)
 
     virel_algorithm_kwargs = {
-        'class_name': 'VIREL',
+        'class_name': args.algorithm,
         'config': {
             'policy_lr': 3e-4,
             'Q_lr': 3e-4,
@@ -28,10 +28,23 @@ def get_variant_spec(args):
         },
     }
 
+    if args.algorithm == 'BBOVIREL':
+        virel_algorithm_kwargs['config'].update({
+            'f_lr': 1e-3,
+            'prior_mean': 0.0,
+            'prior_stddev': 0.1,
+        })
+
     variant_spec['algorithm_params'] = deep_update(
         ALGORITHM_PARAMS_BASE,
         virel_algorithm_kwargs,
         get_algorithm_params(universe, domain, task),
     )
+
+    if args.algorithm == 'BBOVIREL':
+        variant_spec['f_params'] = tune.sample_from(lambda spec: (
+            spec.get('config', spec)
+            ['Q_params']
+        ))
 
     return variant_spec

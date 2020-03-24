@@ -4,6 +4,7 @@ from softlearning.utils.serialization import (
 from .sql import SQL  # noqa: unused-import
 from .sac import SAC  # noqa: unused-import
 from .virel import VIREL  # noqa: unused-import
+from .bbo_virel import BBOVIREL  # noqa: unused-import
 
 
 def serialize(algorithm):
