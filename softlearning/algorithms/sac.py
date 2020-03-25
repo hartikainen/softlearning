@@ -151,7 +151,7 @@ class SAC(RLAlgorithm):
             for name in self._Qs[0].observation_keys
         }
         next_Q_inputs = flatten_input_structure(
-            {**next_Q_observations, 'actions': next_actions})
+            {'observations': next_Q_observations, 'actions': next_actions})
         next_Qs_values = tuple(Q(next_Q_inputs) for Q in self._Q_targets)
 
         min_next_Q = tf.reduce_min(next_Qs_values, axis=0)
@@ -184,7 +184,9 @@ class SAC(RLAlgorithm):
             for name in self._Qs[0].observation_keys
         }
         Q_inputs = flatten_input_structure({
-            **Q_observations, 'actions': self._placeholders['actions']})
+            'observations': Q_observations,
+            'actions': self._placeholders['actions'],
+        })
         Q_values = self._Q_values = tuple(Q(Q_inputs) for Q in self._Qs)
 
         Q_losses = self._Q_losses = tuple(
@@ -259,7 +261,7 @@ class SAC(RLAlgorithm):
             for name in self._Qs[0].observation_keys
         }
         Q_inputs = flatten_input_structure({
-            **Q_observations, 'actions': actions})
+            'observations': Q_observations, 'actions': actions})
         Q_log_targets = tuple(Q(Q_inputs) for Q in self._Qs)
         min_Q_log_target = tf.reduce_min(Q_log_targets, axis=0)
 
