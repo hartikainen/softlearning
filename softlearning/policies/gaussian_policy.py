@@ -205,6 +205,8 @@ class GaussianPolicy(LatentSpacePolicy):
 
             ('raw-actions-mean', np.mean(raw_actions_np)),
             ('raw-actions-std', np.std(raw_actions_np)),
+            ('raw-actions-min', np.min(raw_actions_np)),
+            ('raw-actions-max', np.max(raw_actions_np)),
 
             ('actions-mean', np.mean(actions_np)),
             ('actions-std', np.std(actions_np)),
