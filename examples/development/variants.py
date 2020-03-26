@@ -593,6 +593,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 'angular_velocity_reward_weight': tune.grid_search([
                     1.0, 3.0, 10.0, 30.0
                 ]),
+                'control_cost_weight': 0.0,
                 'desired_angular_velocity': tune.grid_search([
                     1.0, 5.0, 10.0, 20.0
                 ]),

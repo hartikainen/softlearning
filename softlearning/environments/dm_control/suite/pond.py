@@ -155,6 +155,7 @@ class OrbitTaskMixin(base.Task):
     def __init__(self,
                  desired_angular_velocity,
                  angular_velocity_reward_weight,
+                 control_cost_weight=0.0,
                  random=None):
         """Initializes an instance of `Orbit`.
 
@@ -169,6 +170,7 @@ class OrbitTaskMixin(base.Task):
         """
         self._desired_angular_velocity = desired_angular_velocity
         self._angular_velocity_reward_weight = angular_velocity_reward_weight
+        self._control_cost_weight = control_cost_weight
         self._previous_action = None
         return super(OrbitTaskMixin, self).__init__(random=random)
 
@@ -218,6 +220,7 @@ class OrbitTaskMixin(base.Task):
 
     def get_reward(self, physics):
         """Returns a reward to the agent."""
+        control_cost = np.sum(self._control_cost_weight * physics.control())
         angular_velocity_reward = (
             self._angular_velocity_reward_weight
             * np.sign(physics.torso_velocity()[0])
@@ -228,7 +231,10 @@ class OrbitTaskMixin(base.Task):
                 value_at_margin=0.0,
                 sigmoid='linear'))
 
-        return self.upright_reward(physics) * angular_velocity_reward
+        reward = (
+            self.upright_reward(physics) * angular_velocity_reward
+            + control_cost)
+        return reward
 
     def get_termination(self, physics):
         """Terminates when the agent falls into pond."""

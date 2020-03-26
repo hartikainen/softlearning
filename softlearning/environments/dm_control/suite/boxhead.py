@@ -31,6 +31,7 @@ DEFAULT_POND_RADIUS = 10.0
 DEFAULT_DESIRED_ANGULAR_VELOCITY = 5.0
 DEFAULT_DESIRED_ANGULAR_VELOCITY = 10.0
 DEFAULT_ANGULAR_VELOCITY_REWARD_WEIGHT = 1.0
+DEFAULT_CONTROL_COST_WEIGHT = 0.0
 DEFAULT_DESIRED_SPEED_ON_BRIDGE = 10.0
 DEFAULT_DESIRED_SPEED_AFTER_BRIDGE = 1.0
 
@@ -107,6 +108,7 @@ def orbit_pond(time_limit=DEFAULT_TIME_LIMIT,
                desired_angular_velocity=DEFAULT_DESIRED_ANGULAR_VELOCITY,
                angular_velocity_reward_weight=(
                    DEFAULT_ANGULAR_VELOCITY_REWARD_WEIGHT),
+               control_cost_weight=DEFAULT_CONTROL_COST_WEIGHT,
                pond_radius=DEFAULT_POND_RADIUS,
                friction=None,
                random=None,
@@ -124,6 +126,7 @@ def orbit_pond(time_limit=DEFAULT_TIME_LIMIT,
     task = Orbit(
         desired_angular_velocity=desired_angular_velocity,
         angular_velocity_reward_weight=angular_velocity_reward_weight,
+        control_cost_weight=control_cost_weight,
         random=random)
     return control.Environment(
         physics,
