@@ -23,6 +23,14 @@ def get_path_infos_orbit_pond(physics,
         for path in paths
     ]))), 2, axis=-1)
 
+    accelerations_xyz = np.concatenate(tuple(itertools.chain(*[
+        [
+            path['observations']['acceleration'],
+            path['next_observations']['acceleration'][[-1]]
+        ]
+        for path in paths
+    ])))
+
     def compute_cumulative_angle_travelled(path):
         xy = np.concatenate((
             path['observations']['position'],
@@ -59,8 +67,13 @@ def get_path_infos_orbit_pond(physics,
         for metric_name, metric_values in (
                 ('distances_from_water', distances_from_water),
                 ('velocities', velocities),
-                ('cumulative_angles_travelled', cumulative_angles_travelled))
-        for metric_fn_name in ('mean', 'min', 'mean')
+                ('cumulative_angles_travelled', cumulative_angles_travelled),
+                ('angular_velocity_mean',
+                 cumulative_angles_travelled / x.size),
+                ('accelerations-x', accelerations_xyz[:, 0]),
+                ('accelerations-y', accelerations_xyz[:, 1]),
+                ('accelerations-z', accelerations_xyz[:, 2]))
+        for metric_fn_name in ('mean', 'max', 'min', 'mean')
     ])
 
     histogram_margin = 3.0
