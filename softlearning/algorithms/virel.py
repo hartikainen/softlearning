@@ -1,11 +1,12 @@
 from copy import deepcopy
 from collections import OrderedDict
+import numbers
 
 import tensorflow as tf
 
 from .rl_algorithm import RLAlgorithm
 
-from .sac import td_targets
+from .sac import td_targets, heuristic_target_entropy
 
 
 @tf.function(experimental_relax_shapes=True)
@@ -51,6 +52,8 @@ class VIREL(RLAlgorithm):
             beta_scale=4e-4,
             beta_batch_size=4096,
             beta_update_type='MSBE',
+            beta_lr=1e-3,
+            target_entropy='auto',
             target_update_interval=1,
 
             save_full_state=False,
@@ -97,6 +100,17 @@ class VIREL(RLAlgorithm):
         self._beta_batch_size = beta_batch_size
         self._target_update_interval = target_update_interval
         self._beta_update_type = beta_update_type
+
+        if beta_update_type == 'learn':
+            self._target_entropy = (
+                heuristic_target_entropy(self._training_environment.action_space)
+                if target_entropy == 'auto'
+                else target_entropy)
+            self._beta_lr = beta_lr
+            self._beta_optimizer = tf.optimizers.Adam(
+                self._beta_lr, name='beta_optimizer')
+        else:
+            self._target_entropy = None
 
         self._save_full_state = save_full_state
 
@@ -212,11 +226,35 @@ class VIREL(RLAlgorithm):
         return Qs_loss
 
     @tf.function(experimental_relax_shapes=True)
+    def _update_beta_learn(self, batch):
+        if not isinstance(self._target_entropy, numbers.Number):
+            return 0.0
+
+        observations = batch['observations']
+
+        actions, log_pis = self._policy.actions_and_log_probs(observations)
+
+        with tf.GradientTape() as tape:
+            beta_losses = -1.0 * (
+                self._beta * tf.stop_gradient(log_pis + self._target_entropy))
+            # NOTE(hartikainen): It's important that we take the average here,
+            # otherwise we end up effectively having `batch_size` times too
+            # large learning rate.
+            beta_loss = tf.nn.compute_average_loss(beta_losses)
+
+        beta_gradient = tape.gradient(beta_loss, self._beta)
+        self._beta_optimizer.apply_gradients([[beta_gradient, self._beta]])
+
+        return beta_losses
+
+    @tf.function(experimental_relax_shapes=True)
     def _update_beta(self, *args, **kwargs):
         if self._beta_update_type is None:
             return 0.0
         elif self._beta_update_type == 'MSBE':
             return self._update_beta_MSBE(*args, **kwargs)
+        elif self._beta_update_type == 'learn':
+            return self._update_beta_learn(*args, **kwargs)
 
         raise NotImplementedError(self._beta_update_type)
 
