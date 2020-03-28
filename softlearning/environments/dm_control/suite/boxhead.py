@@ -255,7 +255,7 @@ class Orbit(OrbitTaskMixin):
         pond_center_x, pond_center_y = physics.pond_center_xyz[:2]
 
         random_angle = np.random.uniform(0, 2 * np.pi)
-        distance_from_pond = pond_radius / np.random.uniform(2.0, 10.0)
+        distance_from_pond = pond_radius / 10.0
         distance_from_origin = pond_radius + distance_from_pond
         x = pond_center_x + distance_from_origin * np.cos(random_angle)
         y = pond_center_y + distance_from_origin * np.sin(random_angle)
