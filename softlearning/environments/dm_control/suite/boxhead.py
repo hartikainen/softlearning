@@ -166,11 +166,12 @@ def bridge_run(time_limit=DEFAULT_TIME_LIMIT,
 
 
 def _common_observations(physics):
+    acceleration = 15.0 * np.tanh(physics.acceleration() / 50.0)
     observation = collections.OrderedDict((
         ('position', physics.position()),
         ('velocity', physics.velocity()),
         ('roll_velocity', physics.named.data.qvel['roll']),
-        ('acceleration', physics.acceleration()),
+        ('acceleration', acceleration),
         ('gyro', physics.gyro()),
         ('global_velocity', physics.global_velocity()),
         ('orientation', physics.orientation()),
