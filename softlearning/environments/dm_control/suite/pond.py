@@ -223,13 +223,8 @@ class OrbitTaskMixin(base.Task):
         control_cost = np.sum(self._control_cost_weight * physics.control())
         angular_velocity_reward = (
             self._angular_velocity_reward_weight
-            * np.sign(physics.torso_velocity()[0])
-            * rewards.tolerance(
-                physics.angular_velocity(),
-                bounds=(self._desired_angular_velocity, float('inf')),
-                margin=self._desired_angular_velocity,
-                value_at_margin=0.0,
-                sigmoid='linear'))
+            * np.minimum(
+                physics.angular_velocity(), self._desired_angular_velocity))
 
         reward = (
             self.upright_reward(physics) * angular_velocity_reward
