@@ -601,7 +601,11 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     # default: (0.5, 0.02, 0.02)
                     (x, 0.02, 0.02)
                     for x in [0.5]
-                ])
+                ]),
+                'roll_damping': tune.grid_search([
+                    # default: (0.5, 0.02, 0.02)
+                    1.0, 2.0, 4.0, 6.0, 8.0, 10.0
+                ]),
             },
             'bridge_run': {},
         },
