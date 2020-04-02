@@ -98,6 +98,8 @@ def make_model(friction=None):
     kick_actuator = mjcf.find(".//general[@name='kick']")
     kick_actuator.getparent().remove(kick_actuator)
 
+    egocentric_camera_body = mjcf.find(".//body[@name='egocentric_camera']")
+    egocentric_camera_body.getparent().remove(egocentric_camera_body)
     # print(etree.tostring(mjcf, pretty_print=True, encoding='unicode', method='xml'))
 
     return etree.tostring(mjcf, pretty_print=True)
