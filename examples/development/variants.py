@@ -233,6 +233,7 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'PointMass': {
             'Sequential-v0': 50,
+            'SequentialDecoupleGoalId-v0': 25,
         },
     },
 }
@@ -298,6 +299,19 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             },
             'Wall-v0': {
                 'observation_keys': ('observation', 'desired_goal'),
+            },
+        },
+        'PointMass': {
+            'SequentialDecoupleGoalId-v0': {
+                'goal_reward': 0.0,
+                'actuation_cost_coeff': 0.0,
+                'distance_cost_coeff': 1.0,
+                'init_sigma': 0.1,
+                'mode': 'train',
+                'goal_orders': np.array((
+                    (0, 1, 1, 1),
+                    (1, 0, 0, 0),
+                ))
             },
         },
         'Sawyer': {

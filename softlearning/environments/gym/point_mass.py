@@ -160,7 +160,10 @@ class PointMassSequentialEnv(gym.Env):
         # Penalize the L2 norm of acceleration
         action_cost = self.action_cost_coeff * np.linalg.norm(
             action_t_0, ord=2)
-        goal_cost = self.distance_cost_coeff * distance_to_goal
+        # goal_cost = self.distance_cost_coeff * distance_to_goal
+        goal_cost = (
+            self.distance_cost_coeff * distance_to_goal
+            - 10 * self.goal_counter)
 
         reward = -1.0 * (action_cost + goal_cost)
 
@@ -469,3 +472,41 @@ class PointMassSequentialEnvV2(PointMassSequentialEnv):
         one_hot_task_id = np.roll(
             np.eye(1, self.task_id_shape[0])[0], goal_order_index)
         return one_hot_task_id
+
+
+class PointMassSequentialDecoupleGoalIdEnv(PointMassSequentialEnvV2):
+
+    def __init__(self, *args, **kwargs):
+        result = super(PointMassSequentialDecoupleGoalIdEnv, self).__init__(
+            *args, **kwargs)
+        old_spaces = self.observation_space.spaces
+        self.observation_space = spaces.Dict(type(old_spaces)((
+            *old_spaces.items(),
+            ('first_goal_reached', spaces.Box(
+                low=np.array((0.0, ) * 5),
+                high=np.array((1.0, ) * 5),
+                shape=None,
+                dtype=np.float32,
+            )),
+        )))
+        return result
+
+    @property
+    def task_id_shape(self):
+        num_goal_orders = self.goal_orders.shape[0]
+        return (num_goal_orders * 5, )
+
+    @property
+    def current_task_id(self):
+        num_goal_orders = self.goal_orders.shape[0]
+        goal_order_index = self.current_goal_order_index
+        one_hot_task_id = np.roll(
+            np.eye(1, self.task_id_shape[0])[0], goal_order_index)
+        return np.repeat(one_hot_task_id[:num_goal_orders], 5)
+
+    def _get_observation(self, *args, **kwargs):
+        observation = (
+            super(PointMassSequentialDecoupleGoalIdEnv, self)
+            ._get_observation(*args, **kwargs))
+        observation['first_goal_reached'] = np.full(5, 0 < self.goal_counter)
+        return observation
