@@ -184,14 +184,12 @@ class ExperimentRunner(tune.Trainable):
         tf_checkpoint.save(file_prefix=f"{save_path}/checkpoint")
 
         state = self.algorithm.__getstate__()
-        # with open(f"{save_path}/state.json", 'w') as f:
         with open(os.path.join(save_path, "state.json"), 'w') as f:
             json.dump(state, f)
 
     def _restore_algorithm(self, checkpoint_dir):
         save_path = self._algorithm_save_path(checkpoint_dir)
 
-        # with open(f"{save_path}/state.json", 'r') as f:
         with open(os.path.join(save_path, "state.json"), 'r') as f:
             state = json.load(f)
 
@@ -226,18 +224,7 @@ class ExperimentRunner(tune.Trainable):
         status.assert_consumed().run_restore_ops()
 
     def _save(self, checkpoint_dir):
-        """Implements the checkpoint logic.
-
-        TODO(hartikainen): This implementation is currently very hacky. Things
-        that need to be fixed:
-          - Figure out how serialize/save tf.keras.Model subclassing. The
-            current implementation just dumps the weights in a pickle, which
-            is not optimal.
-          - Try to unify all the saving and loading into easily
-            extendable/maintainable interfaces. Currently we use
-            `tf.train.Checkpoint` and `pickle.dump` in very unorganized way
-            which makes things not so usable.
-        """
+        """Implements the checkpoint save logic."""
         self._save_replay_pool(checkpoint_dir)
         self._save_sampler(checkpoint_dir)
         self._save_value_functions(checkpoint_dir)
@@ -247,6 +234,7 @@ class ExperimentRunner(tune.Trainable):
         return os.path.join(checkpoint_dir, '')
 
     def _restore(self, checkpoint_dir):
+        """Implements the checkpoint restore logic."""
         assert isinstance(checkpoint_dir, str), checkpoint_dir
         checkpoint_dir = checkpoint_dir.rstrip('/')
 
@@ -258,11 +246,10 @@ class ExperimentRunner(tune.Trainable):
         self._restore_policy(checkpoint_dir)
         self._restore_algorithm(checkpoint_dir)
 
-        self._built = True
+        for Q, Q_target in zip(self.algorithm._Qs, self.algorithm._Q_targets):
+            Q_target.set_weights(Q.get_weights())
 
-        # # TODO(hartikainen): target Qs should either be checkpointed or pickled.
-        # for Q, Q_target in zip(self.algorithm._Qs, self.algorithm._Q_targets):
-        #     Q_target.set_weights(Q.get_weights())
+        self._built = True
 
 
 def main(argv=None):
