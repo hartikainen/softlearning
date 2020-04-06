@@ -338,6 +338,10 @@ EPOCH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
             'orbit_pond': int(1e4),
             'bridge_run': int(1e4),
         },
+        'point_mass': {
+            'orbit_pond': int(1e4),
+            'bridge_run': int(1e4),
+        },
     },
 }
 
@@ -624,8 +628,20 @@ OBSERVATION_KEYS_PER_UNIVERSE_DOMAIN_TASK = {
         # 'orientation',
         'orientation_to_pond',
         'distance_from_pond',
+        'previous_action',
     ),
-
+    ('dm_control', 'point_mass', 'orbit_pond'): (
+        # 'position',
+        'velocity',
+        # 'roll_velocity',
+        # 'acceleration',
+        # 'gyro',
+        # 'global_velocity',
+        # 'orientation',
+        'orientation_to_pond',
+        'distance_from_pond',
+        # 'previous_action',
+    ),
 }
 
 
