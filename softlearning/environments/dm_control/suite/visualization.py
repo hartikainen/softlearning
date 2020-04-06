@@ -23,14 +23,6 @@ def get_path_infos_orbit_pond(physics,
         for path in paths
     ]))), 2, axis=-1)
 
-    accelerations_xyz = np.concatenate(tuple(itertools.chain(*[
-        [
-            path['observations']['acceleration'],
-            path['next_observations']['acceleration'][[-1]]
-        ]
-        for path in paths
-    ])))
-
     def compute_cumulative_angle_travelled(path):
         xy = np.concatenate((
             path['observations']['position'],
@@ -69,12 +61,27 @@ def get_path_infos_orbit_pond(physics,
                 ('velocities', velocities),
                 ('cumulative_angles_travelled', cumulative_angles_travelled),
                 ('angular_velocity_mean',
-                 cumulative_angles_travelled / x.size),
-                ('accelerations-x', accelerations_xyz[:, 0]),
-                ('accelerations-y', accelerations_xyz[:, 1]),
-                ('accelerations-z', accelerations_xyz[:, 2]))
+                 cumulative_angles_travelled / x.size))
         for metric_fn_name in ('mean', 'max', 'min', 'mean')
     ])
+
+    if 'acceleration' in paths[0]['observations']:
+        accelerations_xyz = np.concatenate(tuple(itertools.chain(*[
+            [
+                path['observations']['acceleration'],
+                path['next_observations']['acceleration'][[-1]]
+            ]
+            for path in paths
+        ])))
+        infos.update([
+            (f"{metric_name}-{metric_fn_name}",
+             getattr(np, metric_fn_name)(metric_values))
+            for metric_name, metric_values in (
+                    ('accelerations-x', accelerations_xyz[:, 0]),
+                    ('accelerations-y', accelerations_xyz[:, 1]),
+                    ('accelerations-z', accelerations_xyz[:, 2]))
+            for metric_fn_name in ('mean', 'max', 'min', 'mean')
+        ])
 
     histogram_margin = 3.0
     bins_per_unit = 2
