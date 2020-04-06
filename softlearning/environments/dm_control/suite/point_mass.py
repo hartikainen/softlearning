@@ -8,6 +8,7 @@ from dm_control.suite.point_mass import (
     get_model_and_assets as get_model_and_assets_common,
     Physics as PointMassPhysics)
 from dm_control.utils import xml_tools
+from scipy.spatial.transform import Rotation
 
 from lxml import etree
 
@@ -15,6 +16,7 @@ import numpy as np
 from .pond import (
     PondPhysicsMixin,
     make_pond_model,
+    quaternion_multiply,
     DEFAULT_POND_XY,
     DEFAULT_POND_RADIUS,
     OrbitTaskMixin)
@@ -48,6 +50,30 @@ def make_model(walls_and_target=False):
     default_joint_element = mjcf.find('.//default').find(".//joint")
     default_joint_element.attrib['limited'] = 'false'
     default_joint_element.attrib.pop('range')
+
+    # <site name='torso_site' pos='0 0 2' size='5' rgba='1 1 1 1' group='4'/>
+    pointmass_site = etree.Element(
+        'site',
+        name='pointmass_site',
+        pos='0, 0, 0',
+        size='1',
+        rgba='1 1 1 1',
+        group='4',
+    )
+
+    pointmass_body = mjcf.find(".//body[@name='pointmass']")
+    pointmass_body.insert(0, pointmass_site)
+
+    sensor = etree.Element('sensor')
+    velocimeter_sensor = etree.Element(
+        'velocimeter',
+        name='sensor_torso_vel',
+        site='pointmass_site'
+    )
+
+    sensor.insert(0, velocimeter_sensor)
+
+    mjcf.insert(-1, sensor)
 
     return etree.tostring(mjcf, pretty_print=True)
 
@@ -109,26 +135,73 @@ def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
 def _common_observations(physics):
     observation = collections.OrderedDict((
         ('position', physics.position()),
-        ('velocity', physics.velocity()),
+        # ('velocity', physics.velocity()),
+        ('velocity', physics.velocity_to_pond()),
     ))
     return observation
 
 
 class PondPhysics(PondPhysicsMixin, PointMassPhysics):
+    def velocity_to_pond(self):
+        velocity = self.velocity()
+        sin_cos_angle_to_pond = self.sin_cos_angle_to_pond()
+        angle_to_pond = np.arctan2(*sin_cos_angle_to_pond)
+
+        rotation_matrix = np.array((
+            (np.cos(angle_to_pond), -np.sin(angle_to_pond)),
+            (np.sin(angle_to_pond), np.cos(angle_to_pond)),
+        ))
+
+        rotated_velocity = rotation_matrix @ velocity
+        return rotated_velocity
+
     def torso_velocity(self):
-        return self.velocity()
+        torso_velocity = self.named.data.sensordata['sensor_torso_vel'].copy()
+        assert np.all(torso_velocity[:2] == self.velocity())
+        return torso_velocity
+
+    def global_velocity(self, *args, **kwargs):
+        return self.torso_velocity(*args, **kwargs)
 
     def center_of_mass(self):
         return self.named.data.geom_xpos['pointmass']
 
-    def orientation_to_pond(self):
-        x = self.named.data.qpos['root_x']
-        y = self.named.data.qpos['root_y']
-        angle_to_pond_center = np.arctan2(y, x)
+    def orientation(self):
+        orientation = np.roll(Rotation.from_matrix(
+            self.named.data.xmat['pointmass'].reshape(3, 3)
+        ).as_quat(), 1)
+        return orientation
+
+    def angle_to_pond(self):
+        xy_from_pond_center = self.position()[:2] - self.pond_center_xyz[:2]
+        angle_to_pond_center = np.arctan2(*xy_from_pond_center[::-1])
+        return angle_to_pond_center
+
+    def sin_cos_angle_to_pond(self):
+        angle_to_pond_center = self.angle_to_pond()
+
         sin_cos_encoded_angle_to_pond_center = np.array((
             np.sin(angle_to_pond_center),
             np.cos(angle_to_pond_center)))
         return sin_cos_encoded_angle_to_pond_center
+
+    def orientation_to_pond(self):
+        orientation_to_origin = self.orientation()
+
+        xy_from_pond_center = self.position()[:2] - self.pond_center_xyz[:2]
+        angle_to_pond_center = np.arctan2(*xy_from_pond_center[::-1])
+        origin_to_pond_transformation = np.roll(
+            Rotation.from_euler('z', angle_to_pond_center).inv().as_quat(), 1)
+
+        orientation_to_pond = quaternion_multiply(
+            origin_to_pond_transformation, orientation_to_origin)
+
+        # TODO(hartikainen): Check if this has some negative side effects on
+        # other rotation axes.
+        orientation_to_pond[-1] = np.abs(orientation_to_pond[-1])
+
+        return self.sin_cos_angle_to_pond()
+        return orientation_to_pond
 
     def get_path_infos(self, *args, **kwargs):
         return visualization.get_path_infos_orbit_pond(self, *args, **kwargs)
@@ -156,6 +229,22 @@ class Orbit(OrbitTaskMixin):
         physics.named.data.geom_xpos['pointmass'][:2] = (x, y)
 
         return super(Orbit, self).initialize_episode(physics)
+
+    def before_step(self, action, physics):
+        sin_cos_angle_to_pond = physics.sin_cos_angle_to_pond()
+        angle_to_pond = np.arctan2(*sin_cos_angle_to_pond)
+        if not np.all(np.isclose(physics.angle_to_pond(), angle_to_pond)):
+            breakpoint()
+            pass
+
+        rotation_matrix = np.array((
+            (np.cos(angle_to_pond), -np.sin(angle_to_pond)),
+            (np.sin(angle_to_pond), np.cos(angle_to_pond)),
+        ))
+
+        rotated_action = rotation_matrix @ action
+        return super(Orbit, self).before_step(
+            rotated_action, physics)
 
 
 class BridgeMovePhysics(bridge.MovePhysicsMixin, PointMassPhysics):
