@@ -29,7 +29,7 @@ def make_pond_model(base_model_string,
     floor_size_str = f'{floor_size} {floor_size} .1'
 
     if floor_geom is None:
-        floor_element = etree.Element(
+        floor_geom = etree.Element(
             'geom',
             name='floor',
             type='plane',
@@ -38,9 +38,9 @@ def make_pond_model(base_model_string,
             pos=stringify((*pond_xy, 0)),
             size=floor_size_str,
         )
-        worldbody.insert(0, floor_element)
+        worldbody.insert(0, floor_geom)
 
-    floor_element.attrib['size'] = floor_size_str
+    floor_geom.attrib['size'] = floor_size_str
 
     pond_element = etree.Element(
         "geom",
