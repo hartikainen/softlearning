@@ -235,8 +235,8 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'point_mass': {
             DEFAULT_KEY: int(3e6),
-            'orbit_pond': int(2e5),
-            'bridge_run': int(2e5),
+            'orbit_pond': int(5e5),
+            'bridge_run': int(5e5),
             # 'hard': int(None),
         },
         'reacher': {
