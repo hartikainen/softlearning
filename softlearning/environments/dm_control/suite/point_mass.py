@@ -29,7 +29,7 @@ DEFAULT_DESIRED_SPEED_ON_BRIDGE = 3.0
 DEFAULT_DESIRED_SPEED_AFTER_BRIDGE = 1.0
 
 
-def make_model(walls_and_target=False):
+def make_model(walls_and_target=False, actuator_type='motor'):
     xml_string = common.read_model('point_mass.xml')
     parser = etree.XMLParser(remove_blank_text=True)
     mjcf = etree.XML(xml_string, parser)
@@ -72,8 +72,23 @@ def make_model(walls_and_target=False):
     )
 
     sensor.insert(0, velocimeter_sensor)
-
     mjcf.insert(-1, sensor)
+
+    if actuator_type == 'velocity':
+        default_node = mjcf.find('.//default')
+        default_position_element = etree.Element(
+            'position',
+            gear='.1',
+            ctrlrange='-1 1',
+            ctrllimited='true',
+        )
+        default_node.insert(0, default_position_element)
+
+        actuator_node = mjcf.find('actuator')
+        t1_motor = actuator_node.find(".//motor[@name='t1']")
+        t1_motor.tag = actuator_type
+        t2_motor = actuator_node.find(".//motor[@name='t2']")
+        t2_motor.tag = actuator_type
 
     return etree.tostring(mjcf, pretty_print=True)
 
@@ -82,6 +97,7 @@ def make_model(walls_and_target=False):
 def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
                angular_velocity_reward_weight=1.0,
                make_1d=False,
+               actuator_type='motor',
                random=None,
                environment_kwargs=None):
     """Returns the Orbit task."""
@@ -90,7 +106,8 @@ def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
         'pond_radius', DEFAULT_POND_RADIUS * 0.05)
     pond_xy = environment_kwargs.get('pond_xy', DEFAULT_POND_XY)
     # base_model_string, assets = get_model_and_assets_common()
-    base_model_string = make_model(walls_and_target=False)
+    base_model_string = make_model(
+        walls_and_target=False, actuator_type=actuator_type)
     xml_string = make_pond_model(
         base_model_string,
         pond_radius=pond_radius,
