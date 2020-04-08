@@ -81,6 +81,7 @@ def make_model(walls_and_target=False):
 @SUITE.add()
 def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
                angular_velocity_reward_weight=1.0,
+               make_1d=False,
                random=None,
                environment_kwargs=None):
     """Returns the Orbit task."""
@@ -98,6 +99,7 @@ def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
     task = Orbit(
         desired_angular_velocity=DEFAULT_DESIRED_ANGULAR_VELOCITY,
         angular_velocity_reward_weight=angular_velocity_reward_weight,
+        make_1d=make_1d,
         random=random)
     return control.Environment(
         physics, task, time_limit=time_limit, **environment_kwargs)
@@ -208,6 +210,10 @@ class PondPhysics(PondPhysicsMixin, PointMassPhysics):
 
 
 class Orbit(OrbitTaskMixin):
+    def __init__(self, *args, make_1d=False, **kwargs):
+        self._make_1d = make_1d
+        return super(Orbit, self).__init__(*args, **kwargs)
+
     def common_observations(self, physics):
         return _common_observations(physics)
 
@@ -231,11 +237,11 @@ class Orbit(OrbitTaskMixin):
         return super(Orbit, self).initialize_episode(physics)
 
     def before_step(self, action, physics):
+        if self._make_1d:
+            action = np.array((np.sum(action) / 2.0, 1.0))
+
         sin_cos_angle_to_pond = physics.sin_cos_angle_to_pond()
         angle_to_pond = np.arctan2(*sin_cos_angle_to_pond)
-        if not np.all(np.isclose(physics.angle_to_pond(), angle_to_pond)):
-            breakpoint()
-            pass
 
         rotation_matrix = np.array((
             (np.cos(angle_to_pond), -np.sin(angle_to_pond)),
@@ -243,6 +249,7 @@ class Orbit(OrbitTaskMixin):
         ))
 
         rotated_action = rotation_matrix @ action
+
         return super(Orbit, self).before_step(
             rotated_action, physics)
 
