@@ -74,21 +74,18 @@ def make_model(walls_and_target=False, actuator_type='motor'):
     sensor.insert(0, velocimeter_sensor)
     mjcf.insert(-1, sensor)
 
-    if actuator_type == 'velocity':
-        default_node = mjcf.find('.//default')
-        default_position_element = etree.Element(
-            'position',
-            gear='.1',
-            ctrlrange='-1 1',
-            ctrllimited='true',
-        )
-        default_node.insert(0, default_position_element)
-
+    if actuator_type in ('motor', 'velocity'):
         actuator_node = mjcf.find('actuator')
         t1_motor = actuator_node.find(".//motor[@name='t1']")
         t1_motor.tag = actuator_type
+        t1_motor.attrib['ctrlrange'] = '-1 1'
+        t1_motor.attrib['forcerange'] = '-1000000000 1000000000'
+        t1_motor.attrib['gear'] = '1.0'
         t2_motor = actuator_node.find(".//motor[@name='t2']")
         t2_motor.tag = actuator_type
+        t2_motor.attrib['ctrlrange'] = '-1 1'
+        t2_motor.attrib['forcerange'] = '-1000000000 1000000000'
+        t2_motor.attrib['gear'] = '1.0'
 
     return etree.tostring(mjcf, pretty_print=True)
 
@@ -255,7 +252,7 @@ class Orbit(OrbitTaskMixin):
 
     def before_step(self, action, physics):
         if self._make_1d:
-            action = np.array((np.sum(action) / 2.0, 1.0))
+            action = np.array((np.sum(action), 1.0 / 5.0))
 
         sin_cos_angle_to_pond = physics.sin_cos_angle_to_pond()
         angle_to_pond = np.arctan2(*sin_cos_angle_to_pond)
