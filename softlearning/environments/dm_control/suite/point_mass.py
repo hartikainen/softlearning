@@ -94,6 +94,7 @@ def make_model(walls_and_target=False, actuator_type='motor'):
 def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
                angular_velocity_reward_weight=1.0,
                make_1d=False,
+               lateral_control_magnitude=1.0,
                actuator_type='motor',
                random=None,
                environment_kwargs=None):
@@ -114,6 +115,7 @@ def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
         desired_angular_velocity=DEFAULT_DESIRED_ANGULAR_VELOCITY,
         angular_velocity_reward_weight=angular_velocity_reward_weight,
         make_1d=make_1d,
+        lateral_control_magnitude=lateral_control_magnitude,
         random=random)
     return control.Environment(
         physics, task, time_limit=time_limit, **environment_kwargs)
@@ -224,8 +226,13 @@ class PondPhysics(PondPhysicsMixin, PointMassPhysics):
 
 
 class Orbit(OrbitTaskMixin):
-    def __init__(self, *args, make_1d=False, **kwargs):
+    def __init__(self,
+                 *args,
+                 make_1d=False,
+                 lateral_control_magnitude=1.0,
+                 **kwargs):
         self._make_1d = make_1d
+        self._lateral_control_magnitude = lateral_control_magnitude
         return super(Orbit, self).__init__(*args, **kwargs)
 
     def common_observations(self, physics):
@@ -252,7 +259,8 @@ class Orbit(OrbitTaskMixin):
 
     def before_step(self, action, physics):
         if self._make_1d:
-            action = np.array((np.sum(action), 1.0 / 5.0))
+            action = np.array((
+                np.sum(action) * self._lateral_control_magnitude, 1.0 / 5.0))
 
         sin_cos_angle_to_pond = physics.sin_cos_angle_to_pond()
         angle_to_pond = np.arctan2(*sin_cos_angle_to_pond)
