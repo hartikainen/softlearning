@@ -37,6 +37,132 @@ class GaussianPolicy(LatentSpacePolicy):
             raw_action_distribution)
 
     @tf.function(experimental_relax_shapes=True)
+    def actions_raw_actions_and_log_probs(self, observations):
+        """Compute actions, raw_actions, and log probabilities together.
+
+        We need this functions to avoid numerical issues coming out of the
+        squashing bijector (`tfp.bijectors.Tanh`). Ideally this would be
+        avoided by using caching of the bijector and then computing actions
+        and log probs separately, but that's currently not possible due to the
+        issue in the graph mode (i.e. within `tf.function`) bijector caching.
+        This method could be removed once the caching works. For more, see:
+        https://github.com/tensorflow/probability/issues/840
+        """
+        observations = self._filter_observations(observations)
+
+        first_observation = tree.flatten(observations)[0]
+        first_input_rank = tf.size(tree.flatten(self._input_shapes)[0])
+        batch_shape = tf.shape(first_observation)[:-first_input_rank]
+
+        shifts, scales = self.shift_and_scale_model(observations)
+        raw_actions = self.raw_action_distribution.sample(
+            batch_shape,
+            bijector_kwargs={'scale': {'scale': scales},
+                             'shift': {'shift': shifts}})
+        actions = self._action_post_processor(raw_actions)
+        log_probs = self.action_distribution.log_prob(
+            actions,
+            bijector_kwargs={'scale': {'scale': scales},
+                             'shift': {'shift': shifts}}
+        )[..., tf.newaxis]
+
+        return actions, raw_actions, log_probs
+
+    @tf.function(experimental_relax_shapes=True)
+    def action_raw_action_and_log_prob(self, *args, **kwargs):
+        args_, kwargs_ = tree.map_structure(
+            lambda x: x[None, ...], (args, kwargs))
+        result = self.actions_raw_actions_and_log_probs(*args_, **kwargs_)
+        result = tree.map_structure(lambda x: x[0], result)
+        return result
+
+    @tf.function(experimental_relax_shapes=True)
+    def actions_raw_actions_and_probs(self, observations):
+        """Compute actions, raw_actions, and log probabilities together.
+
+        We need this functions to avoid numerical issues coming out of the
+        squashing bijector (`tfp.bijectors.Tanh`). Ideally this would be
+        avoided by using caching of the bijector and then computing actions
+        and log probs separately, but that's currently not possible due to the
+        issue in the graph mode (i.e. within `tf.function`) bijector caching.
+        This method could be removed once the caching works. For more, see:
+        https://github.com/tensorflow/probability/issues/840
+        """
+        observations = self._filter_observations(observations)
+
+        first_observation = tree.flatten(observations)[0]
+        first_input_rank = tf.size(tree.flatten(self._input_shapes)[0])
+        batch_shape = tf.shape(first_observation)[:-first_input_rank]
+
+        shifts, scales = self.shift_and_scale_model(observations)
+        raw_actions = self.raw_action_distribution.sample(
+            batch_shape,
+            bijector_kwargs={'scale': {'scale': scales},
+                             'shift': {'shift': shifts}})
+        actions = self._action_post_processor(raw_actions)
+        probs = self.action_distribution.prob(
+            actions,
+            bijector_kwargs={'scale': {'scale': scales},
+                             'shift': {'shift': shifts}}
+        )[..., tf.newaxis]
+
+        return actions, raw_actions, probs
+
+    @tf.function(experimental_relax_shapes=True)
+    def action_raw_action_and_prob(self, *args, **kwargs):
+        args_, kwargs_ = tree.map_structure(
+            lambda x: x[None, ...], (args, kwargs))
+        result = self.actions_raw_actions_and_probs(*args_, **kwargs_)
+        result = tree.map_structure(lambda x: x[0], result)
+        return result
+
+    @tf.function(experimental_relax_shapes=True)
+    def log_probs_for_raw_actions(self, observations, raw_actions):
+        """Compute log probabilities of `raw_actions` given observations."""
+        observations = self._filter_observations(observations)
+
+        shifts, scales = self.shift_and_scale_model(observations)
+        log_probs = self.action_distribution.log_prob(
+            self._action_post_processor(raw_actions),
+            bijector_kwargs={'scale': {'scale': scales},
+                             'shift': {'shift': shifts}}
+        )[..., tf.newaxis]
+
+        return log_probs
+
+    @tf.function(experimental_relax_shapes=True)
+    def log_prob_for_raw_action(self, *args, **kwargs):
+        """Compute log probabilities of `raw_actions` given observations."""
+        args_, kwargs_ = tree.map_structure(
+            lambda x: x[None, ...], (args, kwargs))
+        log_probs = self.log_probs_for_raw_actions(*args_, **kwargs_)
+        log_prob = tree.map_structure(lambda x: x[0], log_probs)
+        return log_prob
+
+    @tf.function(experimental_relax_shapes=True)
+    def probs_for_raw_actions(self, observations, raw_actions):
+        """Compute probabilities of `raw_actions` given observations."""
+        observations = self._filter_observations(observations)
+
+        shifts, scales = self.shift_and_scale_model(observations)
+        probs = self.action_distribution.prob(
+            self._action_post_processor(raw_actions),
+            bijector_kwargs={'scale': {'scale': scales},
+                             'shift': {'shift': shifts}}
+        )[..., tf.newaxis]
+
+        return probs
+
+    @tf.function(experimental_relax_shapes=True)
+    def prob_for_raw_action(self, *args, **kwargs):
+        """Compute probabilities of `raw_actions` given observations."""
+        args_, kwargs_ = tree.map_structure(
+            lambda x: x[None, ...], (args, kwargs))
+        probs = self.probs_for_raw_actions(*args_, **kwargs_)
+        prob = tree.map_structure(lambda x: x[0], probs)
+        return prob
+
+    @tf.function(experimental_relax_shapes=True)
     def actions(self, observations):
         """Compute actions for given observations."""
         observations = self._filter_observations(observations)

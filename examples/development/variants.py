@@ -43,6 +43,8 @@ ALGORITHM_PARAMS_ADDITIONAL = {
 
             'discount': 0.99,
             'reward_scale': 1.0,
+            'target_type': 'retrace',
+            'retrace_n_step': tune.grid_search([1, 5, 10, 15, 20, 25]),
         },
     },
     'SQL': {

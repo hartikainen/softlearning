@@ -34,3 +34,35 @@ class ContinuousUniformPolicy(UniformPolicyMixin, ContinuousPolicy):
         self.distribution = tfp.distributions.Independent(
             tfp.distributions.Uniform(low=low, high=high),
             reinterpreted_batch_ndims=1)
+
+    @tf.function(experimental_relax_shapes=True)
+    def actions_raw_actions_and_log_probs(self, *args, **kwargs):
+        """Compute actions, raw_actions, and log probabilities together."""
+        actions = self.actions(*args, **kwargs)
+        raw_actions = actions
+        log_probs = self.log_probs(*args, **kwargs, actions=actions)
+        return actions, raw_actions, log_probs
+
+    @tf.function(experimental_relax_shapes=True)
+    def action_raw_action_and_log_prob(self, *args, **kwargs):
+        args_, kwargs_ = tree.map_structure(
+            lambda x: x[None, ...], (args, kwargs))
+        result = self.actions_raw_actions_and_log_probs(*args_, **kwargs_)
+        result = tree.map_structure(lambda x: x[0], result)
+        return result
+
+    @tf.function(experimental_relax_shapes=True)
+    def actions_raw_actions_and_probs(self, *args, **kwargs):
+        """Compute actions, raw_actions, and probabilities together."""
+        actions = self.actions(*args, **kwargs)
+        raw_actions = actions
+        probs = self.probs(*args, **kwargs, actions=actions)
+        return actions, raw_actions, probs
+
+    @tf.function(experimental_relax_shapes=True)
+    def action_raw_action_and_prob(self, *args, **kwargs):
+        args_, kwargs_ = tree.map_structure(
+            lambda x: x[None, ...], (args, kwargs))
+        result = self.actions_raw_actions_and_probs(*args_, **kwargs_)
+        result = tree.map_structure(lambda x: x[0], result)
+        return result

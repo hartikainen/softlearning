@@ -35,10 +35,18 @@ class SimpleReplayPool(FlexibleReplayPool):
                 'observations', observation_space),
             'next_observations': field_from_gym_space(
                 'next_observations', observation_space),
+            'raw_actions': Field(
+                name='raw_actions',
+                dtype=action_space.dtype,
+                shape=environment.action_space.shape),
             'actions': Field(
                 name='actions',
                 dtype=action_space.dtype,
                 shape=environment.action_space.shape),
+            'p_a_t': Field(
+                name='p_a_t',
+                dtype=action_space.dtype,
+                shape=(1, )),
             'rewards': Field(
                 name='rewards',
                 dtype='float32',

@@ -33,6 +33,8 @@ class SimpleSampler(BaseSampler):
     def _process_sample(self,
                         observation,
                         action,
+                        raw_action,
+                        prob,
                         reward,
                         terminal,
                         next_observation,
@@ -40,6 +42,8 @@ class SimpleSampler(BaseSampler):
         processed_observation = {
             'observations': observation,
             'actions': action,
+            'raw_actions': raw_action,
+            'p_a_t': np.atleast_1d(prob),
             'rewards': np.atleast_1d(reward),
             'terminals': np.atleast_1d(terminal),
             'next_observations': next_observation,
@@ -52,7 +56,9 @@ class SimpleSampler(BaseSampler):
         if self._is_first_step:
             self.reset()
 
-        action = self.policy.action(self._policy_input).numpy()
+        action, raw_action, prob = tree.map_structure(
+            lambda x: x.numpy(),
+            self.policy.action_raw_action_and_prob(self._policy_input))
 
         next_observation, reward, terminal, info = self.environment.step(
             action)
@@ -63,6 +69,8 @@ class SimpleSampler(BaseSampler):
         processed_sample = self._process_sample(
             observation=self._current_observation,
             action=action,
+            raw_action=raw_action,
+            prob=prob,
             reward=reward,
             terminal=terminal,
             next_observation=next_observation,
