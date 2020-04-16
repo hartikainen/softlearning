@@ -168,7 +168,7 @@ class PondPhysics(PondPhysicsMixin, PointMassPhysics):
         rotation_matrix = np.array((
             (np.cos(angle_to_pond), -np.sin(angle_to_pond)),
             (np.sin(angle_to_pond), np.cos(angle_to_pond)),
-        ))
+        )).T
 
         rotated_velocity = rotation_matrix @ velocity
         return rotated_velocity
