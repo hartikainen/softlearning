@@ -114,9 +114,10 @@ class PondPhysicsMixin:
         return distance_from_pond
 
     def angular_velocities(self):
-        global_velocity = self.global_velocity()[:2]
+        # global_velocity = self.global_velocity()[:2]
         positions2 = self.center_of_mass()[:2][None]
-        positions1 = positions2 - global_velocity
+        # positions1 = positions2 - global_velocity
+        positions1 = self._previous_center_of_mass.copy()[:2]
 
         angular_deltas = compute_angular_deltas(
             positions1, positions2, self.pond_center_xyz)

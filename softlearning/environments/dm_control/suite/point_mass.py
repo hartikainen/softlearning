@@ -272,6 +272,8 @@ class Orbit(OrbitTaskMixin):
 
         rotated_action = rotation_matrix @ action
 
+        physics._previous_center_of_mass = physics.center_of_mass().copy()
+
         return super(Orbit, self).before_step(
             rotated_action, physics)
 
