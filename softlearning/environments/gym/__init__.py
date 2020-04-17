@@ -69,6 +69,16 @@ GENERAL_ENVIRONMENT_SPECS = (
         'entry_point': (f'{CUSTOM_GYM_ENVIRONMENTS_PATH}'
                         '.multi_goal:MultiGoalEnv')
     },
+    {
+        'id': 'PointMass-Sequential-v0',
+        'entry_point': (f'{CUSTOM_GYM_ENVIRONMENTS_PATH}'
+                        '.point_mass:PointMassSequentialEnv')
+    },
+    {
+        'id': 'PointMass-SequentialDecoupleGoalId-v0',
+        'entry_point': (f'{CUSTOM_GYM_ENVIRONMENTS_PATH}'
+                        '.point_mass:PointMassSequentialDecoupleGoalIdEnv')
+    },
 )
 
 MUJOCO_ENVIRONMENTS = tuple(

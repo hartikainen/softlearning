@@ -45,6 +45,8 @@ ALGORITHM_PARAMS_ADDITIONAL = {
             'reward_scale': 1.0,
             'target_type': 'retrace',
             'retrace_n_step': tune.grid_search([1, 5, 10, 15, 20, 25]),
+            # 'retrace_lambda': tune.grid_search([0.8, 0.9, 0.99, 1.0]),
+            'retrace_lambda': 1.0,
         },
     },
     'SQL': {
@@ -122,7 +124,10 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'Point2DEnv': {
             DEFAULT_KEY: int(5e4),
-        }
+        },
+        'PointMass': {
+            DEFAULT_KEY: int(1e5),
+        },
     },
     'dm_control': {
         # BENCHMARKING
@@ -229,6 +234,10 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
         'Pendulum': {
             DEFAULT_KEY: 200,
         },
+        'PointMass': {
+            'Sequential-v0': 25,
+            'SequentialDecoupleGoalId-v0': 25,
+        },
     },
 }
 
@@ -293,6 +302,19 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             },
             'Wall-v0': {
                 'observation_keys': ('observation', 'desired_goal'),
+            },
+        },
+        'PointMass': {
+            'SequentialDecoupleGoalId-v0': {
+                'goal_reward': 0.0,
+                'actuation_cost_coeff': 0.0,
+                'distance_cost_coeff': 1.0,
+                'init_sigma': 0.1,
+                'mode': 'train',
+                'goal_orders': np.array((
+                    (0, 1, 1, 1),
+                    (1, 0, 0, 0),
+                ))
             },
         },
         'Sawyer': {
