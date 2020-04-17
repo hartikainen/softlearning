@@ -452,11 +452,8 @@ class SAC(RLAlgorithm):
                 # (i.e. (s_{t}, a_{t-1})) in q_z_model inputs.
                 batch_indices, self._retrace_n_step + 1)
             Qs_values, Qs_losses = self._update_critic(retrace_batch)
-            batch = tree.map_structure(lambda x: x[:, -1, ...], retrace_batch)
         else:
             Qs_values, Qs_losses = self._update_critic(batch)
-            batch = batch
-
         policy_losses = self._update_actor(batch)
         alpha_losses = self._update_alpha(batch)
 
