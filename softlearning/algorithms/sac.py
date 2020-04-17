@@ -187,8 +187,8 @@ class SAC(RLAlgorithm):
             traces_t_0[:, 1:, ...], tf.zeros(tf.shape(traces_t_0[:, :1, ...]))
         ), axis=1)
 
-        actions_t_1_sampled, log_p_a_t_1 = self._policy.actions_and_log_probs(
-            observations_t_1)
+        actions_t_1_sampled, log_p_a_t_1_sampled = (
+            self._policy.actions_and_log_probs(observations_t_1))
 
         expected_target_Q_values_t_1 = tuple(
             Q.values(observations_t_1, actions_t_1_sampled)
@@ -198,25 +198,26 @@ class SAC(RLAlgorithm):
 
         actions_t_1 = tf.concat((
             actions_t_0[:, 1:],
-            tf.fill(tf.shape(actions_t_0[:, -1:, ...]), 0.0)
+            tf.zeros(tf.shape(actions_t_0[:, -1:, ...]))
         ), axis=1)
         target_Qs_values_t_1 = tuple(
             Q.values(observations_t_1, actions_t_1) for Q in self._Q_targets)
         target_Q_values_t_1 = tf.reduce_min(target_Qs_values_t_1, axis=0)
 
-        p_old_a_t_1 = tf.concat((
-            p_old_a_t_0[:, 1:],
-            tf.fill(tf.shape(p_old_a_t_0[:, -1:, ...]), 1.0)
+        raw_actions_t_1 = tf.concat((
+            raw_actions_t_0[:, 1:],
+            tf.zeros(tf.shape(raw_actions_t_0[:, -1:, ...])),
         ), axis=1)
-        log_p_old_a_t_1 = tf.math.log(p_old_a_t_1)
+        log_p_a_t_1 = self._policy.log_probs_for_raw_actions(
+            observations_t_1, raw_actions_t_1)
         retrace_inputs = (
             # rewards and continuation_probs should be of t_0
             reward_scale * rewards_t_0,
             discount * (1.0 - tf.cast(terminals_t_0, rewards_t_0.dtype)),
             # traces and q values should be of t_1
             traces_t_1,
-            expected_target_Q_values_t_1 - entropy_scale * log_p_a_t_1,
-            target_Q_values_t_1 - entropy_scale * log_p_old_a_t_1)
+            expected_target_Q_values_t_1 - entropy_scale * log_p_a_t_1_sampled,
+            target_Q_values_t_1 - entropy_scale * log_p_a_t_1)
 
         # NOTE(hartikainen): We need to swap the batch_shape and
         # sequence_length axes because the retrace implementation uses
