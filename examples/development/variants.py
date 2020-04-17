@@ -310,6 +310,17 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             },
         },
         'PointMass': {
+            'Sequential-v0': {
+                'goal_reward': 0.0,
+                'actuation_cost_coeff': 0.0,
+                'distance_cost_coeff': 1.0,
+                'init_sigma': 0.1,
+                'mode': 'train',
+                'goal_orders': np.array((
+                    (0, ) * 30,
+                    # (1, 0, 0, 0),
+                ))
+            },
             'SequentialDecoupleGoalId-v0': {
                 'goal_reward': 0.0,
                 'actuation_cost_coeff': 0.0,
