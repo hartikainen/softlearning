@@ -190,8 +190,15 @@ class SAC(RLAlgorithm):
             traces_t_0[:, 1:, ...], tf.zeros(tf.shape(traces_t_0[:, :1, ...]))
         ), axis=1)
 
-        actions_t_1_sampled, log_p_a_t_1_sampled = (
-            self._policy.actions_and_log_probs(observations_t_1))
+        # actions_t_1_sampled, log_p_a_t_1_sampled = (
+        #     self._policy.actions_and_log_probs(observations_t_1))
+
+        if 'actions_t_1_sampled' in batch:
+            actions_t_1_sampled = batch['actions_t_1_sampled']
+            log_p_a_t_1_sampled = batch['log_p_a_t_1_sampled']
+        else:
+            actions_t_1_sampled, log_p_a_t_1_sampled = (
+                self._policy.actions_and_log_probs(observations_t_1))
 
         expected_target_Q_values_t_1 = tuple(
             Q.values(observations_t_1, actions_t_1_sampled)
@@ -289,6 +296,24 @@ class SAC(RLAlgorithm):
             discount,
             entropy_scale,
             reward_scale)
+
+        retrace_batch = tree.map_structure(
+            lambda x: tf.concat((
+                tf.fill(tf.shape(x[:, None, ...]), tf.ones((), x.dtype)),
+                x[:, None, ...],
+            ), axis=1),
+            batch)
+
+        if 'mask' not in retrace_batch:
+            retrace_batch['mask'] = tf.repeat([(True, False)], 256, axis=0)
+
+        Q_targets_retrace = self._compute_Q_targets_retrace({
+            **retrace_batch,
+            'actions_t_1_sampled': next_actions[:, None, ...],
+            'log_p_a_t_1_sampled': next_log_pis[:, None, ...],
+        })
+
+        tf.debugging.assert_near(Q_targets_retrace[:, 0, :], Q_targets)
 
         return tf.stop_gradient(Q_targets)
 
@@ -416,46 +441,46 @@ class SAC(RLAlgorithm):
     @tf.function(experimental_relax_shapes=True)
     def _do_updates(self, batch):
         """Runs the update operations for policy, Q, and alpha."""
+        batch_size = self._batch_size
+
+        if self._sequence_type == 'fill_whole_sequence':
+            last_step_indices = np.flatnonzero(
+                self.pool.data['episode_index_backwards'][:self.pool.size] == 0)
+            batch_indices = np.random.choice(last_step_indices, batch_size)
+            # NOTE(hartikainen): Need to cast because the indices are unsigned
+            # ints and we're subtracting!
+            num_steps_before = np.int32(self.pool.data[
+                'episode_index_forwards'
+            ][:self.pool.size][batch_indices].flatten())
+            sampling_window_widths = np.maximum(
+                # +1 to include the current sample to the window
+                1 + num_steps_before - self._retrace_n_step, 0)
+            batch_indices_offset = -1 * np.random.randint(
+                low=np.zeros_like(sampling_window_widths),
+                # +1 to account the excluded right boundary
+                high=sampling_window_widths + 1)
+            batch_indices = batch_indices + batch_indices_offset
+            # offset_batch_indices = batch_indices
+        elif self._sequence_type == 'last_steps':
+            last_step_indices = np.flatnonzero(
+                self.pool.data['episode_index_backwards'][:self.pool.size] == 0)
+            batch_indices = np.random.choice(last_step_indices, batch_size)
+        elif self._sequence_type == 'random':
+            batch_indices = self.pool.random_indices(batch_size)
+        else:
+            raise NotImplementedError(self._sequence_type)
+
+        retrace_batch = self.pool.sequence_batch_by_indices(
+            # NOTE(hartikainen): Add 1 to the sequence length in order to
+            # account for the shifted states and actions
+            # (i.e. (s_{t}, a_{t-1})) in q_z_model inputs.
+            batch_indices, self._retrace_n_step + 1)
+        batch = tree.map_structure(lambda x: x[:, -1, ...], retrace_batch)
+
         if self._target_type == 'retrace':
-            batch_size = self._batch_size
-
-            if self._sequence_type == 'fill_whole_sequence':
-                last_step_indices = np.flatnonzero(
-                    self.pool.data['episode_index_backwards'][:self.pool.size] == 0)
-                batch_indices = np.random.choice(last_step_indices, batch_size)
-                # NOTE(hartikainen): Need to cast because the indices are unsigned
-                # ints and we're subtracting!
-                num_steps_before = np.int32(self.pool.data[
-                    'episode_index_forwards'
-                ][:self.pool.size][batch_indices].flatten())
-                sampling_window_widths = np.maximum(
-                    # +1 to include the current sample to the window
-                    1 + num_steps_before - self._retrace_n_step, 0)
-                batch_indices_offset = -1 * np.random.randint(
-                    low=np.zeros_like(sampling_window_widths),
-                    # +1 to account the excluded right boundary
-                    high=sampling_window_widths + 1)
-                batch_indices = batch_indices + batch_indices_offset
-                # offset_batch_indices = batch_indices
-            elif self._sequence_type == 'last_steps':
-                last_step_indices = np.flatnonzero(
-                    self.pool.data['episode_index_backwards'][:self.pool.size] == 0)
-                batch_indices = np.random.choice(last_step_indices, batch_size)
-            elif self._sequence_type == 'random':
-                batch_indices = self.pool.random_indices(batch_size)
-            else:
-                raise NotImplementedError(self._sequence_type)
-
-            retrace_batch = self.pool.sequence_batch_by_indices(
-                # NOTE(hartikainen): Add 1 to the sequence length in order to
-                # account for the shifted states and actions
-                # (i.e. (s_{t}, a_{t-1})) in q_z_model inputs.
-                batch_indices, self._retrace_n_step + 1)
             Qs_values, Qs_losses = self._update_critic(retrace_batch)
-            batch = tree.map_structure(lambda x: x[:, -1, ...], retrace_batch)
         else:
             Qs_values, Qs_losses = self._update_critic(batch)
-            batch = batch
 
         policy_losses = self._update_actor(batch)
         alpha_losses = self._update_alpha(batch)
