@@ -80,6 +80,7 @@ class SAC(RLAlgorithm):
             target_type='TD(0)',
             retrace_n_step=1,
             retrace_lambda=1.0,
+            sequence_type='random',
             **kwargs,
     ):
         """
@@ -129,6 +130,8 @@ class SAC(RLAlgorithm):
         self._target_type = target_type
         self._retrace_n_step = retrace_n_step
         self._retrace_lambda = retrace_lambda
+
+        self._sequence_type = sequence_type
 
         self._Q_optimizers = tuple(
             tf.optimizers.Adam(
@@ -390,30 +393,39 @@ class SAC(RLAlgorithm):
         """Runs the update operations for policy, Q, and alpha."""
         if self._target_type == 'retrace':
             batch_size = self._batch_size
-            last_step_indices = np.flatnonzero(
-                self.pool.data['episode_index_backwards'][:self.pool.size] == 0)
-            batch_indices = np.random.choice(last_step_indices, batch_size)
 
-            # NOTE(hartikainen): Need to cast because the indices are unsigned
-            # ints and we're subtracting!
-            num_steps_before = np.int32(self.pool.data[
-                'episode_index_forwards'
-            ][:self.pool.size][batch_indices].flatten())
-            sampling_window_widths = np.maximum(
-                # +1 to include the current sample to the window
-                1 + num_steps_before - self._retrace_n_step, 0)
-            batch_indices_offset = -1 * np.random.randint(
-                low=np.zeros_like(sampling_window_widths),
-                # +1 to account the excluded right boundary
-                high=sampling_window_widths + 1)
-            offset_batch_indices = batch_indices + batch_indices_offset
-            # offset_batch_indices = batch_indices
+            if self._sequence_type == 'fill_whole_sequence':
+                last_step_indices = np.flatnonzero(
+                    self.pool.data['episode_index_backwards'][:self.pool.size] == 0)
+                batch_indices = np.random.choice(last_step_indices, batch_size)
+                # NOTE(hartikainen): Need to cast because the indices are unsigned
+                # ints and we're subtracting!
+                num_steps_before = np.int32(self.pool.data[
+                    'episode_index_forwards'
+                ][:self.pool.size][batch_indices].flatten())
+                sampling_window_widths = np.maximum(
+                    # +1 to include the current sample to the window
+                    1 + num_steps_before - self._retrace_n_step, 0)
+                batch_indices_offset = -1 * np.random.randint(
+                    low=np.zeros_like(sampling_window_widths),
+                    # +1 to account the excluded right boundary
+                    high=sampling_window_widths + 1)
+                batch_indices = batch_indices + batch_indices_offset
+                # offset_batch_indices = batch_indices
+            elif self._sequence_type == 'last_steps':
+                last_step_indices = np.flatnonzero(
+                    self.pool.data['episode_index_backwards'][:self.pool.size] == 0)
+                batch_indices = np.random.choice(last_step_indices, batch_size)
+            elif self._sequence_type == 'random':
+                batch_indices = self.pool.random_indices(batch_size)
+            else:
+                raise NotImplementedError(self._sequence_type)
 
             retrace_batch = self.pool.sequence_batch_by_indices(
                 # NOTE(hartikainen): Add 1 to the sequence length in order to
                 # account for the shifted states and actions
                 # (i.e. (s_{t}, a_{t-1})) in q_z_model inputs.
-                offset_batch_indices, self._retrace_n_step + 1)
+                batch_indices, self._retrace_n_step + 1)
             Qs_values, Qs_losses = self._update_critic(retrace_batch)
         else:
             Qs_values, Qs_losses = self._update_critic(batch)

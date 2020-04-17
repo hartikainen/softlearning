@@ -47,6 +47,11 @@ ALGORITHM_PARAMS_ADDITIONAL = {
             'retrace_n_step': tune.grid_search([1, 5, 10, 15, 20, 25]),
             # 'retrace_lambda': tune.grid_search([0.8, 0.9, 0.99, 1.0]),
             'retrace_lambda': 1.0,
+            'sequence_type': tune.grid_search([
+                'fill_whole_sequence',
+                'last_steps',
+                'random',
+            ])
         },
     },
     'SQL': {
