@@ -295,7 +295,7 @@ class SAC(RLAlgorithm):
     @tf.function(experimental_relax_shapes=True)
     def _compute_Q_targets(self, batch):
         if self._target_type == 'TD(0)':
-            return self._compute_Q_targets_td0(batch)
+            return self._compute_Q_targets_td(batch)
         elif self._target_type == 'retrace':
             return self._compute_Q_targets_retrace(batch)
 
@@ -314,15 +314,20 @@ class SAC(RLAlgorithm):
         """
         Q_targets = self._compute_Q_targets(batch)
 
-        mask = ~batch['mask'][..., 1:]
-
-        observations, actions = tree.map_structure(
-            lambda x: tf.where(
-                mask[..., None], x[:, 1:, ...], tf.zeros(1, dtype=x.dtype)),
-            (batch['observations'], batch['actions']))
-
-        tf.debugging.assert_shapes((
-            (Q_targets, ('B', 'S', 1)), (actions, ('B', 'S', 'dA'))))
+        if self._target_type == 'retrace':
+            mask = ~batch['mask'][..., 1:]
+            observations, actions = tree.map_structure(
+                lambda x: tf.where(
+                    mask[..., None], x[:, 1:, ...], tf.zeros(1, dtype=x.dtype)),
+                (batch['observations'], batch['actions']))
+            tf.debugging.assert_shapes((
+                (Q_targets, ('B', 'S', 1)), (actions, ('B', 'S', 'dA'))))
+        else:
+            mask = tf.ones(tf.shape(batch['rewards'])[:1], dtype=bool)
+            observations = batch['observations']
+            actions = batch['actions']
+            tf.debugging.assert_shapes((
+                (Q_targets, ('B', 1)), (actions, ('B', 'dA'))))
 
         Qs_values = []
         Qs_losses = []
