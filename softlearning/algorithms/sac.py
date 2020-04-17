@@ -243,26 +243,6 @@ class SAC(RLAlgorithm):
         Q_targets_retrace = tf.where(
             mask_t_0[..., None], Q_targets_retrace, 0.0)
 
-        def compute_td_target():
-            next_Qs_values = tuple(
-                Q.values(observations_t_1, actions_t_1_sampled)
-                for Q in self._Q_targets)
-            next_Q_values = tf.reduce_min(next_Qs_values, axis=0)
-
-            Q_targets = compute_Q_targets(
-                next_Q_values,
-                log_p_a_t_1_sampled,
-                rewards_t_0,
-                terminals_t_0,
-                discount,
-                entropy_scale,
-                reward_scale)
-            return Q_targets
-
-        if self._retrace_n_step == 1:
-            Q_values_sanity_check = compute_td_target()
-            tf.debugging.assert_equal(Q_values_sanity_check, Q_targets_retrace)
-
         return tf.stop_gradient(Q_targets_retrace)
 
     @tf.function(experimental_relax_shapes=True)
