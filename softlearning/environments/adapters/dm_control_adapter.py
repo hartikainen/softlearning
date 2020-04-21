@@ -11,7 +11,7 @@ from gym import spaces
 
 from .softlearning_env import SoftlearningEnv
 from softlearning.environments.dm_control.suite.wrappers import (
-    action_perturbation, action_scale)
+    random_action_perturbation, action_scale)
 
 
 DM_CONTROL_ENVIRONMENTS = {}
@@ -90,7 +90,7 @@ class DmControlAdapter(SoftlearningEnv):
         self.unwrap_time_limit = unwrap_time_limit
 
         super(DmControlAdapter, self).__init__(
-            domain,  task, *args, goal_keys=goal_keys, **kwargs)
+            domain, task, *args, goal_keys=goal_keys, **kwargs)
 
         if env is None:
             assert (domain is not None and task is not None), (domain, task)
@@ -116,7 +116,8 @@ class DmControlAdapter(SoftlearningEnv):
             np.testing.assert_equal(env.action_spec().maximum, 1)
 
         if perturb_random_action_kwargs is not None:
-            env = action_perturbation.Wrapper(env, **perturb_random_action_kwargs)
+            env = random_action_perturbation.Wrapper(
+                env, **perturb_random_action_kwargs)
 
         if pixel_wrapper_kwargs is not None:
             env = pixels.Wrapper(env, **pixel_wrapper_kwargs)
