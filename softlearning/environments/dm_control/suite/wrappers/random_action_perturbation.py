@@ -15,7 +15,7 @@ _BOUNDS_MUST_BE_FINITE = (
 class Wrapper(dm_env.Environment):
     """Wraps a control environment and adds Gaussian noise to actions."""
 
-    def __init__(self, env, perturbation_probability=0.0):
+    def __init__(self, env, *args, perturbation_probability=0.0, **kwargs):
         """Initializes a new action noise Wrapper.
 
         Args:
@@ -36,14 +36,26 @@ class Wrapper(dm_env.Environment):
         self._maximum = action_spec.maximum
         self._perturbation_probability = perturbation_probability
         self._env = env
+        return super(Wrapper, self).__init__(*args, **kwargs)
 
     def step(self, action):
-        if np.random.rand() < self._perturbation_probability:
-            action = np.random.uniform(self._minimum, self._maximum)
-        return self._env.step(action)
+        perturbed = np.random.rand() < self._perturbation_probability
+        if perturbed:
+            perturbed_action = np.random.uniform(self._minimum, self._maximum)
+        else:
+            perturbed_action = action
+        time_step = self._env.step(perturbed_action)
+        assert not any(x in time_step.observation for x in (
+            'perturbed', 'original_action', 'perturbed_action'))
+        time_step.observation.update({
+            'perturbed': perturbed,
+            'original_action': action,
+            'perturbed_action': perturbed_action,
+        })
+        return time_step
 
-    def reset(self):
-        return self._env.reset()
+    def reset(self, *args, **kwargs):
+        return self._env.reset(*args, **kwargs)
 
     def observation_spec(self):
         return self._env.observation_spec()

@@ -11,7 +11,11 @@ from gym import spaces
 
 from .softlearning_env import SoftlearningEnv
 from softlearning.environments.dm_control.suite.wrappers import (
-    random_action_perturbation, action_scale)
+    action_scale,
+    random_action_perturbation,
+    noisy_action_perturbation,
+    body_perturbation,
+    wind_perturbation)
 
 
 DM_CONTROL_ENVIRONMENTS = {}
@@ -81,6 +85,9 @@ class DmControlAdapter(SoftlearningEnv):
                  goal_keys=(),
                  unwrap_time_limit=True,
                  perturb_random_action_kwargs=None,
+                 perturb_noisy_action_kwargs=None,
+                 perturb_body_kwargs=None,
+                 wind_kwargs=None,
                  pixel_wrapper_kwargs=None,
                  **kwargs):
         assert not args, (
@@ -118,6 +125,16 @@ class DmControlAdapter(SoftlearningEnv):
         if perturb_random_action_kwargs is not None:
             env = random_action_perturbation.Wrapper(
                 env, **perturb_random_action_kwargs)
+
+        if perturb_noisy_action_kwargs is not None:
+            env = noisy_action_perturbation.Wrapper(
+                env, **perturb_noisy_action_kwargs)
+
+        if perturb_body_kwargs is not None:
+            env = body_perturbation.Wrapper(env, **perturb_body_kwargs)
+
+        if wind_kwargs is not None:
+            env = wind_perturbation.Wrapper(env, **wind_kwargs)
 
         if pixel_wrapper_kwargs is not None:
             env = pixels.Wrapper(env, **pixel_wrapper_kwargs)
