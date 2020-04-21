@@ -94,6 +94,8 @@ EVALUATION_TASKS=(
     # "Wind-AntPond-v0"
     "PerturbRandomAction-v0"
     "PerturbNoisyAction-v0"
+    # "Wind-point_mass-orbit_pond-v0"
+    # "PerturbBody-point_mass-orbit_pond-v0"
 )
 
 for EXPERIMENT_PATH_AND_CHECKPOINT_ID in ${EXPERIMENT_PATHS_AND_CHECKPOINT_IDS[@]}; do
