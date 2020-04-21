@@ -194,6 +194,37 @@ def get_path_infos_orbit_pond(physics,
             s=90.0,
         )
 
+        if 'perturbed' in path['infos']:
+            perturbed = np.array(path['infos']['perturbed'])
+            perturbed_xy = positions[:-1, ...][perturbed]
+
+            if 'perturbation' in path['infos']:
+                perturbations = np.stack(
+                    path['infos']['perturbation'], axis=0)[perturbed]
+            elif 'original_action' in path['infos']:
+                perturbations = np.stack(
+                    path['infos']['original_action'], axis=0)[perturbed]
+            else:
+                raise NotImplementedError("TODO(hartikainen)")
+
+            axis.quiver(
+                perturbed_xy[:, 0],
+                perturbed_xy[:, 1],
+                perturbations[:, 0],
+                perturbations[:, 1],
+                units='xy',
+                # units='width',
+                angles='xy',
+                # scale=1.0,
+                scale_units='xy',
+                # width=0.1,
+                # headwidth=15,
+                # headlength=10,
+                linestyle='dashed',
+                color=(*color[:3], 0.1),
+                zorder=0,
+            )
+
     pond_circle = mpl.patches.Circle(
         pond_center,
         physics.pond_radius,
