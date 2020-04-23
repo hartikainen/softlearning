@@ -154,6 +154,7 @@ def simulate_policy(checkpoint_path,
     if task == 'MaxVelocity-v3':
         environment_params['kwargs'].pop('max_velocity')
 
+
     # assert not environment_params['kwargs'], environment_params['kwargs']
     environment = get_environment(
         'gym',
@@ -233,9 +234,10 @@ def simulate_policy(checkpoint_path,
 
 
 if __name__ == '__main__':
-    gpu_options = tf.GPUOptions(allow_growth=True)
-    session = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-    tf.keras.backend.set_session(session)
+    gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
+    session = tf.compat.v1.Session(
+        config=tf.compat.v1.ConfigProto(gpu_options=gpu_options))
+    tf.compat.v1.keras.backend.set_session(session)
 
     args = parse_args()
     simulate_policy(**vars(args))
