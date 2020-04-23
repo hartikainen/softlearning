@@ -211,6 +211,10 @@ class OrbitTaskMixin(base.Task):
 
         return pond_observations
 
+    def before_step(self, action, physics):
+        physics._previous_center_of_mass = physics.center_of_mass().copy()
+        return super(OrbitTaskMixin, self).before_step(action, physics)
+
     def after_step(self, physics, *args, **kwargs):
         self._previous_action[:] = physics.control().copy()
         return super(OrbitTaskMixin, self).after_step(physics, *args, **kwargs)
