@@ -18,8 +18,8 @@ ALGORITHM_PARAMS_BASE = {
         'train_every_n_steps': 1,
         'n_train_repeat': 1,
         'eval_render_kwargs': {},
-        'eval_n_episodes': 3,
-        'eval_deterministic': True,
+        'eval_n_episodes': 5,
+        'eval_deterministic': False,
     }
 }
 
