@@ -17,16 +17,16 @@ def get_path_infos_orbit_pond(physics,
 
     x, y = np.split(np.concatenate(tuple(itertools.chain(*[
         [
-            path['observations']['position'],
-            path['next_observations']['position'][[-1]]
+            path['observations']['position'][..., :2],
+            path['next_observations']['position'][[-1], ..., :2]
         ]
         for path in paths
     ]))), 2, axis=-1)
 
     def compute_cumulative_angle_travelled(path):
         xy = np.concatenate((
-            path['observations']['position'],
-            path['next_observations']['position'][[-1]]
+            path['observations']['position'][..., :2],
+            path['next_observations']['position'][[-1], ..., :2]
         ), axis=0)
         angular_deltas = compute_angular_deltas(
             xy[:-1, ...], xy[1:, ...], center=physics.pond_center_xyz)
@@ -38,27 +38,17 @@ def get_path_infos_orbit_pond(physics,
         for path in paths
     ])
 
-    velocities_xy = np.concatenate(tuple(itertools.chain(*[
-        [
-            path['observations']['velocity'],
-            path['next_observations']['velocity'][[-1]]
-        ]
-        for path in paths
-    ])))
-
     distances_from_water = np.linalg.norm(
         np.concatenate((x, y), axis=-1) - physics.pond_center_xyz[:2],
         ord=2,
         axis=1,
     ) - physics.pond_radius
-    velocities = np.linalg.norm(velocities_xy, ord=2, axis=1)
 
     infos.update([
         (f"{metric_name}-{metric_fn_name}",
          getattr(np, metric_fn_name)(metric_values))
         for metric_name, metric_values in (
                 ('distances_from_water', distances_from_water),
-                ('velocities', velocities),
                 ('cumulative_angles_travelled', cumulative_angles_travelled),
                 ('angular_velocity_mean',
                  cumulative_angles_travelled / x.size))
@@ -80,6 +70,24 @@ def get_path_infos_orbit_pond(physics,
                     ('accelerations-x', accelerations_xyz[:, 0]),
                     ('accelerations-y', accelerations_xyz[:, 1]),
                     ('accelerations-z', accelerations_xyz[:, 2]))
+            for metric_fn_name in ('mean', 'max', 'min', 'mean')
+        ])
+
+    if 'velocity' in paths[0]['observations']:
+        velocities_xyz = np.concatenate(tuple(itertools.chain(*[
+            [
+                path['observations']['velocity'],
+                path['next_observations']['velocity'][[-1]]
+            ]
+            for path in paths
+        ])))
+        infos.update([
+            (f"{metric_name}-{metric_fn_name}",
+             getattr(np, metric_fn_name)(metric_values))
+            for metric_name, metric_values in (
+                    ('velocities-x', velocities_xyz[:, 0]),
+                    ('velocities-y', velocities_xyz[:, 1]),
+                    ('velocities-z', velocities_xyz[:, 2]))
             for metric_fn_name in ('mean', 'max', 'min', 'mean')
         ])
 
@@ -166,8 +174,8 @@ def get_path_infos_orbit_pond(physics,
     color_map = plt.cm.get_cmap('tab10', len(paths))
     for i, path in enumerate(paths):
         positions = np.concatenate((
-            path['observations']['position'],
-            path['next_observations']['position'][[-1]],
+            path['observations']['position'][..., :2],
+            path['next_observations']['position'][[-1], ..., :2],
         ), axis=0)
 
         color = color_map(i)
@@ -180,21 +188,21 @@ def get_path_infos_orbit_pond(physics,
             label='evaluation_paths' if i == 0 else None,
         )
         axis.scatter(
-            *positions[0],
+            *positions[0, :2],
             edgecolors='black',
             c=[color],
             marker='o',
             s=75.0,
         )
         axis.scatter(
-            *positions[-1],
+            *positions[-1, :2],
             edgecolors='black',
             c=[color],
             marker='X',
             s=90.0,
         )
 
-        if 'perturbed' in path['infos']:
+        if 'perturbed' in path.get('infos', {}):
             perturbed = np.array(path['infos']['perturbed'])
             perturbed_xy = positions[:-1, ...][perturbed]
 
