@@ -81,6 +81,11 @@ class PondPhysics(PondPhysicsMixin, QuadrupedPhysics):
             self.named.data.geom_xpos['torso'])
         return self.named.data.geom_xpos['torso']
 
+    def imu(self, *args, **kwargs):
+        imu = super(PondPhysics, self).imu(*args, **kwargs)
+        imu = 50.0 * np.tanh(imu / 100.0)
+        return imu
+
 
 class Orbit(OrbitTaskMixin):
     def common_observations(self, physics):
@@ -118,6 +123,11 @@ class BridgeMovePhysics(bridge.MovePhysicsMixin, QuadrupedPhysics):
 
     def center_of_mass(self):
         return self.named.data.geom_xpos['torso']
+
+    def imu(self, *args, **kwargs):
+        imu = super(PondPhysics, self).imu(*args, **kwargs)
+        imu = 50.0 * np.tanh(imu / 100.0)
+        return imu
 
 
 class BridgeMove(bridge.MoveTaskMixin):
