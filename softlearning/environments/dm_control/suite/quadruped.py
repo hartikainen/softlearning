@@ -89,7 +89,9 @@ class PondPhysics(PondPhysicsMixin, QuadrupedPhysics):
 
 class Orbit(OrbitTaskMixin):
     def common_observations(self, physics):
-        return _common_observations(physics)
+        common_observations = _common_observations(physics)
+        common_observations['position'] = physics.center_of_mass()
+        return common_observations
 
     def upright_reward(self, physics):
         return _upright_reward(physics)
