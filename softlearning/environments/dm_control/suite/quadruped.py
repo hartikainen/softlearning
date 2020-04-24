@@ -22,7 +22,7 @@ from .pond import (
     DEFAULT_POND_XY,
     DEFAULT_POND_RADIUS,
     OrbitTaskMixin)
-from . import bridge
+from . import bridge, visualization
 
 
 @SUITE.add()
@@ -85,6 +85,9 @@ class PondPhysics(PondPhysicsMixin, QuadrupedPhysics):
         imu = super(PondPhysics, self).imu(*args, **kwargs)
         imu = 50.0 * np.tanh(imu / 100.0)
         return imu
+
+    def get_path_infos(self, *args, **kwargs):
+        return visualization.get_path_infos_orbit_pond(self, *args, **kwargs)
 
 
 class Orbit(OrbitTaskMixin):
