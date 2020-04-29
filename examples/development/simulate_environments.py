@@ -324,7 +324,7 @@ def simulate_perturbations(args):
                     },
                 }
             }
-            for perturbation_probability in np.linspace(0, 0.9, 21)
+            for perturbation_probability in np.linspace(0, 1.0, 21)
         }
     elif evaluation_task == 'PerturbNoisyAction-v0':
         environments_params = {
@@ -393,7 +393,7 @@ def simulate_perturbations(args):
                     },
                 }
             }
-            for perturbation_probability in np.linspace(0.0, 0.1, 51)
+            for perturbation_probability in np.linspace(0.0, 0.15, 51)
         }
     elif evaluation_task == 'PerturbBody-point_mass-orbit_pond-v0':
         environments_params = {
@@ -473,7 +473,7 @@ def simulate_perturbations(args):
                     },
                 }
             }
-            for wind_strength in np.linspace(0, 50.0, 51)
+            for wind_strength in np.linspace(0, 75.0, 51)
         }
 
     else:
