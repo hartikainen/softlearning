@@ -139,10 +139,12 @@ def get_path_infos_orbit_pond(physics,
 
     infos.update({'support-2': support_of_valid_bins})
 
-    log_base_dir = os.getcwd()
+    log_base_dir = (
+        os.getcwd()
+        if figure_save_path is None
+        else figure_save_path)
     heatmap_dir = os.path.join(log_base_dir, 'heatmap')
-    if not os.path.exists(heatmap_dir):
-        os.makedirs(heatmap_dir)
+    os.makedirs(heatmap_dir, exist_ok=True)
 
     previous_heatmaps = glob.glob(
         os.path.join(heatmap_dir, f"{evaluation_type}-iteration-*-heatmap.png"))
