@@ -83,7 +83,7 @@ def evaluate_rollouts(paths, environment):
     # pass
 
 
-@ray.remote
+@ray.remote(num_cpus=1, num_gpus=0.24)
 def simulate_trial_in_environments(experiment_path,
                                    trial_dirname,
                                    environments_params,
@@ -93,6 +93,12 @@ def simulate_trial_in_environments(experiment_path,
                                    num_rollouts,
                                    max_path_length):
     import tensorflow as tf
+
+    gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
+    session = tf.compat.v1.Session(
+        config=tf.compat.v1.ConfigProto(gpu_options=gpu_options))
+    tf.compat.v1.keras.backend.set_session(session)
+
     print(f"trial_dirname: {trial_dirname}")
     trial_dir = os.path.join(experiment_path, trial_dirname)
 
@@ -482,17 +488,18 @@ def simulate_perturbations(args):
     output_dir = os.path.join(
         '/tmp',
         'perturbations',
-        (f"{experiment_path.split('ray_results/gs/')[-1].rstrip('/')}"
+        (f"{experiment_path.split('ray_results/')[-1].rstrip('/')}"
          f"-{args.desired_checkpoint}"
          f"{'' if deterministic else '-stochastic'}"),
         evaluation_task,
     )
 
+    print(f"output_dir: {output_dir}")
+
     trial_dirnames = tuple(os.walk(experiment_path))[0][1]
     trial_dirnames = filter_trials(experiment_path, trial_dirnames)
 
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
 
     ray.init(local_mode=False)
 
@@ -514,14 +521,15 @@ def simulate_perturbations(args):
         x for result, x in zip(results, trial_dirnames) if result
     ]
 
+    pprint(succeeded_trial_dirnames)
+
 
 if __name__ == '__main__':
     args = parse_args()
 
-    if tf.test.is_gpu_available():
-        gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
-        session = tf.compat.v1.Session(
-            config=tf.compat.v1.ConfigProto(gpu_options=gpu_options))
-        tf.compat.v1.keras.backend.set_session(session)
+    gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
+    session = tf.compat.v1.Session(
+        config=tf.compat.v1.ConfigProto(gpu_options=gpu_options))
+    tf.compat.v1.keras.backend.set_session(session)
 
     simulate_perturbations(args)

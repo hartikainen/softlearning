@@ -110,6 +110,7 @@ for EXPERIMENT_PATH_AND_CHECKPOINT_ID in ${EXPERIMENT_PATHS_AND_CHECKPOINT_IDS[@
         python -m examples.development.simulate_environments \
                "${experiment_path}" \
                --num-rollouts=10 \
+               --max-path-length=1000 \
                --evaluation-task="${evaluation_task}" \
                --desired-checkpoint="${checkpoint_id}" \
                --deterministic="${deterministic}"

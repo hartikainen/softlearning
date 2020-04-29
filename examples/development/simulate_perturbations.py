@@ -125,8 +125,9 @@ def simulate_perturbations_for_trial(experiment_path,
         #     os.path.split(checkpoint_dir)[-1]
         # ).groups()[0])
 
-        tf.keras.backend.clear_session()
-        session = tf.keras.backend.get_session()
+        tf.compat.v1.keras.backend.clear_session()
+        session = tf.compat.v1.keras.backend.get_session()
+
         picklable, variant, progress, metadata = load_checkpoint(
             checkpoint_dir, session=session)
         if metadata is None:
@@ -231,8 +232,9 @@ def simulate_perturbations(args):
 if __name__ == '__main__':
     args = parse_args()
 
-    gpu_options = tf.GPUOptions(allow_growth=True)
-    session = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-    tf.keras.backend.set_session(session)
+    gpu_options = tf.compat.v1.GPUOptions(allow_growth=True)
+    session = tf.compat.v1.Session(
+        config=tf.compat.v1.ConfigProto(gpu_options=gpu_options))
+    tf.compat.v1.keras.backend.set_session(session)
 
     simulate_perturbations(args)
