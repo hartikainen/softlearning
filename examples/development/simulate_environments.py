@@ -441,6 +441,25 @@ def simulate_perturbations(args):
             for wind_strength in np.linspace(0, 5.0, 51)
         }
 
+    elif evaluation_task == 'Wind-AntPond-v1':
+        # long wind
+        environments_params = {
+            f'wind-length-{wind_length}': {
+                'kwargs': {
+                    'wind_kwargs': {
+                        'wind_strength': 6.0,
+                        'wind_frequency': 200,
+                        'wind_length': wind_length,
+                        'wind_direction': {
+                            "type": "towards",
+                            "target": "pond_center"
+                        },
+                    },
+                }
+            }
+            for wind_length in np.linspace(0, 50, 51)
+        }
+
     elif evaluation_task == 'Wind-point_mass-orbit_pond-v0':
         environments_params = {
             f'wind-strength-{wind_strength}': {
