@@ -91,3 +91,24 @@ class ContinuousUniformPolicy(UniformPolicy):
             (self._action_range[1] - self._action_range[0]) / 2.0
         )[None], (tf.shape(input=actions)[0], 1))
         return log_pis
+
+
+class ContinuousConstantPolicy(UniformPolicy):
+    def __init__(self,
+                 *args,
+                 action_range=np.array(((-1.0, ), (1.0, ))),
+                 **kwargs):
+        self._Serializable__initialize(locals())
+
+        return super(ContinuousConstantPolicy, self).__init__(
+            *args, action_range=action_range, **kwargs)
+
+    def _actions_fn(self, batch_size):
+        actions = tf.zeros((batch_size, np.prod(self._output_shape)))
+        return actions
+
+    def _log_pis_fn(self, actions):
+        log_pis = tf.tile(tf.math.log(
+            (self._action_range[1] - self._action_range[0]) / 2.0
+        )[None], (tf.shape(input=actions)[0], 1))
+        return log_pis
