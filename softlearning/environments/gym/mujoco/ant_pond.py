@@ -29,6 +29,7 @@ class AntPondEnv(AntEnv):
                  angular_velocity_max=float('inf'),
                  velocity_reward_weight=1.0,
                  experimental_angular_velocity_type=1,
+                 reset_distance_range=(0.5, 2.0),
                  **kwargs):
         utils.EzPickle.__init__(**locals())
         self.pond_radius = pond_radius
@@ -39,6 +40,7 @@ class AntPondEnv(AntEnv):
         self.cumulative_angular_velocity = 0.0
         self.experimental_angular_velocity_type = (
             experimental_angular_velocity_type)
+        self._reset_distance_range = reset_distance_range
         return super(AntPondEnv, self).__init__(
             *args,
             exclude_current_positions_from_observation=(
@@ -57,7 +59,7 @@ class AntPondEnv(AntEnv):
         self.init_qpos[3:7] = quaternion_multiply(
             rotate_by_angle_quaternion, default_quaternion)
 
-        random_distance = np.random.uniform(0.5, 2.0)
+        random_distance = np.random.uniform(*self._reset_distance_range)
 
         xy = ((self.pond_radius + random_distance) * np.array((
             np.cos(random_angle),
