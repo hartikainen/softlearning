@@ -15,16 +15,30 @@ class WindWrapper(gym.Wrapper):
     def __init__(self,
                  *args,
                  wind_strength=0,
+                 wind_frequency=200,
+                 wind_probability=None,
+                 wind_length=50,
                  wind_direction='random',
                  **kwargs):
         self._wind_strength = wind_strength
+        self._wind_frequency = wind_frequency
+        self._wind_probability = wind_probability
+        self._wind_length = wind_length
         self._wind_direction = wind_direction
+        self._wind_started_at = None
+
+        if not ((wind_frequency is None) or (wind_probability is None)):
+            raise ValueError(
+                "Either `wind_probability` or `wind_frequency`"
+                " should be `None`.")
+
         result = super(WindWrapper, self).__init__(*args, **kwargs)
         return result
 
     def reset(self, *args, **kwargs):
         self.sim.model.opt.density = 0.0
         self.sim.model.opt.wind[:] = 0.0
+        self._wind_started_at = None
         self._step_counter = 0
         return super(WindWrapper, self).reset(*args, **kwargs)
 
@@ -63,10 +77,28 @@ class WindWrapper(gym.Wrapper):
 
         raise NotImplementedError(type(self._wind_direction))
 
+    @property
+    def should_start_wind(self):
+        if self._wind_frequency is not None:
+            return self._step_counter % self._wind_frequency == 0
+        elif self._wind_probability is not None:
+            return np.random.rand() < self._wind_probability
+
+        raise ValueError
+
+    @property
+    def should_end_wind(self):
+        if self._wind_started_at is None:
+            return True
+
+        return ((self._step_counter - self._wind_started_at)
+                > self._wind_length - 2)
+
     def step(self, *args, **kwargs):
         self._step_counter += 1
 
-        if self._step_counter % 150 == 0:
+        if self.should_start_wind:
+            self._wind_started_at = self._step_counter
             wind_direction = self.wind_direction
             wind = wind_direction * self._wind_strength
             self.sim.model.opt.density = 1.2
@@ -80,8 +112,10 @@ class WindWrapper(gym.Wrapper):
             'perturbation': self.sim.model.opt.wind[:3].copy(),
         })
 
-        if (self._step_counter % 200) == 0:
+        if self.should_end_wind:
             self.sim.model.opt.density = 0.0
             self.sim.model.opt.wind[:] = 0.0
+
+        print("wind on:", info['perturbed'])
 
         return observation, reward, done, info
