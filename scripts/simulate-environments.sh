@@ -90,6 +90,7 @@ EVALUATION_TASKS=(
     # "PerturbBody-v1"
     # "PerturbBody-v2"
     # "PerturbBody-AntPond-v0"
+    # "PerturbBody-AntPond-v1"
     # "Wind-v0"
     # "Wind-AntPond-v0"
     # "Wind-AntPond-v1"
