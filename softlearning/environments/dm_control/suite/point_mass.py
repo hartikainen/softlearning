@@ -132,7 +132,7 @@ def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
     base_model_string = make_model(walls_and_target=False)
     xml_string = bridge.make_model(
         base_model_string,
-        size_multiplier=0.1,
+        size_multiplier=0.05,
         bridge_length=bridge_length * 0.05,
         bridge_width=bridge_width * 0.01)
     physics = BridgeMovePhysics.from_xml_string(xml_string, common.ASSETS)
@@ -146,15 +146,6 @@ def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
         desired_speed_after_bridge=DEFAULT_DESIRED_SPEED_AFTER_BRIDGE)
     return control.Environment(
         physics, task, time_limit=time_limit, **environment_kwargs)
-
-
-def _common_observations(physics):
-    observation = collections.OrderedDict((
-        ('position', physics.position()),
-        # ('velocity', physics.velocity()),
-        ('velocity', physics.velocity_to_pond()),
-    ))
-    return observation
 
 
 class PondPhysics(PondPhysicsMixin, PointMassPhysics):
@@ -229,7 +220,12 @@ class Orbit(OrbitTaskMixin):
         return super(Orbit, self).__init__(*args, **kwargs)
 
     def common_observations(self, physics):
-        return _common_observations(physics)
+        observation = collections.OrderedDict((
+            ('position', physics.position()),
+            # ('velocity', physics.velocity()),
+            ('velocity', physics.velocity_to_pond()),
+        ))
+        return observation
 
     def upright_reward(self, physics):
         return 1.0
@@ -281,10 +277,18 @@ class BridgeMovePhysics(bridge.MovePhysicsMixin, PointMassPhysics):
     def get_path_infos(self, *args, **kwargs):
         return visualization.get_path_infos_bridge_move(self, *args, **kwargs)
 
+    def _get_orientation(self):
+        return Rotation.from_euler('z', 0).as_quat()
+
 
 class BridgeMove(bridge.MoveTaskMixin):
     def common_observations(self, physics):
-        return _common_observations(physics)
+        observation = collections.OrderedDict((
+            ('position', physics.position()),
+            ('velocity', physics.velocity()),
+            # ('velocity', physics.velocity_to_pond()),
+        ))
+        return observation
 
     def upright_reward(self, physics):
         return 1.0

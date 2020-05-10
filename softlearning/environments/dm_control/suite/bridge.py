@@ -47,7 +47,7 @@ def make_model(base_model_string,
 
     before_bridge_length = 0 * size_multiplier
 
-    bridge_offset = -1.0
+    bridge_offset = -1.0 * size_multiplier
 
     floor_x = floor_size - before_bridge_length + bridge_offset
     floor_geom.attrib['pos'] = f"{floor_x} 0 0"
@@ -182,6 +182,9 @@ class MovePhysicsMixin:
 
         return any_key_geom_in_water
 
+    def _get_orientation(self):
+        return self.named.data.qpos['root'][3:]
+
     def water_map(self, length, width, dx, dy, density=10):
         """Create a water map around the egocentric view.
 
@@ -211,11 +214,11 @@ class MovePhysicsMixin:
             dx / (density * 2), dy / (density * 2))
 
         water_map_xy = rotate_around_z(
-            water_map_origin_xy, self.named.data.qpos['root'][3:])
+            water_map_origin_xy, self._get_orientation())
         water_map_xy += (com_x, com_y)
 
         cell_centers_xy = rotate_around_z(
-            cell_centers_origin_xy, self.named.data.qpos['root'][3:])
+            cell_centers_origin_xy, self._get_orientation())
         cell_centers_xy += (com_x, com_y)
 
         water_left_xy = self.named.model.geom_pos['water-left'][:2]
