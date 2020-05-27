@@ -2,6 +2,8 @@ from .vanilla import (  # noqa: unused-import
     feedforward_Q_function,
     double_feedforward_Q_function,
     ensemble_feedforward_Q_function,
+    random_prior_feedforward_Q_function,
+    random_prior_ensemble_feedforward_Q_function,
 )
 
 from softlearning.utils.serialization import (
