@@ -9,6 +9,7 @@ from gym.envs.mujoco.mujoco_env import MujocoEnv
 
 from .softlearning_env import SoftlearningEnv
 from softlearning.environments.gym import register_environments
+from softlearning.environments.gym.wrappers import RescaleObservation
 from softlearning.utils.gym import is_continuous_space
 
 
@@ -52,6 +53,7 @@ class GymAdapter(SoftlearningEnv):
                  *args,
                  env=None,
                  normalize=True,
+                 normalize_observation=False,
                  observation_keys=(),
                  goal_keys=(),
                  unwrap_time_limit=True,
@@ -61,6 +63,7 @@ class GymAdapter(SoftlearningEnv):
             "Gym environments don't support args. Use kwargs instead.")
 
         self.normalize = normalize
+        self.normalize_observation = normalize_observation
         self.unwrap_time_limit = unwrap_time_limit
 
         super(GymAdapter, self).__init__(
@@ -70,6 +73,7 @@ class GymAdapter(SoftlearningEnv):
             assert (domain is not None and task is not None), (domain, task)
             try:
                 env_id = f"{domain}-{task}"
+
                 env = gym.envs.make(env_id, **kwargs)
             except gym.error.UnregisteredEnv:
                 env_id = f"{domain}{task}"
@@ -88,6 +92,9 @@ class GymAdapter(SoftlearningEnv):
 
         if normalize and is_continuous_space(env.action_space):
             env = wrappers.RescaleAction(env, -1.0, 1.0)
+
+        if normalize_observation and is_continuous_space(env.observation_space):
+            env = RescaleObservation(env, -1.0, 1.0)
 
         # TODO(hartikainen): We need the clip action wrapper because sometimes
         # the tfp.bijectors.Tanh() produces values strictly greater than 1 or
