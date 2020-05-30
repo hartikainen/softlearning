@@ -118,6 +118,10 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: int(1e4),
             'v3': int(1e4),
         },
+        'MountainCar': {
+            DEFAULT_KEY: int(1e5),
+            'Continuous-v0': int(1e5),
+        },
         'Point2DEnv': {
             DEFAULT_KEY: int(5e4),
         },
@@ -227,16 +231,24 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
         'Pendulum': {
             DEFAULT_KEY: 200,
         },
+        'MountainCar': {
+            DEFAULT_KEY: 1000,
+            'Continuous-v0': 1000,
+        },
     },
 }
 
 EPOCH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
     DEFAULT_KEY: 1000,
     'gym': {
-        DEFAULT_KEY: 25000,
+        DEFAULT_KEY: 10000,
         'Pendulum': {
             DEFAULT_KEY: 1000,
             'v0': 1000,
+        },
+        'MountainCar': {
+            DEFAULT_KEY: 1000,
+            'Continuous-v0': 1000,
         },
     },
 }
@@ -264,6 +276,12 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 'healthy_reward': 0.0,
                 'healthy_z_range': (-np.inf, np.inf),
                 'exclude_current_positions_from_observation': False,
+            }
+        },
+        'MountainCar': {
+            'Continuous-v0': {
+                'normalize': True,
+                'normalize_observation': True,
             }
         },
         'Pusher2d': {  # 3 DoF
