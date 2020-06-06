@@ -427,17 +427,19 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             },
             'Pond-v0': tune.grid_search([
                 {
+                    # 'healthy_reward': healthy_reward,
                     'pond_radius': pond_radius,
-                    'velocity_reward_weight': velocity_reward_weight,
                     'angular_velocity_max': angular_velocity_max,
+                    'velocity_reward_weight': velocity_reward_weight,
                     'exclude_current_positions_from_observation': False,
                     'experimental_angular_velocity_type': 1,
-                    'healthy_reward': healthy_reward,
+                    # 'ctrl_cost_weight': ctrl_cost_weight,
                 }
-                for pond_radius in [5.0, 10.0, 20.0, 30]
-                for velocity_reward_weight in [30.0]
+                # for healthy_reward in [1.0]
+                for pond_radius in [5.0]
                 for angular_velocity_max in [float('inf')]
-                for healthy_reward in [3.0]
+                for velocity_reward_weight in [10.0]
+                # for ctrl_cost_weight in [0.5]
             ]),
         },
         'Pusher2d': {  # 3 DoF
