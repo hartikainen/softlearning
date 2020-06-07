@@ -130,7 +130,7 @@ class BridgeMovePhysics(bridge.MovePhysicsMixin, QuadrupedPhysics):
         return self.named.data.geom_xpos['torso']
 
     def imu(self, *args, **kwargs):
-        imu = super(PondPhysics, self).imu(*args, **kwargs)
+        imu = super(BridgeMovePhysics, self).imu(*args, **kwargs)
         imu = 50.0 * np.tanh(imu / 100.0)
         return imu
 
