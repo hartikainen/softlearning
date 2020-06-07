@@ -274,6 +274,9 @@ class BridgeMovePhysics(bridge.MovePhysicsMixin, PointMassPhysics):
     def center_of_mass(self):
         return self.named.data.geom_xpos['pointmass']
 
+    def torso_xmat(self):
+        return self.named.data.geom_xmat['pointmass']
+
     def get_path_infos(self, *args, **kwargs):
         return visualization.get_path_infos_bridge_move(self, *args, **kwargs)
 

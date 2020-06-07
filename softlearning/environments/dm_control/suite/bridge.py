@@ -331,7 +331,7 @@ class MoveTaskMixin(base.Task):
                 cell_id = f'water-map-{i}-{j}'
                 physics.named.data.geom_xpos[cell_id][:2] = water_map_xy[i, j]
                 physics.named.data.geom_xmat[cell_id][:-3] = (
-                    physics.named.data.geom_xmat['torso'][:-3])
+                    physics.torso_xmat()[:-3])
                 physics.named.model.geom_rgba[cell_id] = (
                     water_map[i, j], 0, 0, 1)
 

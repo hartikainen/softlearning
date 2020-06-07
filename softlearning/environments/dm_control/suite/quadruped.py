@@ -129,6 +129,9 @@ class BridgeMovePhysics(bridge.MovePhysicsMixin, QuadrupedPhysics):
     def center_of_mass(self):
         return self.named.data.geom_xpos['torso']
 
+    def torso_xmat(self):
+        return self.named.data.geom_xmat['torso']
+
     def imu(self, *args, **kwargs):
         imu = super(BridgeMovePhysics, self).imu(*args, **kwargs)
         imu = 50.0 * np.tanh(imu / 100.0)
