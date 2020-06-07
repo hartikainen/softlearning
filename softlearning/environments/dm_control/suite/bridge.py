@@ -63,8 +63,8 @@ def make_model(base_model_string,
         pos=stringify((bridge_x, bridge_y_abs, 0)),
         size=stringify((
             bridge_length / 2, water_width / 2, 0.01)),
-        contype="96",
-        conaffinity="66",
+        contype="0",
+        conaffinity="0",
         rgba="0 0 1 1")
     right_water_element = etree.Element(
         "geom",
@@ -72,7 +72,8 @@ def make_model(base_model_string,
         name="water-right",
         pos=stringify((bridge_x, -bridge_y_abs, 0)),
         size=stringify((bridge_length / 2, water_width / 2, 0.01)),
-        contype="96",
+        contype="0",
+        conaffinity="0",
         rgba="0 0 1 1")
     bridge_element = etree.Element(
         "geom",
@@ -80,8 +81,8 @@ def make_model(base_model_string,
         name="bridge",
         pos=stringify((bridge_x, 0, 0)),
         size=stringify((bridge_length / 2, bridge_width / 2, 0.01)),
-        contype="97",
-        conaffinity="67",
+        contype="0",
+        conaffinity="0",
         # rgba="0.247 0.165 0.078 1",
         rgba="0 0 0 0",
     )
@@ -102,12 +103,12 @@ def make_model(base_model_string,
     worldbody.insert(2, bridge_element)
     # worldbody.insert(3, grass_element)
 
-    size_element = etree.Element(
-        "size",
-        njmax="5000",
-        nconmax="2000")
+    # size_element = etree.Element(
+    #     "size",
+    #     njmax="500",
+    #     nconmax="500")
 
-    mjcf.insert(0, size_element)
+    # mjcf.insert(0, size_element)
 
     water_map_length = 5 * size_multiplier
     water_map_width = 5 * size_multiplier
@@ -119,8 +120,8 @@ def make_model(base_model_string,
             water_map_cell_element = etree.Element(
                 "geom",
                 type="box",
-                contype="99",
-                conaffinity="69",
+                contype="0",
+                conaffinity="0",
                 name=f"water-map-{x}-{y}",
                 pos="0 0 0.1",
                 size=stringify((water_map_dx, water_map_dy, 0.01)),
