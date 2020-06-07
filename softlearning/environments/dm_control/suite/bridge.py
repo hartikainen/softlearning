@@ -344,26 +344,34 @@ class MoveTaskMixin(base.Task):
 
     def get_reward(self, physics):
         """Returns a reward to the agent."""
+        from softlearning.environments.dm_control.suite.point_mass import (
+            BridgeMovePhysics as PointBridgeMovePhysics)
 
         if physics.before_bridge():
             move_reward = -1.0
         elif physics.on_bridge():
             x_velocity = physics.torso_velocity()[0]
-            move_reward = rewards.tolerance(
-                x_velocity,
-                bounds=(self._desired_speed_on_bridge, float('inf')),
-                margin=self._desired_speed_on_bridge,
-                value_at_margin=0.0,
-                sigmoid='linear')
-
+            move_reward = np.minimum(x_velocity, self._desired_speed_on_bridge)
+            # move_reward = rewards.tolerance(
+            #     x_velocity,
+            #     bounds=(self._desired_speed_on_bridge, float('inf')),
+            #     margin=self._desired_speed_on_bridge,
+            #     value_at_margin=0.0,
+            #     sigmoid='linear')
         elif physics.after_bridge():
-            x_velocity = physics.torso_velocity()[0]
-            move_reward = rewards.tolerance(
-                x_velocity,
-                bounds=(self._desired_speed_after_bridge, float('inf')),
-                margin=self._desired_speed_after_bridge,
-                value_at_margin=0.0,
-                sigmoid='linear')
+            xy_velocity = physics.torso_velocity()
+            velocity = np.linalg.norm(xy_velocity)
+            velocity /= np.maximum(velocity, 1.0)
+            if not isinstance(physics, PointBridgeMovePhysics):
+                raise NotImplementedError(
+                    "TODO(hartikainen): Check this for other envs.")
+            move_reward = np.minimum(velocity, self._desired_speed_after_bridge)
+            # move_reward = rewards.tolerance(
+            #     velocity,
+            #     bounds=(self._desired_speed_after_bridge, float('inf')),
+            #     margin=self._desired_speed_after_bridge,
+            #     value_at_margin=0.0,
+            #     sigmoid='linear')
         elif physics.any_key_geom_in_water():
             move_reward = 0.0
         else:
