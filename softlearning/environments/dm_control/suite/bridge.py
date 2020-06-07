@@ -409,9 +409,9 @@ class MoveTaskMixin(base.Task):
             else:
                 move_reward = 0.0
         elif physics.any_key_geom_in_water():
-            move_reward = 0.0
+            move_reward = -1.0
         else:
-            raise ValueError("The agent has to be somewhere!")
+            move_reward = 0.0
 
         return self.upright_reward(physics) * move_reward
 
