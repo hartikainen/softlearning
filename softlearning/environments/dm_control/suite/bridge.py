@@ -363,8 +363,10 @@ class MoveTaskMixin(base.Task):
                 margin=self._desired_speed_after_bridge,
                 value_at_margin=0.0,
                 sigmoid='linear')
+        elif physics.any_key_geom_in_water():
+            move_reward = 0.0
         else:
-            raise ValueError("The quadruped has to be somewhere!")
+            raise ValueError("The agent has to be somewhere!")
 
         return self.upright_reward(physics) * move_reward
 
