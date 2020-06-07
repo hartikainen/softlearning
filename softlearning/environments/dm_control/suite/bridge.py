@@ -33,6 +33,10 @@ def make_model(base_model_string,
                size_multiplier=1.0,
                bridge_length=DEFAULT_BRIDGE_LENGTH,
                bridge_width=DEFAULT_BRIDGE_WIDTH,
+               water_map_length=5,
+               water_map_width=5,
+               water_map_dx=0.5,
+               water_map_dy=0.5,
                floor_geom_name='floor',
                *args,
                **kwargs):
@@ -110,11 +114,6 @@ def make_model(base_model_string,
 
     # mjcf.insert(0, size_element)
 
-    water_map_length = 5 * size_multiplier
-    water_map_width = 5 * size_multiplier
-    water_map_dx = 0.5 * size_multiplier
-    water_map_dy = 0.5 * size_multiplier
-
     for x in range(int(water_map_length / water_map_dx)):
         for y in range(int(water_map_width / water_map_dy)):
             water_map_cell_element = etree.Element(
@@ -123,8 +122,9 @@ def make_model(base_model_string,
                 contype="0",
                 conaffinity="0",
                 name=f"water-map-{x}-{y}",
-                pos="0 0 0.1",
-                size=stringify((water_map_dx, water_map_dy, 0.01)),
+                pos=stringify((0, 0, 0.01 * size_multiplier)),
+                size=stringify(
+                    (water_map_dx, water_map_dy, 0.01 * size_multiplier)),
                 rgba="0 0 0 1")
             worldbody.insert(-1, water_map_cell_element)
 

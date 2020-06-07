@@ -130,18 +130,24 @@ def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
     bridge_width = environment_kwargs.get(
         'bridge_width', bridge.DEFAULT_BRIDGE_WIDTH)
     base_model_string = make_model(walls_and_target=False)
+    size_multiplier = 0.05
     xml_string = bridge.make_model(
         base_model_string,
-        size_multiplier=0.05,
-        bridge_length=bridge_length * 0.05,
-        bridge_width=bridge_width * 0.01)
+        size_multiplier=size_multiplier,
+        bridge_length=bridge_length * size_multiplier,
+        bridge_width=bridge_width * size_multiplier / 5,
+        water_map_length=5 * size_multiplier,
+        water_map_width=2 * size_multiplier,
+        water_map_dx=0.5 * size_multiplier / 2,
+        water_map_dy=0.5 * size_multiplier / 2,
+    )
     physics = BridgeMovePhysics.from_xml_string(xml_string, common.ASSETS)
     task = BridgeMove(
         random=random,
-        water_map_length=4 * 0.1,
-        water_map_width=4 * 0.1,
-        water_map_dx=0.5 * 0.1,
-        water_map_dy=0.5 * 0.1,
+        water_map_length=5 * size_multiplier,
+        water_map_width=2 * size_multiplier,
+        water_map_dx=0.5 * size_multiplier / 2,
+        water_map_dy=0.5 * size_multiplier / 2,
         desired_speed_on_bridge=DEFAULT_DESIRED_SPEED_ON_BRIDGE,
         desired_speed_after_bridge=DEFAULT_DESIRED_SPEED_AFTER_BRIDGE)
     return control.Environment(
