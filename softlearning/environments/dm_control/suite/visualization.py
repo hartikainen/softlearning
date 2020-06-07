@@ -262,4 +262,131 @@ def get_path_infos_bridge_move(physics,
                                evaluation_type='training',
                                figure_save_path=None):
     infos = {}
+
+    x, y = np.split(np.concatenate(tuple(itertools.chain(*[
+        [
+            path['observations']['position'][..., :2],
+            path['next_observations']['position'][[-1], ..., :2]
+        ]
+        for path in paths
+    ]))), 2, axis=-1)
+
+    water_left_pos = physics.named.model.geom_pos['water-left']
+    water_right_pos = physics.named.model.geom_pos['water-right']
+    water_left_size = physics.named.model.geom_size['water-left']
+    water_right_size = physics.named.model.geom_size['water-right']
+
+    (reward_bounds_x_low,
+     reward_bounds_x_high,
+     reward_bounds_y_low,
+     reward_bounds_y_high) = physics.reward_bounds()
+
+    bridge_x_low = (
+        physics.named.model.geom_pos['bridge'][0]
+        - physics.named.model.geom_size['bridge'][0])
+    x_margin = y_margin = physics.named.model.geom_pos['bridge'][0] / 10
+    xlim = np.array((
+        bridge_x_low - x_margin, reward_bounds_x_high + x_margin))
+    ylim = np.array((
+        reward_bounds_y_low - y_margin, reward_bounds_y_high + y_margin))
+
+    base_size = 12.8
+    figure_width = reward_bounds_x_high - reward_bounds_x_low
+    figure_height = reward_bounds_y_high - reward_bounds_y_low
+    if figure_width > figure_height:
+        figsize = (base_size, base_size * (figure_height / figure_width))
+    else:
+        figsize = (base_size * (figure_width / figure_height), base_size)
+
+    figure, axis = plt.subplots(1, 1, figsize=figsize)
+
+    axis.set_xlim(xlim)
+    axis.set_ylim(ylim)
+
+    color_map = plt.cm.get_cmap('tab10', len(paths))
+    for i, path in enumerate(paths):
+        positions = np.concatenate((
+            path['observations']['position'][..., :2],
+            path['next_observations']['position'][[-1], ..., :2],
+        ), axis=0)
+
+        color = color_map(i)
+        axis.plot(
+            positions[:, 0],
+            positions[:, 1],
+            color=color,
+            linestyle=':',
+            linewidth=1.0,
+            label='evaluation_paths' if i == 0 else None,
+        )
+        axis.scatter(
+            *positions[0, :2],
+            edgecolors='black',
+            c=[color],
+            marker='o',
+            s=75.0,
+        )
+        axis.scatter(
+            *positions[-1, :2],
+            edgecolors='black',
+            c=[color],
+            marker='X',
+            s=90.0)
+
+    water_left_rectangle = mpl.patches.Rectangle(
+        xy=water_left_pos - water_left_size,
+        width=water_left_size[0] * 2,
+        height=water_left_size[1] * 2,
+        fill=True)
+    water_right_rectangle = mpl.patches.Rectangle(
+        xy=water_right_pos - water_right_size,
+        width=water_right_size[0] * 2,
+        height=water_right_size[1] * 2,
+        fill=True)
+
+    water_patch_collection = mpl.collections.PatchCollection(
+        (water_left_rectangle, water_right_rectangle),
+        facecolor=(0.0, 0.0, 1.0, 0.3),
+        edgecolor='blue')
+
+    axis.add_collection(water_patch_collection)
+
+    reward_bounds_rectangle = mpl.patches.Rectangle(
+        xy=(reward_bounds_x_low, reward_bounds_y_low),
+        width=(reward_bounds_x_high - reward_bounds_x_low),
+        height=(reward_bounds_y_high - reward_bounds_y_low),
+        facecolor='none',
+        fill=False,
+        edgecolor='black',
+        linestyle=':')
+
+    axis.add_patch(reward_bounds_rectangle)
+
+    axis.grid(True, linestyle='-', linewidth=0.2)
+
+    log_base_dir = (
+        os.getcwd()
+        if figure_save_path is None
+        else figure_save_path)
+    heatmap_dir = os.path.join(log_base_dir, 'heatmap')
+    os.makedirs(heatmap_dir, exist_ok=True)
+
+    previous_heatmaps = glob.glob(
+        os.path.join(heatmap_dir, f"{evaluation_type}-iteration-*-heatmap.png"))
+    heatmap_iterations = [
+        int(re.search(f"{evaluation_type}-iteration-(\d+)-heatmap.png", x).group(1))
+        for x in previous_heatmaps
+    ]
+    if not heatmap_iterations:
+        iteration = 0
+    else:
+        iteration = int(max(heatmap_iterations) + 1)
+
+    heatmap_path = os.path.join(
+        heatmap_dir,
+        f'{evaluation_type}-iteration-{iteration:05}-heatmap.png')
+    plt.savefig(heatmap_path)
+    figure.clf()
+    plt.close(figure)
+
     return infos
