@@ -102,6 +102,31 @@ def make_model(base_model_string,
     worldbody.insert(2, bridge_element)
     # worldbody.insert(3, grass_element)
 
+    size_element = etree.Element(
+        "size",
+        njmax="5000",
+        nconmax="2000")
+
+    mjcf.insert(0, size_element)
+
+    water_map_length = 5 * size_multiplier
+    water_map_width = 5 * size_multiplier
+    water_map_dx = 0.5 * size_multiplier
+    water_map_dy = 0.5 * size_multiplier
+
+    for x in range(int(water_map_length / water_map_dx)):
+        for y in range(int(water_map_width / water_map_dy)):
+            water_map_cell_element = etree.Element(
+                "geom",
+                type="box",
+                contype="99",
+                conaffinity="69",
+                name=f"water-map-{x}-{y}",
+                pos="0 0 0.1",
+                size=stringify((water_map_dx, water_map_dy, 0.01)),
+                rgba="0 0 0 1")
+            worldbody.insert(-1, water_map_cell_element)
+
     return etree.tostring(mjcf, pretty_print=True)
 
 
@@ -210,16 +235,17 @@ class MovePhysicsMixin:
             indexing='ij',
         ), axis=-1)
         water_map_origin_xy += (length / 4, 0.0)
-        cell_centers_origin_xy = water_map_origin_xy + (
+        mini_cell_centers_origin_xy = water_map_origin_xy + (
             dx / (density * 2), dy / (density * 2))
 
-        water_map_xy = rotate_around_z(
-            water_map_origin_xy, self._get_orientation())
-        water_map_xy += (com_x, com_y)
-
         cell_centers_xy = rotate_around_z(
-            cell_centers_origin_xy, self._get_orientation())
-        cell_centers_xy += (com_x, com_y)
+            water_map_origin_xy[::density, ::density] + (dx / 2, dy / 2),
+            self._get_orientation()
+        ) + (com_x, com_y)
+
+        mini_cell_centers_xy = rotate_around_z(
+            mini_cell_centers_origin_xy, self._get_orientation())
+        mini_cell_centers_xy += (com_x, com_y)
 
         water_left_xy = self.named.model.geom_pos['water-left'][:2]
         water_left_size = self.named.model.geom_size['water-left'][:2]
@@ -227,7 +253,7 @@ class MovePhysicsMixin:
         water_right_size = self.named.model.geom_size['water-right'][:2]
 
         cells_in_waters = point_inside_2d_rectangle(
-            cell_centers_xy,
+            mini_cell_centers_xy,
             np.stack((water_left_xy, water_right_xy)),
             np.stack((water_left_size, water_right_size)))
 
@@ -235,7 +261,19 @@ class MovePhysicsMixin:
         water_map = skimage.measure.block_reduce(
             water_map, (density, density), np.mean)
 
-        return cell_centers_xy[::density, ::density, ...], water_map
+        cell_centers_xy_v0 = skimage.measure.block_reduce(
+            mini_cell_centers_xy, (density, density, 1), np.mean)
+
+        try:
+            np.testing.assert_allclose(
+                cell_centers_xy_v0,
+                cell_centers_xy,
+                atol=1e-10)
+        except Exception as e:
+            breakpoint()
+            pass
+
+        return cell_centers_xy, water_map
 
 
 class MoveTaskMixin(base.Task):
@@ -277,6 +315,7 @@ class MoveTaskMixin(base.Task):
     def get_observation(self, physics):
         """Returns an observation to the agent."""
         common_observations = self.common_observations(physics)
+        # water_map_xy corresponds to the center of each map cell
         water_map_xy, water_map = physics.water_map(
             length=self._water_map_length,
             width=self._water_map_width,
@@ -287,6 +326,14 @@ class MoveTaskMixin(base.Task):
             *common_observations.items(),
             ('water_map', water_map),
         ))
+        for i in range(int(self._water_map_length / self._water_map_dx)):
+            for j in range(int(self._water_map_width / self._water_map_dy)):
+                cell_id = f'water-map-{i}-{j}'
+                physics.named.data.geom_xpos[cell_id][:2] = water_map_xy[i, j]
+                physics.named.data.geom_xmat[cell_id][:-3] = (
+                    physics.named.data.geom_xmat['torso'][:-3])
+                physics.named.model.geom_rgba[cell_id] = (
+                    water_map[i, j], 0, 0, 1)
 
         return bridge_observations
 
