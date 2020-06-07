@@ -276,6 +276,26 @@ class MovePhysicsMixin:
 
         return cell_centers_xy, water_map
 
+    def reward_bounds(self):
+        bridge_x = self.named.data.geom_xpos['bridge'][0]
+        bridge_length = 2 * self.named.model.geom_size['bridge'][0]
+        reward_bounds_x_low = bridge_x + bridge_length / 2
+        reward_bounds_x_high = reward_bounds_x_low + 2 * bridge_length
+
+        reward_bounds_y_low = (
+            self.named.model.geom_pos['water-right'][1]
+            - self.named.model.geom_size['water-right'][1])
+        reward_bounds_y_high = (
+            self.named.model.geom_pos['water-left'][1]
+            + self.named.model.geom_size['water-left'][1])
+
+        reward_bounds = (
+            reward_bounds_x_low,
+            reward_bounds_x_high,
+            reward_bounds_y_low,
+            reward_bounds_y_high)
+        return reward_bounds
+
 
 class MoveTaskMixin(base.Task):
     """A task solved by running across a bridge."""
@@ -359,19 +379,35 @@ class MoveTaskMixin(base.Task):
             #     value_at_margin=0.0,
             #     sigmoid='linear')
         elif physics.after_bridge():
-            xy_velocity = physics.torso_velocity()
-            velocity = np.linalg.norm(xy_velocity)
-            velocity /= np.maximum(velocity, 1.0)
             if not isinstance(physics, PointBridgeMovePhysics):
                 raise NotImplementedError(
                     "TODO(hartikainen): Check this for other envs.")
-            move_reward = np.minimum(velocity, self._desired_speed_after_bridge)
-            # move_reward = rewards.tolerance(
-            #     velocity,
-            #     bounds=(self._desired_speed_after_bridge, float('inf')),
-            #     margin=self._desired_speed_after_bridge,
-            #     value_at_margin=0.0,
-            #     sigmoid='linear')
+
+            (reward_bounds_x_low,
+             reward_bounds_x_high,
+             reward_bounds_y_low,
+             reward_bounds_y_high) = physics.reward_bounds()
+
+            x_position, y_position = physics.center_of_mass()[:2]
+            within_reward_bounds = np.logical_and.reduce((
+                reward_bounds_x_low <= x_position,
+                x_position <= reward_bounds_x_high,
+                reward_bounds_y_low <= y_position,
+                y_position <= reward_bounds_y_high))
+
+            if within_reward_bounds:
+                xy_velocity = physics.torso_velocity()
+                velocity = np.linalg.norm(xy_velocity)
+                velocity /= np.maximum(velocity, 1.0)
+                move_reward = np.minimum(velocity, self._desired_speed_after_bridge)
+                # move_reward = rewards.tolerance(
+                #     velocity,
+                #     bounds=(self._desired_speed_after_bridge, float('inf')),
+                #     margin=self._desired_speed_after_bridge,
+                #     value_at_margin=0.0,
+                #     sigmoid='linear')
+            else:
+                move_reward = 0.0
         elif physics.any_key_geom_in_water():
             move_reward = 0.0
         else:
