@@ -295,7 +295,11 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
         'boxhead': {
             DEFAULT_KEY: 1000,
             'orbit_pond': 1000,
-        }
+        },
+        'point_mass': {
+            DEFAULT_KEY: 200,
+            'bridge_run': 200,
+        },
     }
 }
 
@@ -614,6 +618,13 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 ]),
             },
             'bridge_run': {},
+        },
+        'point_mass': {
+            'orbit_pond': {
+            },
+            'bridge_run': {
+                'bridge_width': 0.5,
+            },
         },
     },
 }
