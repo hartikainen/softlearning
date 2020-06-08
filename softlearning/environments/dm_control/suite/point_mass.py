@@ -122,13 +122,11 @@ def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
 @SUITE.add()
 def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
                random=None,
+               bridge_length=bridge.DEFAULT_BRIDGE_LENGTH,
+               bridge_width=bridge.DEFAULT_BRIDGE_WIDTH,
                environment_kwargs=None):
     """Returns the BridgeRun task."""
     environment_kwargs = environment_kwargs or {}
-    bridge_length = environment_kwargs.get(
-        'bridge_length', bridge.DEFAULT_BRIDGE_LENGTH)
-    bridge_width = environment_kwargs.get(
-        'bridge_width', bridge.DEFAULT_BRIDGE_WIDTH)
     base_model_string = make_model(walls_and_target=False)
     size_multiplier = 0.05
     xml_string = bridge.make_model(
