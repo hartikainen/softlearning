@@ -624,6 +624,9 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             },
             'bridge_run': {
                 'bridge_width': 0.5,
+                'after_bridge_reward_type': 'constant',
+                'after_bridge_reward_weight': 5.0,
+                'terminate_outside_of_reward_bounds': True,
             },
         },
     },
