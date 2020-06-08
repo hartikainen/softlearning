@@ -4,6 +4,7 @@ from numbers import Number
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
+import tree
 from flatten_dict import flatten, unflatten
 
 from softlearning.models.utils import flatten_input_structure
@@ -361,37 +362,50 @@ class SAC(RLAlgorithm):
         feed_dict = self._get_feed_dict(iteration, batch)
         diagnostics = self._session.run(self._diagnostics_ops, feed_dict)
 
-        if self._training_environment.unwrapped.__class__.__name__ == 'Point2DBridgeRunEnv':
-            training_env = self._training_environment
+        from softlearning.environments.dm_control.suite.point_mass import (
+            BridgeMovePhysics as PointBridgeMovePhysics)
+
+        if (self._training_environment.unwrapped.__class__.__name__ == 'Point2DBridgeRunEnv'
+            or isinstance(getattr(self._training_environment, 'physics'),
+                          PointBridgeMovePhysics)):
+
+            if self._training_environment.unwrapped.__class__.__name__ == 'Point2DBridgeRunEnv':
+                positions = stacked_training_paths['observations']['observation']
+                training_env = self._training_environment
+                raise NotImplementedError("TODO(hartikainen)")
+
+            elif isinstance(getattr(self._training_environment, 'physics'),
+                            PointBridgeMovePhysics):
+                physics = self._training_environment.physics
+                positions = stacked_training_paths['observations']['position']
+                bridge_xy = physics.named.data.geom_xpos['bridge'][:2]
+                bridge_size = physics.named.model.geom_size['bridge'][:2]
+                bridge_x_low = bridge_xy[0] - bridge_size[0]
+                bridge_x_high = bridge_xy[0] + bridge_size[0]
+                bridge_y_low = bridge_xy[1] - bridge_size[1]
+                bridge_y_high = bridge_xy[1] + bridge_size[1]
+
             training_on_bridge_index = np.logical_and.reduce((
-                stacked_training_paths['observations']['observation'][:, 0]
-                <= (training_env.observation_x_bounds[0]
-                    + training_env.extra_width_before
-                    + training_env.wall_length
-                    + training_env.bridge_length),
-                - self._training_environment.bridge_width / 2
-                < stacked_training_paths['observations']['observation'][:, 1],
-                stacked_training_paths['observations']['observation'][:, 1]
-                < self._training_environment.bridge_width / 2
+                bridge_x_low <= positions[:, 0],
+                positions[:, 0] <= bridge_x_high,
+                bridge_y_low <= positions[:, 1],
+                positions[:, 1] <= bridge_y_high,
             ))
-            on_bridge_observations = {
-                key: values[training_on_bridge_index]
-                for key, values in stacked_training_paths['observations'].items()
-            }
+            on_bridge_observations = tree.map_structure(
+                lambda observation: observation[training_on_bridge_index, ...],
+                stacked_training_paths['observations'])
 
-            training_after_bridge_index = (
-                training_env.observation_x_bounds[0]
-                + training_env.extra_width_before
-                + training_env.wall_length
-                + training_env.bridge_length
-            ) < stacked_training_paths['observations']['observation'][..., 0]
+            on_bridge_positions = positions[training_on_bridge_index]
 
-            after_bridge_observations = {
-                key: values[training_after_bridge_index]
-                for key, values in stacked_training_paths['observations'].items()
-            }
+            training_after_bridge_index = ~training_on_bridge_index
 
-            if 0 < on_bridge_observations['observation'].size:
+            after_bridge_observations = tree.map_structure(
+                lambda observation: observation[training_after_bridge_index, ...],
+                stacked_training_paths['observations'])
+
+            after_bridge_positions = positions[training_after_bridge_index]
+
+            if 0 < on_bridge_positions.size:
                 on_bridge_diagnostics = self._policy.get_diagnostics(
                     flatten_input_structure({
                         name: on_bridge_observations[name]
@@ -405,7 +419,7 @@ class SAC(RLAlgorithm):
                 after_bridge_diagnostics = self._policy.get_diagnostics(
                     flatten_input_structure({
                         name: after_bridge_observations[name]
-                    for name in self._policy.observation_keys
+                        for name in self._policy.observation_keys
                     }))
 
                 diagnostics.update(OrderedDict([
@@ -413,11 +427,11 @@ class SAC(RLAlgorithm):
                     for key in after_bridge_diagnostics.keys()
                 ]))
 
-            if 0 < after_bridge_observations['observation'].size:
+            if 0 < after_bridge_positions.size:
                 after_bridge_diagnostics = self._policy.get_diagnostics(
                     flatten_input_structure({
                         name: after_bridge_observations[name]
-                    for name in self._policy.observation_keys
+                        for name in self._policy.observation_keys
                     }))
                 diagnostics.update(OrderedDict([
                     (f'policy/training-paths/after-bridge-{key}', value)
