@@ -5,6 +5,7 @@ import re
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from scipy.spatial import ConvexHull
 
 from .pond import compute_angular_deltas
 
@@ -257,11 +258,61 @@ def get_path_infos_orbit_pond(physics,
     return infos
 
 
+def bridge_move_after_bridge_infos(physics, paths):
+    xy = np.concatenate(tuple(itertools.chain(*[
+        [
+            path['observations']['position'][..., :2],
+            path['next_observations']['position'][[-1], ..., :2]
+        ]
+        for path in paths
+    ])))
+
+    (reward_bounds_x_low,
+     reward_bounds_x_high,
+     reward_bounds_y_low,
+     reward_bounds_y_high) = physics.reward_bounds()
+
+    where_in_reward_bounds = np.flatnonzero(np.logical_and.reduce((
+        reward_bounds_x_low <= xy[:, 0],
+        xy[:, 0] <= reward_bounds_x_high,
+        reward_bounds_y_low <= xy[:, 1],
+        xy[:, 1] <= reward_bounds_y_high)))
+
+    if 0 < where_in_reward_bounds.size:
+        min_x = np.min(xy[:, 0][where_in_reward_bounds])
+        max_x = np.max(xy[:, 0][where_in_reward_bounds])
+        min_y = np.min(xy[:, 1][where_in_reward_bounds])
+        max_y = np.max(xy[:, 1][where_in_reward_bounds])
+        ptp_x = max_x - min_x
+        ptp_y = max_y - min_y
+        convex_hull = ConvexHull(xy[where_in_reward_bounds])
+        convex_hull_area = convex_hull.area
+        convex_hull_volume = convex_hull.volume
+
+    else:
+        min_x = max_x = min_y = max_y = ptp_x = ptp_y = 0.0
+        convex_hull_area = convex_hull_volume = 0.0
+        convex_hull = None
+
+    infos = {
+        'after-bridge-min_x': min_x,
+        'after-bridge-max_x': max_x,
+        'after-bridge-min_y': min_y,
+        'after-bridge-max_y': max_y,
+        'after-bridge-ptp_x': ptp_x,
+        'after-bridge-ptp_y': ptp_y,
+        'after-bridge-convex_hull_area': convex_hull_area,
+        'after-bridge-convex_hull_volume': convex_hull_volume,
+    }
+
+    return infos
+
+
 def get_path_infos_bridge_move(physics,
                                paths,
                                evaluation_type='training',
                                figure_save_path=None):
-    infos = {}
+    infos = bridge_move_after_bridge_infos(physics, paths)
 
     x, y = np.split(np.concatenate(tuple(itertools.chain(*[
         [
