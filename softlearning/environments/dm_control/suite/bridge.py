@@ -235,7 +235,7 @@ class MovePhysicsMixin:
                 density * ny),
             indexing='ij',
         ), axis=-1)
-        water_map_origin_xy += (length / 4, 0.0)
+        water_map_origin_xy -= (length / 4, 0.0)
         mini_cell_centers_origin_xy = water_map_origin_xy + (
             dx / (density * 2), dy / (density * 2))
 
