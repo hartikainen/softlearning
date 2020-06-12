@@ -366,7 +366,7 @@ class SAC(RLAlgorithm):
             BridgeMovePhysics as PointBridgeMovePhysics)
 
         if (self._training_environment.unwrapped.__class__.__name__ == 'Point2DBridgeRunEnv'
-            or isinstance(getattr(self._training_environment, 'physics'),
+            or isinstance(getattr(self._training_environment, 'physics', None),
                           PointBridgeMovePhysics)):
 
             if self._training_environment.unwrapped.__class__.__name__ == 'Point2DBridgeRunEnv':
@@ -374,7 +374,7 @@ class SAC(RLAlgorithm):
                 training_env = self._training_environment
                 raise NotImplementedError("TODO(hartikainen)")
 
-            elif isinstance(getattr(self._training_environment, 'physics'),
+            elif isinstance(getattr(self._training_environment, 'physics', None),
                             PointBridgeMovePhysics):
                 physics = self._training_environment.physics
                 positions = stacked_training_paths['observations']['position']
