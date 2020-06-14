@@ -434,6 +434,9 @@ class MoveTaskMixin(base.Task):
         if physics.any_key_geom_in_water():
             return 0
 
+        if physics.before_bridge():
+            return
+
         if self._terminate_outside_of_reward_bounds and not physics.on_bridge():
             (reward_bounds_x_low,
              reward_bounds_x_high,
