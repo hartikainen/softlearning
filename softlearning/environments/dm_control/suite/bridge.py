@@ -280,7 +280,7 @@ class MovePhysicsMixin:
         bridge_x = self.named.data.geom_xpos['bridge'][0]
         bridge_length = 2 * self.named.model.geom_size['bridge'][0]
         reward_bounds_x_low = bridge_x + bridge_length / 2
-        reward_bounds_x_high = reward_bounds_x_low + 2 * bridge_length
+        reward_bounds_x_high = reward_bounds_x_low + 8 * bridge_length
 
         reward_bounds_y_low = (
             self.named.model.geom_pos['water-right'][1]
