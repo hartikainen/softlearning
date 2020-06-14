@@ -28,7 +28,7 @@ class AntPondEnv(AntEnv):
                  pond_radius=1.0,
                  angular_velocity_max=float('inf'),
                  velocity_reward_weight=1.0,
-                 experimental_angular_velocity_type=1,
+                 experimental_angular_velocity_type=2,
                  reset_distance_range=(0.5, 2.0),
                  **kwargs):
         utils.EzPickle.__init__(**locals())
@@ -128,9 +128,9 @@ class AntPondEnv(AntEnv):
         rewards = angular_velocity_reward + healthy_reward
         costs = ctrl_cost + contact_cost
 
-        distance_from_water = self.distance_from_pond_center(
-            xy_position_after
-        ) - self.pond_radius
+        distance_from_pond_center = self.distance_from_pond_center(
+            xy_position_after)
+        distance_from_water = distance_from_pond_center - self.pond_radius
 
         in_water = self.in_water(xy_position_after).item()
 
@@ -156,6 +156,7 @@ class AntPondEnv(AntEnv):
             'y_velocity': y_velocity,
 
             'distance_from_water': distance_from_water,
+            'distance_from_pond_center': distance_from_pond_center,
             'in_water': in_water,
 
             'cumulative_angle_travelled': self.cumulative_angle_travelled,
@@ -201,7 +202,7 @@ class AntPondEnv(AntEnv):
         angular_velocities = (
             np.linalg.norm(velocities, ord=2, keepdims=True, axis=-1)
             * np.sin(theta)
-            / (r / self.pond_radius))
+            / r)
 
         return angular_velocities
 
@@ -215,7 +216,7 @@ class AntPondEnv(AntEnv):
             np.cos(angles2 - angles1)
         )[..., np.newaxis]
 
-        angular_velocities = angles * self.pond_radius
+        angular_velocities = angles
 
         return angular_velocities
 
@@ -229,7 +230,7 @@ class AntPondEnv(AntEnv):
             np.cos(angles2 - angles1)
         )[..., np.newaxis]
 
-        angular_velocities = angles * self.pond_radius
+        angular_velocities = angles
 
         return angular_velocities
 
