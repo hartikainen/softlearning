@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy.spatial import ConvexHull
+from scipy.spatial import qhull
 
 from .pond import compute_angular_deltas
 
@@ -285,10 +286,14 @@ def bridge_move_after_bridge_infos(physics, paths):
         max_y = np.max(xy[:, 1][where_in_reward_bounds])
         ptp_x = max_x - min_x
         ptp_y = max_y - min_y
-        convex_hull = ConvexHull(xy[where_in_reward_bounds])
-        convex_hull_area = convex_hull.area
-        convex_hull_volume = convex_hull.volume
-
+        try:
+            convex_hull = ConvexHull(xy[where_in_reward_bounds])
+            convex_hull_area = convex_hull.area
+            convex_hull_volume = convex_hull.volume
+        except qhull.QhullError:
+            # ConvexHull fails when all the observations are along single axis.
+            convex_hull_area = convex_hull_volume = 0.0
+            convex_hull = None
     else:
         min_x = max_x = min_y = max_y = ptp_x = ptp_y = 0.0
         convex_hull_area = convex_hull_volume = 0.0
