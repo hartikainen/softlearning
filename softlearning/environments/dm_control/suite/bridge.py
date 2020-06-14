@@ -303,7 +303,7 @@ class MoveTaskMixin(base.Task):
     def __init__(self,
                  desired_speed_on_bridge,
                  desired_speed_after_bridge,
-                 after_bridge_reward_type='velocity',
+                 after_bridge_reward_type='constant',
                  after_bridge_reward_weight=1.0,
                  terminate_outside_of_reward_bounds=False,
                  water_map_length=10,
