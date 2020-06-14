@@ -403,19 +403,18 @@ class MoveTaskMixin(base.Task):
                 y_position <= reward_bounds_y_high))
 
             if within_reward_bounds:
-                if self._after_bridge_reward_type == 'velocity':
+                if self._after_bridge_reward_type == 'x_velocity':
+                    x_velocity = physics.torso_velocity()[0]
+                    move_reward = (
+                        self._after_bridge_reward_weight * np.minimum(
+                            x_velocity, self._desired_speed_after_bridge))
+                elif self._after_bridge_reward_type == 'xy_velocity':
                     xy_velocity = physics.torso_velocity()
                     velocity = np.linalg.norm(xy_velocity)
                     velocity /= np.maximum(velocity, 1.0)
                     move_reward = (
                         self._after_bridge_reward_weight * np.minimum(
                             velocity, self._desired_speed_after_bridge))
-                    # move_reward = rewards.tolerance(
-                    #     velocity,
-                    #     bounds=(self._desired_speed_after_bridge, float('inf')),
-                    #     margin=self._desired_speed_after_bridge,
-                    #     value_at_margin=0.0,
-                    #     sigmoid='linear')
                 elif self._after_bridge_reward_type == 'constant':
                     move_reward = self._after_bridge_reward_weight
                 else:
