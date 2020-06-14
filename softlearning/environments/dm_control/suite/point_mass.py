@@ -25,7 +25,8 @@ from . import bridge, visualization
 
 _WALLS = ('wall_x', 'wall_y', 'wall_neg_x', 'wall_neg_y')
 DEFAULT_DESIRED_ANGULAR_VELOCITY = 3.0
-DEFAULT_DESIRED_SPEED_ON_BRIDGE = 3.0
+# 1.0 maximum, 0.2 for slow
+DEFAULT_DESIRED_SPEED_ON_BRIDGE = 1.0
 DEFAULT_DESIRED_SPEED_AFTER_BRIDGE = 1.0
 
 
