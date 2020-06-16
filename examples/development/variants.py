@@ -105,6 +105,7 @@ ALGORITHM_PARAMS_ADDITIONAL = {
                     0.99)
             )),
             'n_initial_exploration_steps': int(1e3),
+            'Q_target_action_noise': 2e-1,
             'policy_train_every_n_steps': tune.sample_from(lambda spec: (
                 spec.get('config', spec)
                 ['algorithm_params']
@@ -743,14 +744,8 @@ def get_policy_params(spec):
     algorithm = config['algorithm_params']['type']
     policy_params = GAUSSIAN_POLICY_PARAMS_BASE.copy()
     if algorithm.lower() == 'ddpg':
-        policy_params['kwargs']['scale_identity_multiplier'] = (
-            config
-            ['sampler_params']
-            ['kwargs']
-            ['exploration_noise']
-        )
         policy_params['kwargs']['activation'] = 'tanh'
-        policy_params['type'] = 'ConstantScaleGaussianPolicy'
+        policy_params['type'] = 'FeedforwardDeterministicPolicy'
 
     observation_keys = OBSERVATION_KEYS_PER_UNIVERSE_DOMAIN_TASK.get((
         (config['environment_params']['training']['universe'],

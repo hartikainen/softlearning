@@ -34,6 +34,7 @@ class DDPG(RLAlgorithm):
             discount=0.99,
             tau=5e-3,
             target_update_interval=1,
+            Q_target_action_noise=2e-1,
 
             policy_train_every_n_steps=1,
 
@@ -80,6 +81,7 @@ class DDPG(RLAlgorithm):
         self._tau = tau
         self._target_update_interval = target_update_interval
         self._policy_train_every_n_steps = policy_train_every_n_steps
+        self._Q_target_action_noise = Q_target_action_noise
 
         self._save_full_state = save_full_state
 
@@ -97,8 +99,18 @@ class DDPG(RLAlgorithm):
             name: self._placeholders['next_observations'][name]
             for name in self._policy.observation_keys
         })
-        next_actions = self._policy.actions(policy_inputs)
 
+        next_actions = self._policy.actions(policy_inputs)
+        action_space = self._training_environment.action_space
+        noise_mean = 0.0
+        noise_stddev = self._Q_target_action_noise * (
+            (action_space.high - action_space.low) / 2)
+        noise = tf.random.normal(
+            tf.shape(next_actions), mean=noise_mean, stddev=noise_stddev)
+        noise_clip = 2.5 * noise_stddev
+        noise = tf.clip_by_value(noise, -noise_clip, noise_clip)
+        next_actions = tf.clip_by_value(
+            next_actions + noise, action_space.low, action_space.high)
         next_Q_observations = {
             name: self._placeholders['next_observations'][name]
             for name in self._Qs[0].observation_keys

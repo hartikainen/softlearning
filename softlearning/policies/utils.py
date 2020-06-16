@@ -20,6 +20,14 @@ def get_constant_scale_gaussian_policy(*args, **kwargs):
     return policy
 
 
+def get_feedforward_deterministic_policy(*args, **kwargs):
+    from .deterministic_policy import FeedforwardDeterministicPolicy
+
+    policy = FeedforwardDeterministicPolicy(*args, **kwargs)
+
+    return policy
+
+
 def get_uniform_policy(*args, **kwargs):
     from .uniform_policy import ContinuousUniformPolicy
 
@@ -32,6 +40,7 @@ POLICY_FUNCTIONS = {
     'GaussianPolicy': get_gaussian_policy,
     'UniformPolicy': get_uniform_policy,
     'ConstantScaleGaussianPolicy': get_constant_scale_gaussian_policy,
+    'FeedforwardDeterministicPolicy': get_feedforward_deterministic_policy,
 }
 
 
