@@ -4,6 +4,7 @@ from collections import OrderedDict
 
 import numpy as np
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 from softlearning.models.feedforward import feedforward_model
 from softlearning.models.utils import flatten_input_structure, create_inputs
@@ -65,11 +66,20 @@ class DeterministicPolicy(BasePolicy):
 
         self.condition_inputs = inputs_flat
 
-        actions = self._action_net(
+        raw_actions = self._action_net(
             output_size=np.prod(output_shape),
         )(conditions)
 
+        squash_bijector = (
+            tfp.bijectors.Tanh()
+            if self._squash
+            else tfp.bijectors.Identity())
+
+        actions = tf.keras.layers.Lambda(
+            lambda raw_actions: squash_bijector.forward(raw_actions)
+        )(raw_actions)
         self.actions_model = tf.keras.Model(self.condition_inputs, actions)
+
         self.diagnostics_model = self.actions_model
 
     def _action_net(self, output_size):
