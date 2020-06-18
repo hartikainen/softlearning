@@ -83,8 +83,7 @@ class AntPondEnv(AntEnv):
             Rotation.from_euler('z', angle_to_pond_center).inv().as_quat(), 1)
 
         new_quaternion = quaternion_multiply(pond_quaternion, rotation)
-
-        new_quaternion[-1] = np.abs(new_quaternion[-1])
+        new_quaternion = np.sign(new_quaternion[0]) * new_quaternion
 
         distance_from_water = self.distance_from_pond_center(
             xyz[:2]
