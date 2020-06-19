@@ -19,6 +19,7 @@ from scipy.spatial.transform import Rotation
 from .pond import (
     PondPhysicsMixin,
     make_pond_model,
+    quaternion_multiply,
     DEFAULT_POND_XY,
     DEFAULT_POND_RADIUS,
     OrbitTaskMixin)
@@ -79,6 +80,9 @@ class PondPhysics(PondPhysicsMixin, QuadrupedPhysics):
         np.testing.assert_equal(
             self.named.data.xpos['torso'],
             self.named.data.geom_xpos['torso'])
+        np.testing.assert_equal(
+            self.named.data.xpos['torso'],
+            self.named.data.qpos['root'][:3])
         return self.named.data.geom_xpos['torso']
 
     def imu(self, *args, **kwargs):
@@ -112,7 +116,13 @@ class Orbit(OrbitTaskMixin):
         # Initial configuration.
         orientation = self.random.randn(4)
         orientation /= np.linalg.norm(orientation)
-        distance_from_pond = pond_radius / np.random.uniform(2.0, 10.0)
+
+        rotate_by_angle_quaternion = np.roll(
+            Rotation.from_euler('z', random_angle).as_quat(), 1)
+        orientation = quaternion_multiply(
+            rotate_by_angle_quaternion, orientation)
+
+        distance_from_pond = pond_radius / np.random.uniform(2.0, 2.0)
         distance_from_origin = pond_radius + distance_from_pond
         x = pond_center_x + distance_from_origin * np.cos(random_angle)
         y = pond_center_y + distance_from_origin * np.sin(random_angle)

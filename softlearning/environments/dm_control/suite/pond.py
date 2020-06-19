@@ -145,7 +145,10 @@ class PondPhysicsMixin:
 
         # TODO(hartikainen): Check if this has some negative side effects on
         # other rotation axes.
-        orientation_to_pond[-1] = np.abs(orientation_to_pond[-1])
+        # orientation_to_pond = np.abs(orientation_to_pond[-1])
+        orientation_to_pond = (
+            np.sign(orientation_to_pond[0])
+            * orientation_to_pond)
 
         return orientation_to_pond
 
