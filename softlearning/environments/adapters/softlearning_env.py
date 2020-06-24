@@ -119,7 +119,7 @@ class SoftlearningEnv(metaclass=ABCMeta):
 
     def _filter_observation(self, observation):
         observation = type(observation)([
-            (name, np.reshape(value, self.observation_space.spaces[name].shape))
+            (name, np.copy(np.reshape(value, self.observation_space.spaces[name].shape)))
             for name, value in observation.items()
             if name in (*self.observation_keys, *self.goal_keys)
         ])
