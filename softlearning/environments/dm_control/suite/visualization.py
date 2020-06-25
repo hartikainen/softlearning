@@ -299,7 +299,14 @@ def bridge_move_after_bridge_infos(physics, paths):
         convex_hull_area = convex_hull_volume = 0.0
         convex_hull = None
 
+    last_x_positions = [
+        path['observations']['position'][-1, 0] for path in paths
+    ]
     infos = {
+        'x_position_last-min': np.min(last_x_positions),
+        'x_position_last-max': np.max(last_x_positions),
+        'x_position_last-mean': np.mean(last_x_positions),
+        'x_position_last-median': np.median(last_x_positions),
         'after-bridge-min_x': min_x,
         'after-bridge-max_x': max_x,
         'after-bridge-min_y': min_y,
@@ -347,8 +354,10 @@ def get_path_infos_bridge_move(physics,
         reward_bounds_y_low - y_margin, reward_bounds_y_high + y_margin))
 
     base_size = 12.8
-    figure_width = reward_bounds_x_high - reward_bounds_x_low
-    figure_height = reward_bounds_y_high - reward_bounds_y_low
+    # figure_width = reward_bounds_x_high - reward_bounds_x_low
+    # figure_height = reward_bounds_y_high - reward_bounds_y_low
+    figure_width = xlim[1] - xlim[0]
+    figure_height = ylim[1] - ylim[0]
     if figure_width > figure_height:
         figsize = (base_size, base_size * (figure_height / figure_width))
     else:
