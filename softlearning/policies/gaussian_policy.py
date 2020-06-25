@@ -77,6 +77,10 @@ class GaussianPolicy(LatentSpacePolicy):
                 axis=-1)
         )(shift_and_log_scale_diag)
 
+        log_scale_diag = tf.keras.layers.Lambda(
+            lambda x: tf.clip_by_value(x, -5.0, 2.0)
+        )(log_scale_diag)
+
         batch_size = tf.keras.layers.Lambda(
             lambda x: tf.shape(input=x)[0])(conditions)
 
