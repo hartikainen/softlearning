@@ -83,7 +83,7 @@ class PondPhysics(PondPhysicsMixin, QuadrupedPhysics):
         np.testing.assert_equal(
             self.named.data.xpos['torso'],
             self.named.data.qpos['root'][:3])
-        return self.named.data.geom_xpos['torso']
+        return self.named.data.geom_xpos['torso'].copy()
 
     def imu(self, *args, **kwargs):
         imu = super(PondPhysics, self).imu(*args, **kwargs)
@@ -114,15 +114,14 @@ class Orbit(OrbitTaskMixin):
         #     * Rotation.from_euler('z', np.pi / 2)
         # ).as_quat(), 1)
         # Initial configuration.
-        orientation = self.random.randn(4)
-        orientation /= np.linalg.norm(orientation)
+        orientation = np.roll(Rotation.from_euler('z', np.pi/2).as_quat(), 1)
 
         rotate_by_angle_quaternion = np.roll(
             Rotation.from_euler('z', random_angle).as_quat(), 1)
         orientation = quaternion_multiply(
             rotate_by_angle_quaternion, orientation)
 
-        distance_from_pond = pond_radius / np.random.uniform(2.0, 2.0)
+        distance_from_pond = pond_radius / np.random.uniform(5.0, 10.0)
         distance_from_origin = pond_radius + distance_from_pond
         x = pond_center_x + distance_from_origin * np.cos(random_angle)
         y = pond_center_y + distance_from_origin * np.sin(random_angle)
@@ -137,10 +136,10 @@ class BridgeMovePhysics(bridge.MovePhysicsMixin, QuadrupedPhysics):
         return toes
 
     def center_of_mass(self):
-        return self.named.data.geom_xpos['torso']
+        return self.named.data.geom_xpos['torso'].copy()
 
     def torso_xmat(self):
-        return self.named.data.geom_xmat['torso']
+        return self.named.data.geom_xmat['torso'].copy()
 
     def imu(self, *args, **kwargs):
         imu = super(BridgeMovePhysics, self).imu(*args, **kwargs)
