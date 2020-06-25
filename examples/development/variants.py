@@ -216,6 +216,8 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
             'walk': int(1e7),
             'run': int(1e7),
             # 'run_pure_state': int(1e7),
+            'orbit_pond': int(2e7),
+            'bridge_run': int(2e7),
         },
         'manipulator': {
             DEFAULT_KEY: int(3e6),
@@ -336,6 +338,12 @@ EPOCH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
     'dm_control': {
         DEFAULT_KEY: int(1e3),
         'quadruped': {
+            DEFAULT_KEY: int(1e4),
+            'orbit_pond': int(2e3),
+            'bridge_run': int(2.5e4),
+        },
+        'humanoid': {
+            DEFAULT_KEY: int(1e4),
             'orbit_pond': int(2.5e4),
             'bridge_run': int(2.5e4),
         },
@@ -599,7 +607,19 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             },
         },
         'quadruped': {
-            'orbit_pond': {},
+            'orbit_pond': {
+                'angular_velocity_reward_weight': tune.grid_search([
+                    50.0,
+                ]),
+            },
+            'bridge_run': {},
+        },
+        'humanoid': {
+            'orbit_pond': {
+                'angular_velocity_reward_weight': tune.grid_search([
+                    50.0,
+                ]),
+            },
             'bridge_run': {},
         },
         'boxhead': {
@@ -676,7 +696,19 @@ OBSERVATION_KEYS_PER_UNIVERSE_DOMAIN_TASK = {
         # 'position',
         'orientation_to_pond',
         'distance_from_pond',
-        'previous_action'
+        'previous_action',
+    ),
+    ('dm_control', 'humanoid', 'orbit_pond'): (
+        'joint_angles',
+        'head_height',
+        'extremities',
+        'torso_vertical',
+        'com_velocity',
+        'velocity',
+        # 'position',
+        'orientation_to_pond',
+        'distance_from_pond',
+        'previous_action',
     ),
 }
 
@@ -845,6 +877,10 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             'boxhead': tune.grid_search([
                 -8.0, -4.0, -2.0, -1.0, -0.5, 0.0, 0.25, 0.5, 0.75, 1.0,
             ]),
+            'quadruped': tune.grid_search([
+                # -12.0, -6.0, -2.0, 0.0, 0.25, 0.5, 0.75, 1.0,
+                -12.0
+            ]),
         }.get(domain, 'auto')
 
     sampler_params = {
@@ -899,7 +935,18 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
         'replay_pool_params': {
             'type': 'SimpleReplayPool',
             'kwargs': {
-                'max_size': int(1e6),
+                'max_size': tune.sample_from(
+                    lambda spec: min(
+                        int(1e6),
+                        spec.get('config', spec)
+                        ['algorithm_params']
+                        ['kwargs']
+                        ['n_epochs']
+                        * spec.get('config', spec)
+                        ['algorithm_params']
+                        ['kwargs']
+                        ['epoch_length']
+                    )),
             }
         },
         'sampler_params': sampler_params,
