@@ -7,6 +7,7 @@ from dm_control.suite.humanoid import (
     _DEFAULT_TIME_LIMIT,
     _RUN_SPEED,
     _WALK_SPEED,
+    _STAND_HEIGHT,
     SUITE,
     get_model_and_assets as get_model_and_assets_common,
     Physics as HumanoidPhysics,
@@ -60,10 +61,14 @@ def _common_observations(physics):
 
 
 def _upright_reward(physics):
+    standing = rewards.tolerance(physics.head_height(),
+                                 bounds=(_STAND_HEIGHT, float('inf')),
+                                 margin=_STAND_HEIGHT/4)
     upright = rewards.tolerance(physics.torso_upright(),
                                 bounds=(0.9, float('inf')), sigmoid='linear',
                                 margin=1.9, value_at_margin=0)
-    return upright
+    reward = standing * upright
+    return reward
 
 
 def _localize_xy_value(physics, value):
