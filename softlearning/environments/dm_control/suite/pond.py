@@ -92,6 +92,23 @@ class PondPhysicsMixin:
     def center_of_mass(self, physics):
         pass
 
+    def any_key_geom_in_water(self):
+        key_geoms_xy = self.key_geom_positions()[..., :2]
+
+        pond_center = self.pond_center_xyz[:2]
+        pond_radius = self.pond_radius
+
+        key_geoms_distance_to_pond_center = np.linalg.norm(
+            key_geoms_xy - pond_center,
+            ord=2,
+            keepdims=True,
+            axis=-1)
+
+        any_key_geom_in_water = np.any(
+            key_geoms_distance_to_pond_center < pond_radius)
+
+        return any_key_geom_in_water
+
     def distances_from_pond_center(self):
         state = self.center_of_mass()[:2]
         states = np.atleast_2d(state)
@@ -241,5 +258,5 @@ class OrbitTaskMixin(base.Task):
 
     def get_termination(self, physics):
         """Terminates when the agent falls into pond."""
-        if physics.distance_from_pond() < 0:
+        if physics.any_key_geom_in_water():
             return 0

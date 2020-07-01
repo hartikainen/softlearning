@@ -76,6 +76,10 @@ def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
 
 
 class PondPhysics(PondPhysicsMixin, QuadrupedPhysics):
+    def key_geom_positions(self):
+        toes = self.named.data.xpos[_TOES]
+        return toes
+
     def center_of_mass(self):
         np.testing.assert_equal(
             self.named.data.xpos['torso'],
@@ -121,7 +125,9 @@ class Orbit(OrbitTaskMixin):
         orientation = quaternion_multiply(
             rotate_by_angle_quaternion, orientation)
 
-        distance_from_pond = pond_radius / np.random.uniform(5.0, 10.0)
+        distance_from_pond = np.maximum(
+            0.75, pond_radius / np.random.uniform(4.0, 6.0))
+
         distance_from_origin = pond_radius + distance_from_pond
         x = pond_center_x + distance_from_origin * np.cos(random_angle)
         y = pond_center_y + distance_from_origin * np.sin(random_angle)

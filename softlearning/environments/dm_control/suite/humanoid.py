@@ -28,12 +28,24 @@ from .pond import (
 from . import bridge, visualization
 
 
-TOES = (
-    'toe_front_left',
-    'toe_front_right',
-    'toe_back_right',
-    'toe_back_left',
-)
+KEY_GEOM_NAMES = [
+    'torso',
+    'head',
+    'lower_waist',
+    'pelvis',
+    'right_thigh',
+    'right_shin',
+    'right_foot',
+    'left_thigh',
+    'left_shin',
+    'left_foot',
+    'right_upper_arm',
+    'right_lower_arm',
+    'right_hand',
+    'left_upper_arm',
+    'left_lower_arm',
+    'left_hand',
+]
 
 
 def _common_observations(physics):
@@ -146,6 +158,30 @@ def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
 
 
 class PondPhysics(PondPhysicsMixin, HumanoidPhysics):
+    def any_key_geom_in_water(self):
+        key_geoms_xy = self.key_geom_positions()[..., :2]
+        key_geoms_z = self.key_geom_positions()[..., 2:3]
+
+        pond_center = self.pond_center_xyz[:2]
+        pond_radius = self.pond_radius
+
+        key_geoms_distance_to_pond_center = np.linalg.norm(
+            key_geoms_xy - pond_center,
+            ord=2,
+            keepdims=True,
+            axis=-1)
+
+        any_key_geom_in_water = np.any(np.logical_and(
+            key_geoms_distance_to_pond_center < pond_radius,
+            key_geoms_z < 0.1,
+        ))
+
+        return any_key_geom_in_water
+
+    def key_geom_positions(self):
+        key_geom_positions = self.named.data.xpos[KEY_GEOM_NAMES]
+        return key_geom_positions
+
     def center_of_mass(self):
         np.testing.assert_equal(
             self.named.data.xpos['torso'],
@@ -203,9 +239,24 @@ class Orbit(OrbitTaskMixin):
 
 
 class BridgeMovePhysics(bridge.MovePhysicsMixin, HumanoidPhysics):
+    def any_key_geom_in_water(self):
+        raise NotImplementedError("TODO(hartikainen)")
+        key_geoms_xy = self.key_geom_positions()[..., :2]
+        key_geoms_z = self.key_geom_positions()[..., 2:3]
+
+        pond_center = self.pond_center_xyz[:2]
+        pond_radius = self.pond_radius
+
+        any_key_geom_in_water = np.any(np.logical_and(
+            TODO,
+            key_geoms_z < 0.1,
+        ))
+
+        return any_key_geom_in_water
+
     def key_geom_positions(self):
-        toes = self.named.data.xpos[TOES]
-        return toes
+        key_geom_positions = self.named.data.xpos[KEY_GEOM_NAMES]
+        return key_geom_positions
 
     def center_of_mass(self):
         return self.named.data.geom_xpos['torso'].copy()
