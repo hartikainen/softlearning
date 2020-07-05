@@ -611,6 +611,9 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 'angular_velocity_reward_weight': tune.grid_search([
                     50.0,
                 ]),
+                'control_range_multiplier': tune.grid_search([
+                    2.0, 3.0, 4.0, 6.0, 8.0, 10.0,
+                ]),
             },
             'bridge_run': {},
         },

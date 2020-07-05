@@ -18,7 +18,8 @@ def stringify(value):
 def make_pond_model(base_model_string,
                     pond_radius,
                     size_multiplier=1.0,
-                    pond_xy=DEFAULT_POND_XY):
+                    pond_xy=DEFAULT_POND_XY,
+                    control_range_multiplier=None):
     size_multiplier = np.array(size_multiplier)
 
     mjcf = etree.fromstring(base_model_string)
@@ -53,6 +54,16 @@ def make_pond_model(base_model_string,
         conaffinity="66",
         rgba="0 0 1 1")
     worldbody.insert(0, pond_element)
+
+    if control_range_multiplier is not None:
+        for actuator_name in ('yaw_act', 'lift_act', 'extend_act'):
+            actuator = (mjcf
+                        .find(f".//default[@class='{actuator_name}']")
+                        .find('.//general'))
+            ctrlrange_str = actuator.attrib['ctrlrange']
+            ctrlrange = np.array([float(x) for x in ctrlrange_str.split(' ')])
+            ctrlrange *= control_range_multiplier
+            actuator.attrib['ctrlrange'] = stringify(ctrlrange)
 
     return etree.tostring(mjcf, pretty_print=True)
 
