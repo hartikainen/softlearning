@@ -263,7 +263,7 @@ class OrbitTaskMixin(base.Task):
                 physics.angular_velocity(), self._desired_angular_velocity))
 
         reward = (
-            self.upright_reward(physics) * angular_velocity_reward
+            self.upright_reward(physics) + angular_velocity_reward
             + control_cost)
         return reward
 
