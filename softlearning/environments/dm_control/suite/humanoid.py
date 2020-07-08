@@ -109,7 +109,6 @@ def _localize_xy_value(physics, value):
 def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
                angular_velocity_reward_weight=1.0,
                default_quaternion=None,
-               upright_reward_type=None,
                random=None,
                environment_kwargs=None):
     """Returns the Orbit task."""
@@ -127,7 +126,6 @@ def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
         desired_angular_velocity=_WALK_SPEED,
         angular_velocity_reward_weight=angular_velocity_reward_weight,
         default_quaternion=default_quaternion,
-        upright_reward_type=upright_reward_type,
         random=random)
     return control.Environment(physics, task, time_limit=time_limit,
                                control_timestep=_CONTROL_TIMESTEP,
@@ -183,13 +181,8 @@ class PondPhysics(PondPhysicsMixin, HumanoidPhysics):
 
 
 class Orbit(OrbitTaskMixin):
-    def __init__(self,
-                 default_quaternion,
-                 *args,
-                 upright_reward_type=None,
-                 **kwargs):
+    def __init__(self, default_quaternion, *args, **kwargs):
         self._default_quaternion = default_quaternion
-        self._upright_reward_type = upright_reward_type
         return super(Orbit, self).__init__(*args, **kwargs)
 
     def common_observations(self, physics):
@@ -198,52 +191,8 @@ class Orbit(OrbitTaskMixin):
         return common_observations
 
     def upright_reward(self, physics):
-        if self._upright_reward_type == '1-8':
-            standing = rewards.tolerance(physics.head_height(),
-                                         bounds=(_STAND_HEIGHT, float('inf')),
-                                         margin=_STAND_HEIGHT/8)
-            upright = rewards.tolerance(physics.torso_upright(),
-                                        bounds=(0.9, float('inf')), sigmoid='linear',
-                                        margin=1.9, value_at_margin=0)
-            reward = standing * upright
-        elif self._upright_reward_type == '1-4':
-            standing = rewards.tolerance(physics.head_height(),
-                                         bounds=(_STAND_HEIGHT, float('inf')),
-                                         margin=_STAND_HEIGHT/4)
-            upright = rewards.tolerance(physics.torso_upright(),
-                                        bounds=(0.9, float('inf')), sigmoid='linear',
-                                        margin=1.9, value_at_margin=0)
-            reward = standing * upright
-        elif self._upright_reward_type == '1-2':
-            standing = rewards.tolerance(physics.head_height(),
-                                         bounds=(_STAND_HEIGHT, float('inf')),
-                                         margin=_STAND_HEIGHT/2)
-            upright = rewards.tolerance(physics.torso_upright(),
-                                        bounds=(0.9, float('inf')), sigmoid='linear',
-                                        margin=1.9, value_at_margin=0)
-            reward = standing * upright
-        elif self._upright_reward_type == '1-1':
-            standing = rewards.tolerance(physics.head_height(),
-                                         bounds=(_STAND_HEIGHT, float('inf')),
-                                         margin=_STAND_HEIGHT)
-            upright = rewards.tolerance(physics.torso_upright(),
-                                        bounds=(0.9, float('inf')), sigmoid='linear',
-                                        margin=1.9, value_at_margin=0)
-            reward = standing * upright
-        elif self._upright_reward_type == '2-4':
-            standing = rewards.tolerance(physics.head_height(),
-                                         bounds=(_STAND_HEIGHT, float('inf')),
-                                         margin=_STAND_HEIGHT/4)
-            reward = standing
-        elif self._upright_reward_type == '2-0':
-            standing = rewards.tolerance(physics.head_height(),
-                                         bounds=(_STAND_HEIGHT, float('inf')),
-                                         margin=0)
-            reward = standing
-        elif self._upright_reward_type is None:
-            reward = _upright_reward(physics)
-
-        return reward
+        upright_reward = _upright_reward(physics)
+        return upright_reward
 
     def initialize_episode(self, physics):
         # Make the agent initially face tangent relative to pond.
