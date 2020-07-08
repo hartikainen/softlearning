@@ -268,6 +268,10 @@ class Orbit(OrbitTaskMixin):
 
         return super(Orbit, self).initialize_episode(physics)
 
+    def get_termination(self, physics):
+        fell_over = physics.head_height() < _STAND_HEIGHT / 3
+        return fell_over or super(Orbit, self).get_termination(physics)
+
 
 class BridgeMovePhysics(bridge.MovePhysicsMixin, HumanoidPhysics):
     def any_key_geom_in_water(self):
