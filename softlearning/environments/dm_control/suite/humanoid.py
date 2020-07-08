@@ -29,22 +29,22 @@ from . import bridge, visualization
 
 
 KEY_GEOM_NAMES = [
-    'torso',
-    'head',
-    'lower_waist',
-    'pelvis',
-    'right_thigh',
-    'right_shin',
+    # 'torso',
+    # 'head',
+    # 'lower_waist',
+    # 'pelvis',
+    # 'right_thigh',
+    # 'right_shin',
     'right_foot',
-    'left_thigh',
-    'left_shin',
+    # 'left_thigh',
+    # 'left_shin',
     'left_foot',
-    'right_upper_arm',
-    'right_lower_arm',
-    'right_hand',
-    'left_upper_arm',
-    'left_lower_arm',
-    'left_hand',
+    # 'right_upper_arm',
+    # 'right_lower_arm',
+    # 'right_hand',
+    # 'left_upper_arm',
+    # 'left_lower_arm',
+    # 'left_hand',
 ]
 
 
@@ -160,26 +160,6 @@ def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
 
 
 class PondPhysics(PondPhysicsMixin, HumanoidPhysics):
-    def any_key_geom_in_water(self):
-        key_geoms_xy = self.key_geom_positions()[..., :2]
-        key_geoms_z = self.key_geom_positions()[..., 2:3]
-
-        pond_center = self.pond_center_xyz[:2]
-        pond_radius = self.pond_radius
-
-        key_geoms_distance_to_pond_center = np.linalg.norm(
-            key_geoms_xy - pond_center,
-            ord=2,
-            keepdims=True,
-            axis=-1)
-
-        any_key_geom_in_water = np.any(np.logical_and(
-            key_geoms_distance_to_pond_center < pond_radius,
-            key_geoms_z < 0.1,
-        ))
-
-        return any_key_geom_in_water
-
     def key_geom_positions(self):
         key_geom_positions = self.named.data.xpos[KEY_GEOM_NAMES]
         return key_geom_positions
