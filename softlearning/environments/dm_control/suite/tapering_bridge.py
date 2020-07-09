@@ -7,35 +7,16 @@ import skimage.measure
 
 from scipy.spatial.transform import Rotation
 
+from .bridge import rotate_around_z, stringify, point_inside_2d_rectangle
+
 DEFAULT_BRIDGE_LENGTH = 10.0
 DEFAULT_BRIDGE_WIDTH = 2.0
-
-
-def stringify(value):
-    return ' '.join(np.array(value).astype(str))
-
-
-def rotate_around_z(positions, quaternion):
-    if np.isscalar(quaternion):
-        z_rotation = quaternion
-    else:
-        z_rotation = Rotation.from_quat(
-            np.roll(quaternion, -1)
-        ).as_euler('xyz', degrees=False)[-1]
-
-    sin = np.sin(z_rotation)
-    cos = np.cos(z_rotation)
-
-    M = np.array(((cos, -sin), (sin, cos)))
-    new_positions = positions @ M.T
-
-    return new_positions
 
 
 def make_model(base_model_string,
                size_multiplier=1.0,
                bridge_length=DEFAULT_BRIDGE_LENGTH,
-               bridge_width=DEFAULT_BRIDGE_WIDTH,
+               bridge_start_width=DEFAULT_BRIDGE_WIDTH,
                water_map_length=5,
                water_map_width=5,
                water_map_dx=0.5,
@@ -53,69 +34,62 @@ def make_model(base_model_string,
     floor_geom.attrib['size'] = f'{floor_size} {floor_size} .1'
 
     before_bridge_length = 0 * size_multiplier
-
     bridge_offset = -1.0 * size_multiplier
 
     floor_x = floor_size - before_bridge_length + bridge_offset
     floor_geom.attrib['pos'] = f"{floor_x} 0 0"
 
+    water_width = floor_size - bridge_start_width / 2
+    water_length_extra = 5.0 * size_multiplier
+    water_length = np.linalg.norm((bridge_start_width, bridge_length)) + water_length_extra
+
     bridge_x = (bridge_length + before_bridge_length) / 2 + bridge_offset
-    water_width = floor_size - bridge_width / 2
-    bridge_y_abs = (bridge_width + water_width) / 2
+    bridge_y_abs = (bridge_start_width + water_width) / 2
+    left_water_xy = np.array((bridge_x, bridge_y_abs))
+    water_angle = np.arctan2(bridge_start_width / 2, water_length - water_length_extra)
+    left_water_xy = rotate_around_z(
+        left_water_xy,
+        -water_angle)
+
+    left_water_position = np.array((*left_water_xy, 0.0))
+    right_water_position = left_water_position * np.array((1.0, -1.0, 1.0))
+
+    left_water_quat = np.roll(Rotation.from_euler('z', -water_angle).as_quat(), 1)
+    right_water_quat = np.roll(Rotation.from_euler('z', water_angle).as_quat(), 1)
 
     left_water_element = etree.Element(
         "geom",
         type="box",
         name="water-left",
-        pos=stringify((bridge_x, bridge_y_abs, 0)),
-        size=stringify((
-            bridge_length / 2, water_width / 2, 0.01)),
+        pos=stringify(left_water_position),
+        quat=stringify((left_water_quat)),
+        size=stringify((water_length / 2, water_width / 2, 0.01)),
         contype="0",
         conaffinity="0",
-        rgba="0 0 1 1")
+        rgba="0 0 1 0.1")
     right_water_element = etree.Element(
         "geom",
         type="box",
         name="water-right",
-        pos=stringify((bridge_x, -bridge_y_abs, 0)),
-        size=stringify((bridge_length / 2, water_width / 2, 0.01)),
+        pos=stringify(right_water_position),
+        quat=stringify((right_water_quat)),
+        size=stringify((water_length / 2, water_width / 2, 0.01)),
         contype="0",
         conaffinity="0",
-        rgba="0 0 1 1")
+        rgba="0 0 1 0.1")
     bridge_element = etree.Element(
         "geom",
         type="box",
         name="bridge",
         pos=stringify((bridge_x, 0, 0)),
-        size=stringify((bridge_length / 2, bridge_width / 2, 0.01)),
+        size=stringify((bridge_length / 2, bridge_start_width / 2, 0.01)),
         contype="0",
         conaffinity="0",
-        # rgba="0.247 0.165 0.078 1",
         rgba="0 0 0 0",
     )
-    # grass_length = floor_size - (bridge_length + before_bridge_length) / 2
-    # grass_width = floor_size
-    # grass_x = before_bridge_length / 2 + bridge_length + grass_length + bridge_offset
-    # grass_element = etree.Element(
-    #     "geom",
-    #     type="box",
-    #     name="grass",
-    #     pos=stringify((grass_x, 0, 0)),
-    #     size=stringify((grass_length, grass_width, 0.01)),
-    #     contype="98",
-    #     conaffinity="68",
-    #     rgba="0 0.502 0 1")
     worldbody.insert(0, left_water_element)
     worldbody.insert(1, right_water_element)
     worldbody.insert(2, bridge_element)
-    # worldbody.insert(3, grass_element)
-
-    # size_element = etree.Element(
-    #     "size",
-    #     njmax="500",
-    #     nconmax="500")
-
-    # mjcf.insert(0, size_element)
 
     for x in range(int(water_map_length / water_map_dx)):
         for y in range(int(water_map_width / water_map_dy)):
@@ -132,59 +106,6 @@ def make_model(base_model_string,
             worldbody.insert(-1, water_map_cell_element)
 
     return etree.tostring(mjcf, pretty_print=True)
-
-
-def point_inside_2d_rectangle(points,
-                              rectangle_positions,
-                              rectangle_sizes,
-                              rectangle_angles=None):
-    points = np.atleast_2d(points)
-    rectangle_positions = np.atleast_2d(rectangle_positions)
-    rectangle_sizes = np.atleast_2d(rectangle_sizes)
-
-    if rectangle_angles is None:
-        rectangle_angles = np.zeros((rectangle_positions.shape[0], 1))
-
-    rectangle_angles = np.atleast_2d(rectangle_angles)
-
-    np.testing.assert_equal(points.shape[-1], 2)
-    np.testing.assert_equal(rectangle_positions.shape[-1], 2)
-    np.testing.assert_equal(rectangle_sizes.shape[-1], 2)
-    np.testing.assert_equal(rectangle_angles.shape[-1], 1)
-
-    result = []
-    for (rectangle_position, rectangle_size, rectangle_angle) in zip(
-            rectangle_positions, rectangle_sizes, rectangle_angles):
-        rotated_position = rotate_around_z(
-            rectangle_position, -rectangle_angle.item())
-        rotated_points = rotate_around_z(points, -rectangle_angle.item())
-
-        np.testing.assert_equal(rotated_position.shape, rectangle_position.shape)
-        np.testing.assert_equal(rotated_points.shape, points.shape)
-
-        if rectangle_angle == 0:
-            np.testing.assert_equal(rotated_position, rectangle_position)
-            np.testing.assert_equal(points, rotated_points)
-
-        rectangles_top_right_xy = rotated_position + rectangle_size
-        rectangles_bottom_left_xy = rotated_position - rectangle_size
-
-        point_inside_2d_rectangle = np.logical_and(
-            np.logical_and.reduce(
-                rotated_points[..., None, :] <= rectangles_top_right_xy, axis=-1),
-            np.logical_and.reduce(
-                rectangles_bottom_left_xy <= rotated_points[..., None, :], axis=-1))
-        result.append(point_inside_2d_rectangle)
-
-    point_inside_2d_rectangle = np.concatenate(result, axis=-1)
-
-    assert point_inside_2d_rectangle.shape == (
-        *points.shape[:-1], *rectangle_positions.shape[:-1]), (
-            point_inside_2d_rectangle, point_inside_2d_rectangle.shape)
-
-    result_shape = (*points.shape[:-1], *rectangle_positions.shape[:-1])
-
-    return np.reshape(point_inside_2d_rectangle, result_shape)
 
 
 class MovePhysicsMixin:
@@ -225,15 +146,24 @@ class MovePhysicsMixin:
     def any_key_geom_in_water(self):
         key_geoms_xy = self.key_geom_positions()[..., :2]
 
-        water_left_xy = self.named.model.geom_pos['water-left'][:2]
-        water_left_size = self.named.model.geom_size['water-left'][:2]
-        water_right_xy = self.named.model.geom_pos['water-right'][:2]
-        water_right_size = self.named.model.geom_size['water-right'][:2]
+        water_names = ('water-left', 'water-right')
+        waters_xy = np.stack([
+            self.named.model.geom_pos[water_name][:2]
+            for water_name in water_names
+        ], axis=0)
+        waters_size = np.stack([
+            self.named.model.geom_size[water_name][:2]
+            for water_name in water_names
+        ], axis=0)
+        waters_angle = np.stack([
+            Rotation.from_quat(
+                np.roll(self.named.model.geom_quat[water_name], -1)
+            ).as_euler('xyz')[-1:]
+            for water_name in water_names
+        ], axis=0)
 
         key_geoms_in_waters = point_inside_2d_rectangle(
-            key_geoms_xy,
-            np.stack((water_left_xy, water_right_xy)),
-            np.stack((water_left_size, water_right_size)))
+            key_geoms_xy, waters_xy, waters_size, waters_angle)
 
         assert key_geoms_in_waters.shape == (
             *key_geoms_xy.shape[:-1], 2), (
@@ -283,15 +213,27 @@ class MovePhysicsMixin:
             mini_cell_centers_origin_xy, self._get_orientation())
         mini_cell_centers_xy += (com_x, com_y)
 
-        water_left_xy = self.named.model.geom_pos['water-left'][:2]
-        water_left_size = self.named.model.geom_size['water-left'][:2]
-        water_right_xy = self.named.model.geom_pos['water-right'][:2]
-        water_right_size = self.named.model.geom_size['water-right'][:2]
+        water_names = ('water-left', 'water-right')
+        waters_xy = np.stack([
+            self.named.model.geom_pos[water_name][:2]
+            for water_name in water_names
+        ], axis=0)
+        waters_size = np.stack([
+            self.named.model.geom_size[water_name][:2]
+            for water_name in water_names
+        ], axis=0)
+        waters_angle = np.stack([
+            Rotation.from_quat(
+                np.roll(self.named.model.geom_quat[water_name], -1)
+            ).as_euler('xyz')[-1:]
+            for water_name in water_names
+        ], axis=0)
 
         cells_in_waters = point_inside_2d_rectangle(
             mini_cell_centers_xy,
-            np.stack((water_left_xy, water_right_xy)),
-            np.stack((water_left_size, water_right_size)))
+            waters_xy,
+            waters_size,
+            waters_angle)
 
         water_map = np.any(cells_in_waters, axis=-1)
         water_map = skimage.measure.block_reduce(
@@ -300,14 +242,10 @@ class MovePhysicsMixin:
         cell_centers_xy_v0 = skimage.measure.block_reduce(
             mini_cell_centers_xy, (density, density, 1), np.mean)
 
-        try:
-            np.testing.assert_allclose(
-                cell_centers_xy_v0,
-                cell_centers_xy,
-                atol=1e-10)
-        except Exception as e:
-            breakpoint()
-            pass
+        np.testing.assert_allclose(
+            cell_centers_xy_v0,
+            cell_centers_xy,
+            atol=1e-10)
 
         return cell_centers_xy, water_map
 
@@ -315,7 +253,7 @@ class MovePhysicsMixin:
         bridge_x = self.named.data.geom_xpos['bridge'][0]
         bridge_length = 2 * self.named.model.geom_size['bridge'][0]
         reward_bounds_x_low = bridge_x + bridge_length / 2
-        reward_bounds_x_high = reward_bounds_x_low + 8 * bridge_length
+        reward_bounds_x_high = 5.0
 
         reward_bounds_y_low = (
             self.named.model.geom_pos['water-right'][1]
@@ -407,21 +345,15 @@ class MoveTaskMixin(base.Task):
     def get_reward(self, physics):
         """Returns a reward to the agent."""
         from softlearning.environments.dm_control.suite.point_mass import (
-            BridgeMovePhysics as PointBridgeMovePhysics)
+            TaperingBridgeMovePhysics as PointTaperingBridgeMovePhysics)
 
         if physics.before_bridge():
             move_reward = -1.0
         elif physics.on_bridge():
             x_velocity = physics.torso_velocity()[0]
             move_reward = np.minimum(x_velocity, self._desired_speed_on_bridge)
-            # move_reward = rewards.tolerance(
-            #     x_velocity,
-            #     bounds=(self._desired_speed_on_bridge, float('inf')),
-            #     margin=self._desired_speed_on_bridge,
-            #     value_at_margin=0.0,
-            #     sigmoid='linear')
         elif physics.after_bridge():
-            if not isinstance(physics, PointBridgeMovePhysics):
+            if not isinstance(physics, PointTaperingBridgeMovePhysics):
                 raise NotImplementedError(
                     "TODO(hartikainen): Check this for other envs.")
 

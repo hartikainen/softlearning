@@ -240,6 +240,7 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: int(3e6),
             'orbit_pond': int(5e5),
             'bridge_run': int(5e5),
+            'tapering_bridge_run': int(5e4),
             # 'hard': int(None),
         },
         'reacher': {
@@ -302,6 +303,7 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
         'point_mass': {
             DEFAULT_KEY: 200,
             'bridge_run': 200,
+            'tapering_bridge_run': 200,
         },
     }
 }
@@ -354,6 +356,7 @@ EPOCH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
         'point_mass': {
             'orbit_pond': int(1e4),
             'bridge_run': int(1e4),
+            'tapering_bridge_run': int(1000),
         },
     },
 }
@@ -657,6 +660,18 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'xy_velocity',
                     'constant',
                 ]),
+                'after_bridge_reward_weight': 5.0,
+                'terminate_outside_of_reward_bounds': False,
+            },
+            'tapering_bridge_run': {
+                'bridge_start_width': tune.grid_search([
+                    1.0,
+                    2.0,
+                    3.0,
+                    4.0,
+                ]),
+                'bridge_length': 70,
+                'after_bridge_reward_type': 'x_velocity',
                 'after_bridge_reward_weight': 5.0,
                 'terminate_outside_of_reward_bounds': False,
             },
