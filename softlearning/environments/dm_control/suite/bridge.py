@@ -16,9 +16,12 @@ def stringify(value):
 
 
 def rotate_around_z(positions, quaternion):
-    z_rotation = Rotation.from_quat(
-        np.roll(quaternion, -1)
-    ).as_euler('xyz', degrees=False)[-1]
+    if np.isscalar(quaternion):
+        z_rotation = quaternion
+    else:
+        z_rotation = Rotation.from_quat(
+            np.roll(quaternion, -1)
+        ).as_euler('xyz', degrees=False)[-1]
 
     sin = np.sin(z_rotation)
     cos = np.cos(z_rotation)
@@ -131,23 +134,55 @@ def make_model(base_model_string,
     return etree.tostring(mjcf, pretty_print=True)
 
 
-def point_inside_2d_rectangle(points, rectangle_positions, rectangle_sizes):
+def point_inside_2d_rectangle(points,
+                              rectangle_positions,
+                              rectangle_sizes,
+                              rectangle_angles=None):
     points = np.atleast_2d(points)
     rectangle_positions = np.atleast_2d(rectangle_positions)
     rectangle_sizes = np.atleast_2d(rectangle_sizes)
-    result_shape = (*points.shape[:-1], *rectangle_positions.shape[:-1])
-    rectangles_top_right_xy = rectangle_positions + rectangle_sizes
-    rectangles_bottom_left_xy = rectangle_positions - rectangle_sizes
 
-    point_inside_2d_rectangle = np.logical_and(
-        np.logical_and.reduce(
-            points[..., None, :] <= rectangles_top_right_xy, axis=-1),
-        np.logical_and.reduce(
-            rectangles_bottom_left_xy <= points[..., None, :], axis=-1))
+    if rectangle_angles is None:
+        rectangle_angles = np.zeros((rectangle_positions.shape[0], 1))
+
+    rectangle_angles = np.atleast_2d(rectangle_angles)
+
+    np.testing.assert_equal(points.shape[-1], 2)
+    np.testing.assert_equal(rectangle_positions.shape[-1], 2)
+    np.testing.assert_equal(rectangle_sizes.shape[-1], 2)
+    np.testing.assert_equal(rectangle_angles.shape[-1], 1)
+
+    result = []
+    for (rectangle_position, rectangle_size, rectangle_angle) in zip(
+            rectangle_positions, rectangle_sizes, rectangle_angles):
+        rotated_position = rotate_around_z(
+            rectangle_position, -rectangle_angle.item())
+        rotated_points = rotate_around_z(points, -rectangle_angle.item())
+
+        np.testing.assert_equal(rotated_position.shape, rectangle_position.shape)
+        np.testing.assert_equal(rotated_points.shape, points.shape)
+
+        if rectangle_angle == 0:
+            np.testing.assert_equal(rotated_position, rectangle_position)
+            np.testing.assert_equal(points, rotated_points)
+
+        rectangles_top_right_xy = rotated_position + rectangle_size
+        rectangles_bottom_left_xy = rotated_position - rectangle_size
+
+        point_inside_2d_rectangle = np.logical_and(
+            np.logical_and.reduce(
+                rotated_points[..., None, :] <= rectangles_top_right_xy, axis=-1),
+            np.logical_and.reduce(
+                rectangles_bottom_left_xy <= rotated_points[..., None, :], axis=-1))
+        result.append(point_inside_2d_rectangle)
+
+    point_inside_2d_rectangle = np.concatenate(result, axis=-1)
 
     assert point_inside_2d_rectangle.shape == (
         *points.shape[:-1], *rectangle_positions.shape[:-1]), (
-        point_inside_2d_rectangle, point_inside_2d_rectangle.shape)
+            point_inside_2d_rectangle, point_inside_2d_rectangle.shape)
+
+    result_shape = (*points.shape[:-1], *rectangle_positions.shape[:-1])
 
     return np.reshape(point_inside_2d_rectangle, result_shape)
 
