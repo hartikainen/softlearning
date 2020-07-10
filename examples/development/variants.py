@@ -29,7 +29,8 @@ ALGORITHM_PARAMS_ADDITIONAL = {
         'type': 'SAC',
         'kwargs': {
             'alpha_lr': 3e-3,
-            'lr': 3e-4,
+            'Q_lr': 3e-4,
+            'policy_lr': 3e-4,
             'target_update_interval': 1,
             'tau': 5e-3,
             'action_prior': 'uniform',
