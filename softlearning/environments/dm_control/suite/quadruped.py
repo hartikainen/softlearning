@@ -107,8 +107,7 @@ class Orbit(OrbitTaskMixin):
         return common_observations
 
     def upright_reward(self, physics):
-        # return _upright_reward(physics)
-        return physics.torso_upright()
+        return _upright_reward(physics)
 
     def initialize_episode(self, physics):
         # Make the agent initially face tangent relative to pond.
@@ -161,8 +160,7 @@ class BridgeMove(bridge.MoveTaskMixin):
         return _common_observations(physics)
 
     def upright_reward(self, physics):
-        # return _upright_reward(physics)
-        return physics.torso_upright()
+        return _upright_reward(physics)
 
     def initialize_episode(self, physics):
         # Make the agent initially face tangent relative to pond.
