@@ -73,15 +73,13 @@ def _common_observations(physics):
 
 
 def _upright_reward(physics):
-    standing = physics.head_height()
-    upright = physics.torso_upright()
-    # standing = rewards.tolerance(physics.head_height(),
-    #                              bounds=(_STAND_HEIGHT, float('inf')),
-    #                              margin=_STAND_HEIGHT/4)
-    # upright = rewards.tolerance(physics.torso_upright(),
-    #                             bounds=(0.9, float('inf')), sigmoid='linear',
-    #                             margin=1.9, value_at_margin=0)
-    reward = standing + upright
+    standing = rewards.tolerance(physics.head_height(),
+                                 bounds=(_STAND_HEIGHT, float('inf')),
+                                 margin=_STAND_HEIGHT/4)
+    upright = rewards.tolerance(physics.torso_upright(),
+                                bounds=(0.9, float('inf')), sigmoid='linear',
+                                margin=1.9, value_at_margin=0)
+    reward = standing * upright
     return reward
 
 
@@ -261,8 +259,7 @@ class BridgeMove(bridge.MoveTaskMixin):
         return _common_observations(physics)
 
     def upright_reward(self, physics):
-        upright_reward = _upright_reward(physics)
-        return upright_reward
+        return _upright_reward(physics)
 
     def initialize_episode(self, physics):
         # Make the agent initially face tangent relative to pond.
