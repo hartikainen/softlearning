@@ -94,7 +94,15 @@ def load_policy_and_environment(picklable, variant):
     return policy, environment
 
 
-def simulate_policy_dm_control(policy, environment_params):
+def simulate_policy_dm_control(policy,
+                               environment_params,
+                               checkpoint_path,
+                               deterministic,
+                               num_rollouts,
+                               max_path_length,
+                               render_kwargs,
+                               video_save_path=None,
+                               evaluation_environment_kwargs=None):
     universe = environment_params['universe']
     assert universe == 'dm_control'
     domain, task = environment_params['domain'], environment_params['task']
@@ -105,6 +113,23 @@ def simulate_policy_dm_control(policy, environment_params):
         task,
         {
             **environment_params['kwargs'],
+            # 'perturb_body_kwargs': {
+            #     'perturbation_strength': 500.0,
+            #     'perturbation_direction': {
+            #         "type": "towards",
+            #         "target": "pond_center"
+            #     },
+            #     'perturbation_probability': None,
+            #     'perturbation_frequency': 200,
+            #     'perturbation_length': 1,
+            # },
+            # 'wind_kwargs': {
+            #     'wind_strength': 10,
+            #     'wind_direction': {
+            #         "type": "towards",
+            #         "target": "pond_center"
+            #     },
+            # },
         },
     )
 
@@ -114,11 +139,27 @@ def simulate_policy_dm_control(policy, environment_params):
         observations = tree.map_structure(lambda x: x[None, ...], observation)
         actions = policy.actions_np(observations)
         action = tree.map_structure(lambda x: x[0], actions)
+        # log_pis_np = policy.log_pis_np(observations, actions)
+        # print(log_pis_np)
         return action
 
-    from dm_control import viewer
+    if render_kwargs['mode'] == 'human':
+        from dm_control import viewer
+        viewer.launch(environment._env, policy=policy_fn)
 
-    viewer.launch(environment._env, policy=policy_fn)
+    with policy.set_deterministic(deterministic):
+        paths = rollouts(num_rollouts,
+                         environment,
+                         policy,
+                         path_length=max_path_length,
+                         render_kwargs=render_kwargs)
+
+    successes = [
+        max_path_length == path['terminals'].shape[0]
+        for path in paths
+    ]
+    num_success = sum(successes)
+    print(f"success probability: {num_success / len(paths)}")
 
 
 def simulate_policy(checkpoint_path,
