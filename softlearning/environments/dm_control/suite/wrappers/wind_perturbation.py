@@ -1,5 +1,4 @@
 import dm_env
-from gym import spaces
 import numpy as np
 
 from softlearning.utils.random import spherical as random_spherical
@@ -16,13 +15,35 @@ class Wrapper(dm_env.Environment):
                  env,
                  *args,
                  wind_strength=0,
+                 wind_frequency=200,
+                 wind_probability=None,
+                 wind_length=50,
                  wind_direction='random',
                  **kwargs):
         self._env = env
         self._wind_strength = wind_strength
         self._wind_direction = wind_direction
+        self._wind_strength = wind_strength
+        self._wind_frequency = wind_frequency
+        self._wind_probability = wind_probability
+        self._wind_length = wind_length
+        self._wind_direction = wind_direction
+        self._wind_started_at = None
+
+        if not ((wind_frequency is None) or (wind_probability is None)):
+            raise ValueError(
+                "Either `wind_probability` or `wind_frequency`"
+                " should be `None`.")
+
         result = super(Wrapper, self).__init__(*args, **kwargs)
         return result
+
+    def reset(self, *args, **kwargs):
+        self.physics.model.opt.density = 0.0
+        self.physics.model.opt.wind[:] = 0.0
+        self._wind_started_at = None
+        self._step_counter = 0
+        return self._env.reset(*args, **kwargs)
 
     @property
     def wind_direction(self):
@@ -30,8 +51,8 @@ class Wrapper(dm_env.Environment):
             return self._wind_direction
 
         elif self._wind_direction == 'random':
-            # TODO(hartikainen): Should be -1?
-            perturbation_size = num_dimensions(self._env.physics)
+            # TODO(hartikainen): Is -1 correct here?
+            perturbation_size = num_dimensions(self._env.physics) - 1
             perturbation = random_spherical(ndim=perturbation_size)
 
             if perturbation_size == 1:
@@ -61,10 +82,28 @@ class Wrapper(dm_env.Environment):
 
         raise NotImplementedError(type(self._wind_direction))
 
+    @property
+    def should_start_wind(self):
+        if self._wind_frequency is not None:
+            return self._step_counter % self._wind_frequency == 0
+        elif self._wind_probability is not None:
+            return np.random.rand() < self._wind_probability
+
+        raise ValueError
+
+    @property
+    def should_end_wind(self):
+        if self._wind_started_at is None:
+            return True
+
+        return ((self._step_counter - self._wind_started_at)
+                > self._wind_length - 2)
+
     def step(self, *args, **kwargs):
         self._step_counter += 1
 
-        if self._step_counter % 150 == 0:
+        if self.should_start_wind:
+            self._wind_started_at = self._step_counter
             wind_direction = self.wind_direction
             wind = wind_direction * self._wind_strength
             self.physics.model.opt.density = 1.2
@@ -79,17 +118,11 @@ class Wrapper(dm_env.Environment):
             'perturbation': self.physics.model.opt.wind[:3].copy(),
         })
 
-        if (self._step_counter % 200) == 0:
+        if self.should_end_wind:
             self.physics.model.opt.density = 0.0
             self.physics.model.opt.wind[:] = 0.0
 
         return time_step
-
-    def reset(self, *args, **kwargs):
-        self.physics.model.opt.density = 0.0
-        self.physics.model.opt.wind[:] = 0.0
-        self._step_counter = 0
-        return self._env.reset(*args, **kwargs)
 
     def observation_spec(self):
         return self._env.observation_spec()

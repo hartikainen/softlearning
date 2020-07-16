@@ -1,5 +1,4 @@
 import gym
-from gym import spaces
 import numpy as np
 
 from softlearning.utils.random import spherical as random_spherical
@@ -115,7 +114,5 @@ class WindWrapper(gym.Wrapper):
         if self.should_end_wind:
             self.sim.model.opt.density = 0.0
             self.sim.model.opt.wind[:] = 0.0
-
-        print("wind on:", info['perturbed'])
 
         return observation, reward, done, info

@@ -9,8 +9,11 @@ from gym.envs.mujoco import humanoid_v3
 
 from softlearning.utils.random import spherical as random_spherical
 from softlearning.environments.dm_control.suite.point_mass import (
-    PointMassPhysics,
-)
+    PointMassPhysics)
+from softlearning.environments.dm_control.suite.quadruped import (
+    QuadrupedPhysics)
+from softlearning.environments.dm_control.suite.humanoid import (
+    HumanoidPhysics)
 
 
 __all__ = ['Wrapper']
@@ -53,6 +56,12 @@ class Wrapper(dm_env.Environment):
 
         self._perturbation_started_at = None
         return super(Wrapper, self).__init__(*args, **kwargs)
+
+    def reset(self, *args, **kwargs):
+        self.physics.data.xfrc_applied[:] = 0.0
+        self._perturbation_started_at = None
+        self._step_counter = 0
+        return self._env.reset(*args, **kwargs)
 
     @property
     def perturbation_direction(self):
@@ -111,6 +120,8 @@ class Wrapper(dm_env.Environment):
 
         if isinstance(self.physics, PointMassPhysics):
             torso_key = 'pointmass'
+        elif isinstance(self.physics, (QuadrupedPhysics, HumanoidPhysics)):
+            torso_key = 'torso'
         else:
             raise NotImplementedError("TODO(hartikainen)")
 
@@ -141,12 +152,6 @@ class Wrapper(dm_env.Environment):
             self._perturbation_started_at = None
 
         return time_step
-
-    def reset(self, *args, **kwargs):
-        self.physics.data.xfrc_applied[:] = 0.0
-        self._perturbation_started_at = None
-        self._step_counter = 0
-        return self._env.reset(*args, **kwargs)
 
     def observation_spec(self):
         return self._env.observation_spec()
