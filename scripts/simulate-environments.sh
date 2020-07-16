@@ -79,8 +79,14 @@ EXPERIMENT_PATHS_AND_CHECKPOINT_IDS=(
     # "${RESULTS_BASE}/gym/Point2DEnv/Pond-v0/2019-12-04T18-14-47-support-Pond-SAC-5/;50;True"
     # "${RESULTS_BASE}/gym/Point2DEnv/Pond-v0/2019-12-04T18-11-47-support-Pond-DDPG-5/;50;False"
     # "${RESULTS_BASE}/gym/Point2DEnv/Pond-v0/2019-12-04T18-11-47-support-Pond-DDPG-5/;50;True"
-    "${RESULTS_BASE}/gym/Point2DEnv/Pond-v0/2019-12-07T02-09-24-pond-dense-SAC-1/;50;True"
-    "${RESULTS_BASE}/gym/Point2DEnv/Pond-v0/2019-12-07T02-09-24-pond-dense-SAC-1/;50;False"
+    # "${RESULTS_BASE}/gym/Point2DEnv/Pond-v0/2019-12-07T02-09-24-pond-dense-SAC-1/;50;True"
+    # "${RESULTS_BASE}/gym/Point2DEnv/Pond-v0/2019-12-07T02-09-24-pond-dense-SAC-1/;50;False"
+
+    # "${RESULTS_BASE}/gym/Point2DEnv/Pond-v0/2019-12-07T02-09-24-pond-dense-SAC-1/;50;True"
+    # "${RESULTS_BASE}/gym/Point2DEnv/Pond-v0/2019-12-07T02-09-24-pond-dense-SAC-1/;50;False"
+
+    "${RESULTS_BASE}/dm_control/quadruped/orbit_pond/2020-07-08T07-21-21-control-gain-2/;250;False"
+    "${RESULTS_BASE}/dm_control/humanoid/orbit_pond/2020-07-10T20-07-54-low-lr-1/;250;False"
 )
 
 EVALUATION_TASKS=(
@@ -96,8 +102,15 @@ EVALUATION_TASKS=(
     # "Wind-AntPond-v1"
     "PerturbRandomAction-v0"
     "PerturbNoisyAction-v0"
+
     # "Wind-point_mass-orbit_pond-v0"
     # "PerturbBody-point_mass-orbit_pond-v0"
+
+    # "Wind-quadruped-orbit_pond-v0"
+    # "PerturbBody-quadruped-orbit_pond-v0"
+
+    # "Wind-humanoid-orbit_pond-v0"
+    # "PerturbBody-humanoid-orbit_pond-v0"
 )
 
 for EXPERIMENT_PATH_AND_CHECKPOINT_ID in ${EXPERIMENT_PATHS_AND_CHECKPOINT_IDS[@]}; do

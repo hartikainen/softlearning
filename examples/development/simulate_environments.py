@@ -437,6 +437,42 @@ def simulate_perturbations(args):
             }
             for perturbation_probability in np.linspace(0.0, 0.1, 51)
         }
+    elif evaluation_task == 'PerturbBody-quadruped-orbit_pond-v0':
+        environments_params = {
+            f'perturbation-strength-{perturbation_strength}': {
+                'kwargs': {
+                    'perturb_body_kwargs': {
+                        'perturbation_strength': perturbation_strength,
+                        'perturbation_direction': {
+                            "type": "towards",
+                            "target": "pond_center"
+                        },
+                        'perturbation_probability': None,
+                        'perturbation_frequency': 200,
+                        'perturbation_length': 1,
+                    },
+                }
+            }
+            for perturbation_strength in np.linspace(0.0, 30000, 51)
+        }
+    elif evaluation_task == 'PerturbBody-humanoid-orbit_pond-v0':
+        environments_params = {
+            f'perturbation-strength-{perturbation_strength}': {
+                'kwargs': {
+                    'perturb_body_kwargs': {
+                        'perturbation_strength': perturbation_strength,
+                        'perturbation_direction': {
+                            "type": "towards",
+                            "target": "pond_center"
+                        },
+                        'perturbation_probability': None,
+                        'perturbation_frequency': 200,
+                        'perturbation_length': 1,
+                    },
+                }
+            }
+            for perturbation_strength in np.linspace(0.0, 500.0, 51)
+        }
     elif evaluation_task == 'Wind-v0':
         environments_params = {
             f'wind-strength-{wind_strength}': {
@@ -498,6 +534,38 @@ def simulate_perturbations(args):
                 }
             }
             for wind_strength in np.linspace(0, 75.0, 51)
+        }
+
+    elif evaluation_task == 'Wind-quadruped-orbit_pond-v0':
+        environments_params = {
+            f'wind-strength-{wind_strength}': {
+                'kwargs': {
+                    'wind_kwargs': {
+                        'wind_strength': wind_strength,
+                        'wind_direction': {
+                            "type": "towards",
+                            "target": "pond_center"
+                        },
+                    },
+                }
+            }
+            for wind_strength in np.linspace(0, 50.0, 51)
+        }
+
+    elif evaluation_task == 'Wind-humanoid-orbit_pond-v0':
+        environments_params = {
+            f'wind-strength-{wind_strength}': {
+                'kwargs': {
+                    'wind_kwargs': {
+                        'wind_strength': wind_strength,
+                        'wind_direction': {
+                            "type": "towards",
+                            "target": "pond_center"
+                        },
+                    },
+                }
+            }
+            for wind_strength in np.linspace(0, 30.0, 51)
         }
 
     else:
