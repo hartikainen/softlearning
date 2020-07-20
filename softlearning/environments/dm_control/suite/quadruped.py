@@ -54,6 +54,7 @@ KEY_GEOM_NAMES = [
 def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
                angular_velocity_reward_weight=1.0,
                control_range_multiplier=None,
+               friction=None,
                random=None,
                environment_kwargs=None):
     """Returns the Orbit task."""
@@ -65,7 +66,8 @@ def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
         base_model_string,
         pond_radius=pond_radius,
         pond_xy=pond_xy,
-        control_range_multiplier=control_range_multiplier)
+        control_range_multiplier=control_range_multiplier,
+        friction=friction)
     physics = PondPhysics.from_xml_string(xml_string, common.ASSETS)
     task = Orbit(
         desired_angular_velocity=_WALK_SPEED,

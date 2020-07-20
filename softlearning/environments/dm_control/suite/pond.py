@@ -19,7 +19,8 @@ def make_pond_model(base_model_string,
                     pond_radius,
                     size_multiplier=1.0,
                     pond_xy=DEFAULT_POND_XY,
-                    control_range_multiplier=None):
+                    control_range_multiplier=None,
+                    friction=None):
     size_multiplier = np.array(size_multiplier)
 
     mjcf = etree.fromstring(base_model_string)
@@ -64,6 +65,28 @@ def make_pond_model(base_model_string,
             ctrlrange = np.array([float(x) for x in ctrlrange_str.split(' ')])
             ctrlrange *= control_range_multiplier
             actuator.attrib['ctrlrange'] = stringify(ctrlrange)
+
+    if friction is not None:
+        model_name = mjcf.attrib['model']
+        if model_name == 'humanoid':
+            raise NotImplementedError
+            default_capsule_element = (
+                mjcf
+                .find(".//default")
+                .find(".//geom[@type='capsule']"))
+            default_capsule_element.attrib['friction'] = (
+                stringify(np.atleast_1d(friction)))
+        elif model_name == 'quadruped':
+            default_toe_element = (
+                mjcf
+                .find(".//default")
+                .find(".//default[@class='body']")
+                .find(".//default[@class='toe']")
+                .find(".//geom[@friction]"))
+            default_toe_element.attrib['friction'] = (
+                stringify(np.atleast_1d(friction)))
+        else:
+            raise NotImplementedError((model_name, friction))
 
     return etree.tostring(mjcf, pretty_print=True)
 
