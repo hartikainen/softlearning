@@ -91,6 +91,21 @@ def compute_angular_deltas(positions1, positions2, center=0.0):
 
 
 class PondPhysicsMixin:
+    def __init__(self, *args, **kwargs):
+        self._floor_geom_id = None
+        self._agent_geom_ids = None
+        return super(PondPhysicsMixin, self).__init__(*args, **kwargs)
+
+    @property
+    def agent_geom_ids(self):
+        raise NotImplementedError
+
+    @property
+    def floor_geom_id(self):
+        if self._floor_geom_id is None:
+            self._floor_geom_id = self.model.name2id('floor', 'geom')
+        return self._floor_geom_id
+
     @property
     def pond_radius(self):
         return self.named.model.geom_size['pond'][0]
@@ -104,21 +119,7 @@ class PondPhysicsMixin:
         pass
 
     def any_key_geom_in_water(self):
-        key_geoms_xy = self.key_geom_positions()[..., :2]
-
-        pond_center = self.pond_center_xyz[:2]
-        pond_radius = self.pond_radius
-
-        key_geoms_distance_to_pond_center = np.linalg.norm(
-            key_geoms_xy - pond_center,
-            ord=2,
-            keepdims=True,
-            axis=-1)
-
-        any_key_geom_in_water = np.any(
-            key_geoms_distance_to_pond_center < pond_radius)
-
-        return any_key_geom_in_water
+        raise NotImplementedError
 
     def distances_from_pond_center(self):
         state = self.center_of_mass()[:2]

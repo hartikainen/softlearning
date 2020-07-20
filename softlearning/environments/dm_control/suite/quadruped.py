@@ -25,6 +25,30 @@ from .pond import (
     OrbitTaskMixin)
 from . import bridge, visualization
 
+KEY_GEOM_NAMES = [
+    # 'pond',
+    # 'floor',
+    # 'eye_r',
+    # 'eye_l',
+    'torso',
+    'thigh_front_left',
+    'shin_front_left',
+    'foot_front_left',
+    'toe_front_left',
+    'thigh_front_right',
+    'shin_front_right',
+    'foot_front_right',
+    'toe_front_right',
+    'thigh_back_right',
+    'shin_back_right',
+    'foot_back_right',
+    'toe_back_right',
+    'thigh_back_left',
+    'shin_back_left',
+    'foot_back_left',
+    'toe_back_left',
+]
+
 
 @SUITE.add()
 def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
@@ -78,6 +102,46 @@ def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
 
 
 class PondPhysics(PondPhysicsMixin, QuadrupedPhysics):
+    @property
+    def agent_geom_ids(self):
+        if self._agent_geom_ids is None:
+            self._agent_geom_ids = np.array([
+                self.model.name2id(geom_name, 'geom')
+                for geom_name in KEY_GEOM_NAMES
+            ])
+        return self._agent_geom_ids
+
+    def any_key_geom_in_water(self):
+        floor_geom_id = self.floor_geom_id
+        agent_geom_ids = self.agent_geom_ids
+
+        contacts = self.data.contact
+        if contacts.size == 0:
+            return False
+
+        water_contacts_index = (
+            (np.isin(contacts.geom1, floor_geom_id)
+             & np.isin(contacts.geom2, agent_geom_ids))
+            | (np.isin(contacts.geom2, floor_geom_id)
+               & np.isin(contacts.geom1, agent_geom_ids)))
+        water_contacts = contacts[np.where(water_contacts_index)]
+
+        key_geoms_xy = water_contacts.pos[:, :2]
+
+        pond_center = self.pond_center_xyz[:2]
+        pond_radius = self.pond_radius
+
+        key_geoms_distance_to_pond_center = np.linalg.norm(
+            key_geoms_xy - pond_center,
+            ord=2,
+            keepdims=True,
+            axis=-1)
+
+        any_key_geom_in_water = np.any(
+            key_geoms_distance_to_pond_center < pond_radius)
+
+        return any_key_geom_in_water
+
     def key_geom_positions(self):
         toes = self.named.data.xpos[_TOES]
         return toes
