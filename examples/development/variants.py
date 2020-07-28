@@ -730,6 +730,25 @@ OBSERVATION_KEYS_PER_UNIVERSE_DOMAIN_TASK = {
         'distance_from_pond',
         'previous_action',
     ),
+    ('dm_control', 'quadruped', 'bridge_run'): (
+        'egocentric_state',
+        'torso_velocity',
+        'torso_upright',
+        'imu',
+        'force_torque',
+        # 'position',
+        'water_map',
+    ),
+    ('dm_control', 'humanoid', 'bridge_run'): (
+        'joint_angles',
+        'head_height',
+        'extremities',
+        'torso_vertical',
+        'com_velocity',
+        'velocity',
+        # 'position',
+        'water_map',
+    ),
 }
 
 

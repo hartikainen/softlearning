@@ -55,15 +55,15 @@ KEY_GEOM_NAMES = [
 
 def _common_observations(physics):
     com_velocity = physics.center_of_mass_velocity()
-    com_velocity = np.concatenate((
-        _localize_xy_value(physics, com_velocity[:2]),
-        com_velocity[2:],
-    ))
-
     velocity = physics.velocity()
-    velocity = np.concatenate((
-        _localize_xy_value(physics, velocity[:2]), velocity[2:],
-    ))
+
+    if isinstance(physics, PondPhysics):
+        com_velocity = np.concatenate((
+            _localize_xy_value(physics, com_velocity[:2]), com_velocity[2:],
+        ))
+        velocity = np.concatenate((
+            _localize_xy_value(physics, velocity[:2]), velocity[2:],
+        ))
 
     common_observations = collections.OrderedDict((
         ('joint_angles', physics.joint_angles()),
@@ -301,7 +301,9 @@ class BridgeMovePhysics(bridge.MovePhysicsMixin, HumanoidPhysics):
 
 class BridgeMove(bridge.MoveTaskMixin):
     def common_observations(self, physics):
-        return _common_observations(physics)
+        common_observations = _common_observations(physics)
+        common_observations['position'] = physics.center_of_mass()
+        return common_observations
 
     def upright_reward(self, physics):
         return _upright_reward(physics)
