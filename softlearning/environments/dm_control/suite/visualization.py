@@ -7,8 +7,11 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy.spatial import ConvexHull
 from scipy.spatial import qhull
+import tree
 
 from .pond import compute_angular_deltas
+
+from softlearning.models.utils import flatten_input_structure
 
 
 def get_path_infos_orbit_pond(physics,
@@ -320,6 +323,27 @@ def bridge_move_after_bridge_infos(physics, paths):
     return infos
 
 
+def compute_entropies(policy, observations):
+    num_actions = 100
+    policy_inputs = flatten_input_structure({
+        name: observations[name]
+        for name in policy.observation_keys
+    })
+    tiled_policy_inputs = tree.map_structure(
+        lambda x: np.reshape(
+            np.tile(x[:, None, :], (1, num_actions, 1)),
+            (-1, x.shape[-1])),
+        policy_inputs)
+    actions_flat = policy.actions_np(tiled_policy_inputs)
+    log_pis_flat = policy.log_pis_np(
+        tiled_policy_inputs, actions_flat)
+    log_pis = np.reshape(
+        log_pis_flat, (*tree.flatten(observations)[0].shape[:-1], num_actions))
+    log_pis = np.mean(log_pis, axis=1)
+    entropies = - 1.0 * log_pis
+    return entropies
+
+
 def get_path_infos_bridge_move(physics,
                                paths,
                                evaluation_type='training',
@@ -363,10 +387,22 @@ def get_path_infos_bridge_move(physics,
     else:
         figsize = (base_size * (figure_width / figure_height), base_size)
 
-    figure, axis = plt.subplots(1, 1, figsize=figsize)
+    main_axis_height = figsize[1]
+    figsize = (figsize[0], main_axis_height + base_size / 2)
+
+    figure, axes = plt.subplots(
+        2,
+        1,
+        figsize=figsize,
+        gridspec_kw={
+            'height_ratios': [main_axis_height] + [base_size / 2],
+        })
+
+    axis = axes[0]
 
     axis.set_xlim(xlim)
     axis.set_ylim(ylim)
+    axes[1].set_xlim(xlim)
 
     color_map = plt.cm.get_cmap('tab10', len(paths))
     for i, path in enumerate(paths):
@@ -397,6 +433,14 @@ def get_path_infos_bridge_move(physics,
             c=[color],
             marker='X',
             s=90.0)
+
+        entropies = compute_entropies(
+            physics.policy, path['observations'])
+        axes[1].plot(
+            positions[:-1, 0],
+            entropies,
+            color=color_map(i),
+            label=f'path-{i}')
 
     water_left_rectangle = mpl.patches.Rectangle(
         xy=water_left_pos - water_left_size,

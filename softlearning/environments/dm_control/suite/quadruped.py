@@ -220,6 +220,9 @@ class BridgeMovePhysics(bridge.MovePhysicsMixin, QuadrupedPhysics):
         imu = 50.0 * np.tanh(imu / 100.0)
         return imu
 
+    def get_path_infos(self, *args, **kwargs):
+        return visualization.get_path_infos_bridge_move(self, *args, **kwargs)
+
 
 class BridgeMove(bridge.MoveTaskMixin):
     def common_observations(self, physics):

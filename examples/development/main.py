@@ -96,6 +96,10 @@ class ExperimentRunner(tune.Trainable):
             training_environment.unwrapped.policy = policy
             for env in evaluation_environments:
                 env.unwrapped.policy = policy
+        elif training_environment._task == 'bridge_run':
+            training_environment.physics.policy = policy
+            for env in evaluation_environments:
+                env.physics.policy = policy
 
         initial_exploration_policy = self.initial_exploration_policy = (
             get_policy_from_params(
