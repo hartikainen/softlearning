@@ -140,13 +140,14 @@ def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
 @SUITE.add()
 def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
                random=None,
+               bridge_length=bridge.DEFAULT_BRIDGE_LENGTH,
+               bridge_width=bridge.DEFAULT_BRIDGE_WIDTH,
+               after_bridge_reward_type='constant',
+               after_bridge_reward_weight=1.0,
+               terminate_outside_of_reward_bounds=False,
                environment_kwargs=None):
     """Returns the BridgeRun task."""
     environment_kwargs = environment_kwargs or {}
-    bridge_length = environment_kwargs.get(
-        'bridge_length', bridge.DEFAULT_BRIDGE_LENGTH)
-    bridge_width = environment_kwargs.get(
-        'bridge_width', bridge.DEFAULT_BRIDGE_WIDTH)
     base_model_string, common_assets = get_model_and_assets_common()
     xml_string = bridge.make_model(
         base_model_string,
@@ -302,6 +303,9 @@ class BridgeMovePhysics(bridge.MovePhysicsMixin, HumanoidPhysics):
         imu = super(BridgeMovePhysics, self).imu(*args, **kwargs)
         imu = 50.0 * np.tanh(imu / 100.0)
         return imu
+
+    def get_path_infos(self, *args, **kwargs):
+        return visualization.get_path_infos_bridge_move(self, *args, **kwargs)
 
 
 class BridgeMove(bridge.MoveTaskMixin):

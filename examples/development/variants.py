@@ -306,6 +306,16 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
             'bridge_run': 200,
             'tapering_bridge_run': 200,
         },
+        'quadruped': {
+            DEFAULT_KEY: 1000,
+            'orbit_pond': 1000,
+            'bridge_run': 250,
+        },
+        'humanoid': {
+            DEFAULT_KEY: 1000,
+            'orbit_pond': 1000,
+            'bridge_run': 250,
+        },
     }
 }
 
@@ -620,7 +630,17 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 ]),
                 'friction': tune.grid_search([1.0]),
             },
-            'bridge_run': {},
+            'bridge_run': {
+                'bridge_width': 1.3,
+                'bridge_length': 5.0,
+                'after_bridge_reward_type': tune.grid_search([
+                    'x_velocity',
+                    'xy_velocity',
+                    'constant',
+                ]),
+                'after_bridge_reward_weight': 5.0,
+                'terminate_outside_of_reward_bounds': False,
+            },
         },
         'humanoid': {
             'orbit_pond': {
@@ -628,7 +648,17 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     50.0,
                 ]),
             },
-            'bridge_run': {},
+            'bridge_run': {
+                'bridge_width': 0.3,
+                'bridge_length': 5.0,
+                'after_bridge_reward_type': tune.grid_search([
+                    'x_velocity',
+                    'xy_velocity',
+                    'constant',
+                ]),
+                'after_bridge_reward_weight': 5.0,
+                'terminate_outside_of_reward_bounds': False,
+            },
         },
         'boxhead': {
             'orbit_pond': {
@@ -827,7 +857,7 @@ def get_policy_params(spec):
     ), None)
 
     if observation_keys is not None:
-        policy_params['kwargs']['observation_keys'] = observation_keys
+        policy_params['kwargs']['observation_keys'] = list(observation_keys)
 
     return policy_params
 
