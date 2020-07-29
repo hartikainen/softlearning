@@ -151,10 +151,18 @@ def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
     xml_string = bridge.make_model(
         base_model_string,
         bridge_length=bridge_length,
-        bridge_width=bridge_width)
+        bridge_width=bridge_width,
+        water_map_length=4,
+        water_map_width=4,
+        water_map_dx=0.25,
+        water_map_dy=0.25)
     physics = BridgeMovePhysics.from_xml_string(xml_string, common_assets)
     task = BridgeMove(
         random=random,
+        water_map_length=4,
+        water_map_width=4,
+        water_map_dx=0.25,
+        water_map_dy=0.25,
         desired_speed_on_bridge=_RUN_SPEED,
         desired_speed_after_bridge=_WALK_SPEED)
     return control.Environment(physics, task, time_limit=time_limit,
@@ -268,20 +276,17 @@ class Orbit(OrbitTaskMixin):
 
 
 class BridgeMovePhysics(bridge.MovePhysicsMixin, HumanoidPhysics):
-    def any_key_geom_in_water(self):
-        raise NotImplementedError("TODO(hartikainen)")
-        key_geoms_xy = self.key_geom_positions()[..., :2]
-        key_geoms_z = self.key_geom_positions()[..., 2:3]
+    @property
+    def agent_geom_ids(self):
+        if self._agent_geom_ids is None:
+            self._agent_geom_ids = np.array([
+                self.model.name2id(geom_name, 'geom')
+                for geom_name in KEY_GEOM_NAMES
+            ])
+        return self._agent_geom_ids
 
-        pond_center = self.pond_center_xyz[:2]
-        pond_radius = self.pond_radius
-
-        any_key_geom_in_water = np.any(np.logical_and(
-            TODO,
-            key_geoms_z < 0.1,
-        ))
-
-        return any_key_geom_in_water
+    def torso_velocity(self, *args, **kwargs):
+        return self.center_of_mass_velocity(*args, **kwargs)
 
     def key_geom_positions(self):
         key_geom_positions = self.named.data.xpos[KEY_GEOM_NAMES]

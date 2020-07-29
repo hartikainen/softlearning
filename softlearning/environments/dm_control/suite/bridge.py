@@ -188,42 +188,63 @@ def point_inside_2d_rectangle(points,
 
 
 class MovePhysicsMixin:
-    def before_bridge(self):
-        key_geoms_x = self.key_geom_positions()[..., :1]
-        bridge_x = self.named.data.geom_xpos['bridge'][:1]
-        bridge_length = self.named.model.geom_size['bridge'][:1]
-        toes_before_bridge = key_geoms_x < bridge_x - bridge_length
+    def __init__(self, *args, **kwargs):
+        self._floor_geom_id = None
+        self._agent_geom_ids = None
+        return super(MovePhysicsMixin, self).__init__(*args, **kwargs)
 
-        before_bridge = np.all(toes_before_bridge)
+    @property
+    def agent_geom_ids(self):
+        raise NotImplementedError
+
+    @property
+    def floor_geom_id(self):
+        if self._floor_geom_id is None:
+            self._floor_geom_id = self.model.name2id('floor', 'geom')
+        return self._floor_geom_id
+
+    def before_bridge(self):
+        agent_x = self.center_of_mass()[0]
+        bridge_x = self.named.data.geom_xpos['bridge'][0]
+        bridge_length = self.named.model.geom_size['bridge'][0]
+        before_bridge = agent_x < bridge_x - bridge_length
 
         return before_bridge
 
     def after_bridge(self):
-        key_geoms_x = self.key_geom_positions()[..., :1]
-
-        bridge_x = self.named.data.geom_xpos['bridge'][:1]
-        bridge_length = self.named.model.geom_size['bridge'][:1]
-        toes_after_bridge = bridge_x + bridge_length < key_geoms_x
-
-        after_bridge = np.any(toes_after_bridge)
+        agent_x = self.center_of_mass()[0]
+        bridge_x = self.named.data.geom_xpos['bridge'][0]
+        bridge_length = self.named.model.geom_size['bridge'][0]
+        after_bridge = bridge_x + bridge_length < agent_x
 
         return after_bridge
 
     def on_bridge(self):
-        key_geoms_xy = self.key_geom_positions()[..., :2]
-
+        agent_xy = self.center_of_mass()[:2]
         bridge_xy = self.named.data.geom_xpos['bridge'][:2]
         bridge_size = self.named.model.geom_size['bridge'][:2]
 
-        toes_on_bridge = point_inside_2d_rectangle(
-            key_geoms_xy, bridge_xy, bridge_size)
-
-        on_bridge = np.any(toes_on_bridge)
+        on_bridge = point_inside_2d_rectangle(
+            agent_xy, bridge_xy, bridge_size)
 
         return on_bridge
 
     def any_key_geom_in_water(self):
-        key_geoms_xy = self.key_geom_positions()[..., :2]
+        floor_geom_id = self.floor_geom_id
+        agent_geom_ids = self.agent_geom_ids
+
+        contacts = self.data.contact
+        if contacts.size == 0:
+            return False
+
+        water_contacts_index = (
+            (np.isin(contacts.geom1, floor_geom_id)
+             & np.isin(contacts.geom2, agent_geom_ids))
+            | (np.isin(contacts.geom2, floor_geom_id)
+               & np.isin(contacts.geom1, agent_geom_ids)))
+        water_contacts = contacts[np.where(water_contacts_index)]
+
+        key_geoms_xy = water_contacts.pos[:, :2]
 
         water_left_xy = self.named.model.geom_pos['water-left'][:2]
         water_left_size = self.named.model.geom_size['water-left'][:2]
@@ -270,7 +291,7 @@ class MovePhysicsMixin:
                 density * ny),
             indexing='ij',
         ), axis=-1)
-        water_map_origin_xy -= (length / 4, 0.0)
+        water_map_origin_xy += (length / 4, 0.0)
         mini_cell_centers_origin_xy = water_map_origin_xy + (
             dx / (density * 2), dy / (density * 2))
 
@@ -409,7 +430,9 @@ class MoveTaskMixin(base.Task):
         from softlearning.environments.dm_control.suite.point_mass import (
             BridgeMovePhysics as PointBridgeMovePhysics)
 
-        if physics.before_bridge():
+        if physics.any_key_geom_in_water():
+            move_reward = -1.0
+        elif physics.before_bridge():
             move_reward = -1.0
         elif physics.on_bridge():
             x_velocity = physics.torso_velocity()[0]
@@ -456,8 +479,6 @@ class MoveTaskMixin(base.Task):
                     raise ValueError(self._after_bridge_reward_type)
             else:
                 move_reward = 0.0
-        elif physics.any_key_geom_in_water():
-            move_reward = -1.0
         else:
             move_reward = 0.0
 

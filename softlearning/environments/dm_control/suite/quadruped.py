@@ -92,10 +92,18 @@ def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
     xml_string = bridge.make_model(
         base_model_string,
         bridge_length=bridge_length,
-        bridge_width=bridge_width)
+        bridge_width=bridge_width,
+        water_map_length=4,
+        water_map_width=4,
+        water_map_dx=0.25,
+        water_map_dy=0.25)
     physics = BridgeMovePhysics.from_xml_string(xml_string, common.ASSETS)
     task = BridgeMove(
         random=random,
+        water_map_length=4,
+        water_map_width=4,
+        water_map_dx=0.25,
+        water_map_dy=0.25,
         desired_speed_on_bridge=_RUN_SPEED,
         desired_speed_after_bridge=_WALK_SPEED)
     return control.Environment(physics, task, time_limit=time_limit,
@@ -205,6 +213,15 @@ class Orbit(OrbitTaskMixin):
 
 
 class BridgeMovePhysics(bridge.MovePhysicsMixin, QuadrupedPhysics):
+    @property
+    def agent_geom_ids(self):
+        if self._agent_geom_ids is None:
+            self._agent_geom_ids = np.array([
+                self.model.name2id(geom_name, 'geom')
+                for geom_name in KEY_GEOM_NAMES
+            ])
+        return self._agent_geom_ids
+
     def key_geom_positions(self):
         toes = self.named.data.xpos[_TOES]
         return toes
