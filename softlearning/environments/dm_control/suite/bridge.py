@@ -427,9 +427,6 @@ class MoveTaskMixin(base.Task):
 
     def get_reward(self, physics):
         """Returns a reward to the agent."""
-        from softlearning.environments.dm_control.suite.point_mass import (
-            BridgeMovePhysics as PointBridgeMovePhysics)
-
         if physics.any_key_geom_in_water():
             move_reward = -1.0
         elif physics.before_bridge():
@@ -444,10 +441,6 @@ class MoveTaskMixin(base.Task):
             #     value_at_margin=0.0,
             #     sigmoid='linear')
         elif physics.after_bridge():
-            if not isinstance(physics, PointBridgeMovePhysics):
-                raise NotImplementedError(
-                    "TODO(hartikainen): Check this for other envs.")
-
             (reward_bounds_x_low,
              reward_bounds_x_high,
              reward_bounds_y_low,
