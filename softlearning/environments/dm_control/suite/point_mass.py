@@ -111,23 +111,29 @@ def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
     size_multiplier = 0.05
     base_model_string = make_model(
         walls_and_target=False, actuator_type=actuator_type)
+
+    water_map_length = 2 * size_multiplier
+    water_map_width = 2 * size_multiplier
+    water_map_dx = 0.2 * size_multiplier / 2
+    water_map_dy = 0.2 * size_multiplier / 2
+
     xml_string = make_pond_model(
         base_model_string,
         pond_radius=pond_radius,
         pond_xy=pond_xy,
-        water_map_length=3 * size_multiplier,
-        water_map_width=3 * size_multiplier,
-        water_map_dx=0.5 * size_multiplier / 2,
-        water_map_dy=0.5 * size_multiplier / 2,
+        water_map_length=water_map_length,
+        water_map_width=water_map_width,
+        water_map_dx=water_map_dx,
+        water_map_dy=water_map_dy,
     )
     physics = PondPhysics.from_xml_string(xml_string, common.ASSETS)
     task = Orbit(
         desired_angular_velocity=DEFAULT_DESIRED_ANGULAR_VELOCITY,
         angular_velocity_reward_weight=angular_velocity_reward_weight,
-        water_map_length=3 * size_multiplier,
-        water_map_width=3 * size_multiplier,
-        water_map_dx=0.5 * size_multiplier / 2,
-        water_map_dy=0.5 * size_multiplier / 2,
+        water_map_length=water_map_length,
+        water_map_width=water_map_width,
+        water_map_dx=water_map_dx,
+        water_map_dy=water_map_dy,
         make_1d=make_1d,
         random=random)
     return control.Environment(
