@@ -277,6 +277,11 @@ class Orbit(OrbitTaskMixin):
 
 
 class BridgeMovePhysics(bridge.MovePhysicsMixin, HumanoidPhysics):
+    def __init__(self, *args,  **kwargs):
+        self._agent_geom_ids = None
+        self._fell_over_geom_ids = None
+        return super(BridgeMovePhysics, self).__init__(*args, **kwargs)
+
     @property
     def agent_geom_ids(self):
         if self._agent_geom_ids is None:
@@ -285,6 +290,16 @@ class BridgeMovePhysics(bridge.MovePhysicsMixin, HumanoidPhysics):
                 for geom_name in KEY_GEOM_NAMES
             ])
         return self._agent_geom_ids
+
+    @property
+    def fell_over_geom_ids(self):
+        if self._fell_over_geom_ids is None:
+            self._fell_over_geom_ids = np.array([
+                self.model.name2id(geom_name, 'geom')
+                for geom_name in KEY_GEOM_NAMES
+                if 'foot' not in geom_name
+            ])
+        return self._fell_over_geom_ids
 
     def torso_velocity(self, *args, **kwargs):
         return self.center_of_mass_velocity(*args, **kwargs)
@@ -307,6 +322,22 @@ class BridgeMovePhysics(bridge.MovePhysicsMixin, HumanoidPhysics):
     def get_path_infos(self, *args, **kwargs):
         return visualization.get_path_infos_bridge_move(self, *args, **kwargs)
 
+    def fell_over(self):
+        floor_geom_id = self.floor_geom_id
+        agent_geom_ids = self.fell_over_geom_ids
+
+        contacts = self.data.contact
+        if contacts.size == 0:
+            return False
+
+        floor_contacts_index = (
+            (np.isin(contacts.geom1, floor_geom_id)
+             & np.isin(contacts.geom2, agent_geom_ids))
+            | (np.isin(contacts.geom2, floor_geom_id)
+               & np.isin(contacts.geom1, agent_geom_ids)))
+        any_agent_geom_contact = np.any(floor_contacts_index)
+        return any_agent_geom_contact
+
 
 class BridgeMove(bridge.MoveTaskMixin):
     def common_observations(self, physics):
@@ -322,3 +353,9 @@ class BridgeMove(bridge.MoveTaskMixin):
         orientation = np.array([1.0, 0.0, 0.0, 0.0])
         _find_non_contacting_height(physics, orientation, x_pos=0)
         return super(BridgeMove, self).initialize_episode(physics)
+
+    def get_termination(self, physics):
+        super_termination = super(BridgeMove, self).get_termination(physics)
+        fell_over = physics.fell_over()
+        terminated = fell_over or super_termination
+        return terminated
