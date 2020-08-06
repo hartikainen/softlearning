@@ -649,14 +649,14 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 ]),
             },
             'bridge_run': {
-                'bridge_width': 0.3,
+                'bridge_width': 0.4,
                 'bridge_length': 5.0,
                 'after_bridge_reward_type': tune.grid_search([
                     'x_velocity',
-                    'xy_velocity',
-                    'constant',
+                    # 'xy_velocity',
+                    # 'constant',
                 ]),
-                'after_bridge_reward_weight': 5.0,
+                'after_bridge_reward_weight': 1.0,
                 'desired_speed_on_bridge': tune.grid_search([1.0, 10.0]),
                 'desired_speed_after_bridge': tune.sample_from(lambda spec: (
                     spec.get('config', spec)
