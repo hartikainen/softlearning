@@ -92,7 +92,8 @@ def get_path_infos_orbit_pond(physics,
             for metric_name, metric_values in (
                     ('velocities-x', velocities_xyz[:, 0]),
                     ('velocities-y', velocities_xyz[:, 1]),
-                    ('velocities-z', velocities_xyz[:, 2]))
+                    # ('velocities-z', velocities_xyz[:, 2]),
+            )
             for metric_fn_name in ('mean', 'max', 'min', 'mean')
         ])
 
