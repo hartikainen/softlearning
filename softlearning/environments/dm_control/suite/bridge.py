@@ -278,8 +278,8 @@ class MovePhysicsMixin:
         direction.
         """
         com_x, com_y = self.center_of_mass()[:2]
-        nx = int(length / dx)
-        ny = int(width / dy)
+        nx = int(round(length / dx, 12))
+        ny = int(round(width / dy, 12))
         water_map_origin_xy = np.stack(np.meshgrid(
             np.linspace(
                 - length / 2,
