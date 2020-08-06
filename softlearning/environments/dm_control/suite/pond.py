@@ -3,8 +3,13 @@ import abc
 from lxml import etree
 import numpy as np
 from scipy.spatial.transform import Rotation
+import skimage.measure
 from dm_control.suite import base
 from dm_control.utils import rewards
+
+from softlearning.environments.dm_control.suite.bridge import (
+    rotate_around_z,
+    point_inside_2d_rectangle)
 
 
 DEFAULT_POND_XY = (0, 0)
@@ -20,7 +25,11 @@ def make_pond_model(base_model_string,
                     size_multiplier=1.0,
                     pond_xy=DEFAULT_POND_XY,
                     control_range_multiplier=None,
-                    friction=None):
+                    friction=None,
+                    water_map_length=5,
+                    water_map_width=5,
+                    water_map_dx=0.5,
+                    water_map_dy=0.5):
     size_multiplier = np.array(size_multiplier)
 
     mjcf = etree.fromstring(base_model_string)
@@ -88,6 +97,20 @@ def make_pond_model(base_model_string,
         else:
             raise NotImplementedError((model_name, friction))
 
+    for x in range(int(water_map_length / water_map_dx)):
+        for y in range(int(water_map_width / water_map_dy)):
+            water_map_cell_element = etree.Element(
+                "geom",
+                type="box",
+                contype="0",
+                conaffinity="0",
+                name=f"water-map-{x}-{y}",
+                pos=stringify((0, 0, 0.01 * size_multiplier)),
+                size=stringify(
+                    (water_map_dx, water_map_dy, 0.01 * size_multiplier)),
+                rgba="0 0 0 1")
+            worldbody.insert(-1, water_map_cell_element)
+
     return etree.tostring(mjcf, pretty_print=True)
 
 
@@ -143,6 +166,73 @@ class PondPhysicsMixin:
 
     def any_key_geom_in_water(self):
         raise NotImplementedError
+
+    def _get_orientation(self):
+        return self.named.data.qpos['root'][3:]
+
+    def water_map(self, length, width, dx, dy, density=10):
+        """Create a water map around the egocentric view.
+
+        Water map is a float array of shape (length / dx, width / dy)
+        with element in [0, 1] representing the proportion of the are of
+        the cell in water. The water map is located around the agent, although
+        not necessarily centered around it. There are more cells in the
+        egocentric forward direction and fewer cells in the egocentric backward
+        direction.
+        """
+        com_x, com_y = self.center_of_mass()[:2]
+        nx = int(length / dx)
+        ny = int(width / dy)
+        water_map_origin_xy = np.stack(np.meshgrid(
+            np.linspace(
+                - length / 2,
+                + length / 2 - dx / density,
+                density * nx),
+            np.linspace(
+                - width / 2,
+                + width / 2 - dy / density,
+                density * ny),
+            indexing='ij',
+        ), axis=-1)
+        # water_map_origin_xy += (length / 4, 0.0)
+        mini_cell_centers_origin_xy = water_map_origin_xy + (
+            dx / (density * 2), dy / (density * 2))
+
+        cell_centers_xy = rotate_around_z(
+            water_map_origin_xy[::density, ::density] + (dx / 2, dy / 2),
+            self._get_orientation()
+        ) + (com_x, com_y)
+
+        mini_cell_centers_xy = rotate_around_z(
+            mini_cell_centers_origin_xy, self._get_orientation()
+        ) + (com_x, com_y)
+
+        pond_center_xy = self.pond_center_xyz[:2]
+
+        cells_in_waters = (
+            np.linalg.norm(
+                mini_cell_centers_xy - pond_center_xy,
+                ord=2,
+                axis=-1
+            ) < self.pond_radius)
+
+        # water_map = np.any(cells_in_waters, axis=-1)
+        water_map = skimage.measure.block_reduce(
+            cells_in_waters, (density, density), np.mean)
+
+        cell_centers_xy_v0 = skimage.measure.block_reduce(
+            mini_cell_centers_xy, (density, density, 1), np.mean)
+
+        try:
+            np.testing.assert_allclose(
+                cell_centers_xy_v0,
+                cell_centers_xy,
+                atol=1e-10)
+        except Exception as e:
+            breakpoint()
+            pass
+
+        return cell_centers_xy, water_map
 
     def distances_from_pond_center(self):
         state = self.center_of_mass()[:2]
@@ -212,6 +302,10 @@ class OrbitTaskMixin(base.Task):
                  desired_angular_velocity,
                  angular_velocity_reward_weight,
                  control_cost_weight=0.0,
+                 water_map_length=10,
+                 water_map_width=10,
+                 water_map_dx=1.0,
+                 water_map_dy=1.0,
                  random=None):
         """Initializes an instance of `Orbit`.
 
@@ -227,6 +321,10 @@ class OrbitTaskMixin(base.Task):
         self._desired_angular_velocity = desired_angular_velocity
         self._angular_velocity_reward_weight = angular_velocity_reward_weight
         self._control_cost_weight = control_cost_weight
+        self._water_map_length = water_map_length
+        self._water_map_width = water_map_width
+        self._water_map_dx = water_map_dx
+        self._water_map_dy = water_map_dy
         self._previous_action = None
         return super(OrbitTaskMixin, self).__init__(random=random)
 
@@ -249,8 +347,12 @@ class OrbitTaskMixin(base.Task):
         """Returns an observation to the agent."""
         common_observations = self.common_observations(physics)
 
-        orientation_to_pond = physics.orientation_to_pond()
-        distance_from_pond = physics.distance_from_pond()
+        water_map_xy, water_map = physics.water_map(
+            length=self._water_map_length,
+            width=self._water_map_width,
+            dx=self._water_map_dx,
+            dy=self._water_map_dy,
+            density=10)
 
         previous_action = (
             self._previous_action
@@ -259,10 +361,18 @@ class OrbitTaskMixin(base.Task):
 
         pond_observations = type(common_observations)((
             *common_observations.items(),
-            ('orientation_to_pond', orientation_to_pond),
-            ('distance_from_pond', distance_from_pond),
+            ('water_map', water_map),
             ('previous_action', previous_action),
         ))
+
+        for i in range(int(self._water_map_length / self._water_map_dx)):
+            for j in range(int(self._water_map_width / self._water_map_dy)):
+                cell_id = f'water-map-{i}-{j}'
+                physics.named.data.geom_xpos[cell_id][:2] = water_map_xy[i, j]
+                # physics.named.data.geom_xmat[cell_id][-3:] = (
+                #     physics.torso_xmat()[-3:])
+                physics.named.model.geom_rgba[cell_id] = (
+                    water_map[i, j], 0, 0, 0.1)
 
         return pond_observations
 

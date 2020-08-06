@@ -29,6 +29,10 @@ DEFAULT_DESIRED_ANGULAR_VELOCITY = 3.0
 DEFAULT_DESIRED_SPEED_ON_BRIDGE = 1.0
 DEFAULT_DESIRED_SPEED_AFTER_BRIDGE = 1.0
 
+KEY_GEOM_NAMES = [
+    'pointmass',
+]
+
 
 def make_model(walls_and_target=False, actuator_type='motor'):
     xml_string = common.read_model('point_mass.xml')
@@ -104,16 +108,26 @@ def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
         'pond_radius', DEFAULT_POND_RADIUS * 0.05)
     pond_xy = environment_kwargs.get('pond_xy', DEFAULT_POND_XY)
     # base_model_string, assets = get_model_and_assets_common()
+    size_multiplier = 0.05
     base_model_string = make_model(
         walls_and_target=False, actuator_type=actuator_type)
     xml_string = make_pond_model(
         base_model_string,
         pond_radius=pond_radius,
-        pond_xy=pond_xy)
+        pond_xy=pond_xy,
+        water_map_length=3 * size_multiplier,
+        water_map_width=3 * size_multiplier,
+        water_map_dx=0.5 * size_multiplier / 2,
+        water_map_dy=0.5 * size_multiplier / 2,
+    )
     physics = PondPhysics.from_xml_string(xml_string, common.ASSETS)
     task = Orbit(
         desired_angular_velocity=DEFAULT_DESIRED_ANGULAR_VELOCITY,
         angular_velocity_reward_weight=angular_velocity_reward_weight,
+        water_map_length=3 * size_multiplier,
+        water_map_width=3 * size_multiplier,
+        water_map_dx=0.5 * size_multiplier / 2,
+        water_map_dy=0.5 * size_multiplier / 2,
         make_1d=make_1d,
         random=random)
     return control.Environment(
@@ -202,6 +216,15 @@ def tapering_bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
 
 
 class PondPhysics(PondPhysicsMixin, PointMassPhysics):
+    @property
+    def agent_geom_ids(self):
+        if self._agent_geom_ids is None:
+            self._agent_geom_ids = np.array([
+                self.model.name2id(geom_name, 'geom')
+                for geom_name in KEY_GEOM_NAMES
+            ])
+        return self._agent_geom_ids
+
     def velocity_to_pond(self):
         velocity = self.velocity()
         sin_cos_angle_to_pond = self.sin_cos_angle_to_pond()
@@ -263,8 +286,15 @@ class PondPhysics(PondPhysicsMixin, PointMassPhysics):
         return self.sin_cos_angle_to_pond()
         return orientation_to_pond
 
+    def any_key_geom_in_water(self):
+        point_in_water = self.distance_from_pond() < 0.0
+        return point_in_water
+
     def get_path_infos(self, *args, **kwargs):
         return visualization.get_path_infos_orbit_pond(self, *args, **kwargs)
+
+    def _get_orientation(self):
+        return self.angle_to_pond()
 
 
 class Orbit(OrbitTaskMixin):
