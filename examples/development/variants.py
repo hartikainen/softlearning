@@ -239,8 +239,8 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'point_mass': {
             DEFAULT_KEY: int(3e6),
-            'orbit_pond': int(5e5),
-            'bridge_run': int(5e5),
+            'orbit_pond': int(2e4),
+            'bridge_run': int(5e4),
             'tapering_bridge_run': int(5e4),
             # 'hard': int(None),
         },
@@ -365,8 +365,8 @@ EPOCH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
             'bridge_run': int(1e4),
         },
         'point_mass': {
-            'orbit_pond': int(1e4),
-            'bridge_run': int(1e4),
+            'orbit_pond': int(1e3),
+            'bridge_run': int(1e3),
             'tapering_bridge_run': int(1000),
         },
     },
@@ -684,6 +684,11 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'point_mass': {
             'orbit_pond': {
+                'make_1d': tune.grid_search([False]),
+                'actuator_type': tune.grid_search(['motor',]),
+                'angular_velocity_reward_weight': tune.grid_search([
+                    10.0
+                ]),
             },
             'bridge_run': {
                 'bridge_width': 0.5,
@@ -941,7 +946,10 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                 1.0,
             ]),
             'point_mass': tune.grid_search([
-                -8.0, -4.0, -2.0, -1.0, -0.5, 0.0, 0.25, 0.5, 0.75, 1.0,
+                # -8.0, -4.0, -2.0, -1.0, -0.5, 0.0, 0.25, 0.5, 0.75, 1.0,
+                # -2.0, -1.0, 0.0, 0.5, 1.0
+                # -2.0, 0.0, 0.5, 0.75, 1.0,
+                -8.0, -2.0, 0.0, 0.5, 1.0, 1.1, 1.2, 1.3,
             ]),
             'boxhead': tune.grid_search([
                 -8.0, -4.0, -2.0, -1.0, -0.5, 0.0, 0.25, 0.5, 0.75, 1.0,
