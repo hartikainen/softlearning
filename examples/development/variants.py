@@ -657,6 +657,14 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     'constant',
                 ]),
                 'after_bridge_reward_weight': 5.0,
+                'desired_speed_on_bridge': tune.grid_search([1.0, 10.0]),
+                'desired_speed_after_bridge': tune.sample_from(lambda spec: (
+                    spec.get('config', spec)
+                    ['environment_params']
+                    ['training']
+                    ['kwargs']
+                    ['desired_speed_on_bridge']
+                )),
                 'terminate_outside_of_reward_bounds': False,
             },
         },

@@ -144,6 +144,8 @@ def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
                bridge_width=bridge.DEFAULT_BRIDGE_WIDTH,
                after_bridge_reward_type='constant',
                after_bridge_reward_weight=1.0,
+               desired_speed_on_bridge=_WALK_SPEED,
+               desired_speed_after_bridge=_WALK_SPEED,
                terminate_outside_of_reward_bounds=False,
                environment_kwargs=None):
     """Returns the BridgeRun task."""
@@ -164,8 +166,8 @@ def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
         water_map_width=4,
         water_map_dx=0.25,
         water_map_dy=0.25,
-        desired_speed_on_bridge=_WALK_SPEED,
-        desired_speed_after_bridge=_WALK_SPEED)
+        desired_speed_on_bridge=desired_speed_on_bridge,
+        desired_speed_after_bridge=desired_speed_after_bridge)
     return control.Environment(physics, task, time_limit=time_limit,
                                control_timestep=_CONTROL_TIMESTEP,
                                **environment_kwargs)
