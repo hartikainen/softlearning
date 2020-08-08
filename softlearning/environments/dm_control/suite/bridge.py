@@ -60,7 +60,7 @@ def make_model(base_model_string,
     floor_geom.attrib['pos'] = f"{floor_x} 0 0"
 
     bridge_x = (bridge_length + before_bridge_length) / 2 + bridge_offset
-    water_width = floor_size - bridge_width / 2
+    water_width = floor_size / 2 - bridge_width / 2
     bridge_y_abs = (bridge_width + water_width) / 2
 
     left_water_element = etree.Element(
@@ -336,7 +336,8 @@ class MovePhysicsMixin:
         bridge_x = self.named.data.geom_xpos['bridge'][0]
         bridge_length = 2 * self.named.model.geom_size['bridge'][0]
         reward_bounds_x_low = bridge_x + bridge_length / 2
-        reward_bounds_x_high = reward_bounds_x_low + 8 * bridge_length
+        reward_bounds_x_high = reward_bounds_x_low + 3 * bridge_length
+        # reward_bounds_x_high = 5.0
 
         reward_bounds_y_low = (
             self.named.model.geom_pos['water-right'][1]
