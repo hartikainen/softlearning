@@ -166,8 +166,11 @@ def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
         water_map_width=4,
         water_map_dx=0.25,
         water_map_dy=0.25,
+        after_bridge_reward_type=after_bridge_reward_type,
+        after_bridge_reward_weight=after_bridge_reward_weight,
         desired_speed_on_bridge=desired_speed_on_bridge,
-        desired_speed_after_bridge=desired_speed_after_bridge)
+        desired_speed_after_bridge=desired_speed_after_bridge,
+        terminate_outside_of_reward_bounds=terminate_outside_of_reward_bounds)
     return control.Environment(physics, task, time_limit=time_limit,
                                control_timestep=_CONTROL_TIMESTEP,
                                **environment_kwargs)
