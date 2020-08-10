@@ -152,8 +152,9 @@ def get_path_infos_orbit_pond(physics,
     heatmap_dir = os.path.join(log_base_dir, 'heatmap')
     os.makedirs(heatmap_dir, exist_ok=True)
 
-    previous_heatmaps = glob.glob(
-        os.path.join(heatmap_dir, f"{evaluation_type}-iteration-*-heatmap.png"))
+    previous_heatmaps = glob.glob(os.path.join(
+        glob.escape(heatmap_dir),
+        f"{evaluation_type}-iteration-*-heatmap.png"))
     heatmap_iterations = [
         int(re.search(f"{evaluation_type}-iteration-(\d+)-heatmap.png", x).group(1))
         for x in previous_heatmaps
@@ -481,8 +482,9 @@ def get_path_infos_bridge_move(physics,
     heatmap_dir = os.path.join(log_base_dir, 'heatmap')
     os.makedirs(heatmap_dir, exist_ok=True)
 
-    previous_heatmaps = glob.glob(
-        os.path.join(heatmap_dir, f"{evaluation_type}-iteration-*-heatmap.png"))
+    previous_heatmaps = glob.glob(os.path.join(
+        glob.escape(heatmap_dir),
+        f"{evaluation_type}-iteration-*-heatmap.png"))
     heatmap_iterations = [
         int(re.search(f"{evaluation_type}-iteration-(\d+)-heatmap.png", x).group(1))
         for x in previous_heatmaps
