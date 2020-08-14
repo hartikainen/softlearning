@@ -363,6 +363,7 @@ class MoveTaskMixin(base.Task):
                  after_bridge_reward_type='constant',
                  after_bridge_reward_weight=1.0,
                  terminate_outside_of_reward_bounds=False,
+                 randomize_initial_x_position=False,
                  water_map_length=10,
                  water_map_width=10,
                  water_map_dx=1.0,
@@ -381,6 +382,7 @@ class MoveTaskMixin(base.Task):
         self._after_bridge_reward_weight = after_bridge_reward_weight
         self._terminate_outside_of_reward_bounds = (
             terminate_outside_of_reward_bounds)
+        self._randomize_initial_x_position = randomize_initial_x_position
         self._water_map_length = water_map_length
         self._water_map_width = water_map_width
         self._water_map_dx = water_map_dx

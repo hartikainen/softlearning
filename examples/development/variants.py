@@ -666,6 +666,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     ['desired_speed_on_bridge']
                 )),
                 'terminate_outside_of_reward_bounds': False,
+                'randomize_initial_x_position': True,
             },
         },
         'boxhead': {

@@ -147,6 +147,7 @@ def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
                desired_speed_on_bridge=_WALK_SPEED,
                desired_speed_after_bridge=_WALK_SPEED,
                terminate_outside_of_reward_bounds=False,
+               randomize_initial_x_position=False,
                environment_kwargs=None):
     """Returns the BridgeRun task."""
     environment_kwargs = environment_kwargs or {}
@@ -170,7 +171,8 @@ def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
         after_bridge_reward_weight=after_bridge_reward_weight,
         desired_speed_on_bridge=desired_speed_on_bridge,
         desired_speed_after_bridge=desired_speed_after_bridge,
-        terminate_outside_of_reward_bounds=terminate_outside_of_reward_bounds)
+        terminate_outside_of_reward_bounds=terminate_outside_of_reward_bounds,
+        randomize_initial_x_position=randomize_initial_x_position)
     return control.Environment(physics, task, time_limit=time_limit,
                                control_timestep=_CONTROL_TIMESTEP,
                                **environment_kwargs)
@@ -356,7 +358,18 @@ class BridgeMove(bridge.MoveTaskMixin):
     def initialize_episode(self, physics):
         # Make the agent initially face tangent relative to pond.
         orientation = np.array([1.0, 0.0, 0.0, 0.0])
-        _find_non_contacting_height(physics, orientation, x_pos=0)
+        bridge_pos = physics.named.model.geom_pos['bridge']
+        bridge_size = physics.named.model.geom_size['bridge']
+        np.testing.assert_equal(
+            physics.named.model.geom_quat['bridge'], (1, 0, 0, 0))
+
+        if self._randomize_initial_x_position:
+            x_pos = np.random.uniform(
+                0, bridge_pos[0] + bridge_size[0] + self._water_map_length / 2)
+        else:
+            x_pos = 0.0
+
+        _find_non_contacting_height(physics, orientation, x_pos=x_pos)
         return super(BridgeMove, self).initialize_episode(physics)
 
     def get_termination(self, physics):
