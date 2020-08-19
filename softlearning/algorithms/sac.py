@@ -80,6 +80,7 @@ class SAC(RLAlgorithm):
             tau=5e-3,
             target_update_interval=1,
             action_prior='uniform',
+            terminal_next_value_type='zeros',
 
             save_full_state=False,
             **kwargs,
@@ -129,6 +130,7 @@ class SAC(RLAlgorithm):
         self._tau = tau
         self._target_update_interval = target_update_interval
         self._action_prior = action_prior
+        self._terminal_next_value_type = terminal_next_value_type
 
         self._save_full_state = save_full_state
 
@@ -158,14 +160,29 @@ class SAC(RLAlgorithm):
         next_Qs_values = tuple(Q(next_Q_inputs) for Q in self._Q_targets)
 
         min_next_Q = tf.reduce_min(next_Qs_values, axis=0)
-        next_values = min_next_Q - self._alpha * next_log_pis
+        non_terminal_next_values = min_next_Q - self._alpha * next_log_pis
 
-        terminals = tf.cast(self._placeholders['terminals'], next_values.dtype)
+        assert self._target_entropy is not None
+
+        if self._terminal_next_value_type == 'entropy':
+            terminal_next_values = (
+                1.0 / (1.0 - self._discount)
+                * self._alpha
+                * self._target_entropy)
+        elif self._terminal_next_value_type == 'zeros':
+            terminal_next_values = 0.0
+        else:
+            raise NotImplementedError("TODO(hartikainen): ")
+
+        next_values = tf.where(
+            self._placeholders['terminals'],
+            terminal_next_values,
+            non_terminal_next_values)
 
         Q_target = td_target(
             reward=self._reward_scale * self._placeholders['rewards'],
             discount=self._discount,
-            next_value=(1 - terminals) * next_values)
+            next_value=next_values)
 
         return tf.stop_gradient(Q_target)
 

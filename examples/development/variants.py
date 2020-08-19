@@ -54,6 +54,7 @@ ALGORITHM_PARAMS_ADDITIONAL = {
             )),
             'tau': 5e-3,
             'reward_scale': 1.0,
+            'terminal_next_value_type': 'zeros',
         },
     },
     'SQL': {
