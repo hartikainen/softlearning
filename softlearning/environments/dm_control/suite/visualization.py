@@ -7,6 +7,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy.spatial import ConvexHull
 from scipy.spatial import qhull
+from scipy.spatial.transform import Rotation
 import tree
 
 from .pond import compute_angular_deltas
@@ -361,9 +362,20 @@ def get_path_infos_bridge_move(physics,
     ]))), 2, axis=-1)
 
     water_left_pos = physics.named.model.geom_pos['water-left']
-    water_right_pos = physics.named.model.geom_pos['water-right']
     water_left_size = physics.named.model.geom_size['water-left']
+    water_left_quat = physics.named.model.geom_quat['water-left']
+    water_left_euler = Rotation.from_quat(
+        np.roll(water_left_quat, -1)).as_euler('xyz', degrees=True)
+    np.testing.assert_equal(water_left_euler[:2], 0.0)
+    water_left_angle = water_left_euler[-1]
+
+    water_right_pos = physics.named.model.geom_pos['water-right']
     water_right_size = physics.named.model.geom_size['water-right']
+    water_right_quat = physics.named.model.geom_quat['water-right']
+    water_right_euler = Rotation.from_quat(
+        np.roll(water_right_quat, -1)).as_euler('xyz', degrees=True)
+    np.testing.assert_equal(water_right_euler[:2], 0.0)
+    water_right_angle = water_right_euler[-1]
 
     (reward_bounds_x_low,
      reward_bounds_x_high,
@@ -444,15 +456,24 @@ def get_path_infos_bridge_move(physics,
             color=color_map(i),
             label=f'path-{i}')
 
+
+    water_left_bottom_left_xy = water_left_pos + Rotation.from_quat(
+        np.roll(water_left_quat, -1)).apply(
+            (-1, -1, 1) * water_left_size)
     water_left_rectangle = mpl.patches.Rectangle(
-        xy=water_left_pos - water_left_size,
+        xy=water_left_bottom_left_xy[:2],
         width=water_left_size[0] * 2,
         height=water_left_size[1] * 2,
+        angle=water_left_angle,
         fill=True)
+    water_right_bottom_left_xy = water_right_pos + Rotation.from_quat(
+        np.roll(water_right_quat, -1)).apply(
+            (-1, -1, 1) * water_right_size)
     water_right_rectangle = mpl.patches.Rectangle(
-        xy=water_right_pos - water_right_size,
+        xy=water_right_bottom_left_xy,
         width=water_right_size[0] * 2,
         height=water_right_size[1] * 2,
+        angle=water_right_angle,
         fill=True)
 
     water_patch_collection = mpl.collections.PatchCollection(
