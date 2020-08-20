@@ -220,6 +220,7 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
             # 'run_pure_state': int(1e7),
             'orbit_pond': int(2e7),
             'bridge_run': int(2e7),
+            'tapering_bridge_run': int(2e7),
         },
         'manipulator': {
             DEFAULT_KEY: int(3e6),
@@ -316,6 +317,7 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: 1000,
             'orbit_pond': 1000,
             'bridge_run': 250,
+            'tapering_bridge_run': 250,
         },
     }
 }
@@ -360,6 +362,7 @@ EPOCH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: int(1e4),
             'orbit_pond': int(2.5e4),
             'bridge_run': int(2.5e4),
+            'tapering_bridge_run': int(2.5e4),
         },
         'boxhead': {
             'orbit_pond': int(1e4),
@@ -669,6 +672,19 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 'terminate_outside_of_reward_bounds': False,
                 'randomize_initial_x_position': True,
             },
+            'tapering_bridge_run': {
+                # Runs about 15/250 steps?
+                'bridge_length': 10.0,
+                'bridge_start_width': 0.5,
+                'bridge_end_width': 0.1,
+                'after_bridge_reward_type': tune.grid_search([
+                    'x_velocity',
+                    # 'xy_velocity',
+                    # 'constant',
+                ]),
+                'after_bridge_reward_weight': 5.0,
+                'terminate_outside_of_reward_bounds': False,
+            },
         },
         'boxhead': {
             'orbit_pond': {
@@ -788,6 +804,16 @@ OBSERVATION_KEYS_PER_UNIVERSE_DOMAIN_TASK = {
         'water_map',
     ),
     ('dm_control', 'humanoid', 'bridge_run'): (
+        'joint_angles',
+        'head_height',
+        'extremities',
+        'torso_vertical',
+        'com_velocity',
+        'velocity',
+        # 'position',
+        'water_map',
+    ),
+    ('dm_control', 'humanoid', 'tapering_bridge_run'): (
         'joint_angles',
         'head_height',
         'extremities',

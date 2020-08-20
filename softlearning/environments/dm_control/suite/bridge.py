@@ -321,14 +321,10 @@ class MovePhysicsMixin:
         cell_centers_xy_v0 = skimage.measure.block_reduce(
             mini_cell_centers_xy, (density, density, 1), np.mean)
 
-        try:
-            np.testing.assert_allclose(
-                cell_centers_xy_v0,
-                cell_centers_xy,
-                atol=1e-10)
-        except Exception as e:
-            breakpoint()
-            pass
+        np.testing.assert_allclose(
+            cell_centers_xy_v0,
+            cell_centers_xy,
+            atol=1e-10)
 
         return cell_centers_xy, water_map
 
@@ -413,14 +409,15 @@ class MoveTaskMixin(base.Task):
             *common_observations.items(),
             ('water_map', water_map),
         ))
+
         for i in range(int(self._water_map_length / self._water_map_dx)):
             for j in range(int(self._water_map_width / self._water_map_dy)):
                 cell_id = f'water-map-{i}-{j}'
                 physics.named.data.geom_xpos[cell_id][:2] = water_map_xy[i, j]
-                physics.named.data.geom_xmat[cell_id][:-3] = (
-                    physics.torso_xmat()[:-3])
+                # physics.named.data.geom_xmat[cell_id][-3:] = (
+                #     physics.torso_xmat()[-3:])
                 physics.named.model.geom_rgba[cell_id] = (
-                    water_map[i, j], 0, 0, 1)
+                    water_map[i, j], 0, 0, 0.1)
 
         return bridge_observations
 

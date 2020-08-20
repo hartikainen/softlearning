@@ -17,6 +17,7 @@ def make_model(base_model_string,
                size_multiplier=1.0,
                bridge_length=DEFAULT_BRIDGE_LENGTH,
                bridge_start_width=DEFAULT_BRIDGE_WIDTH,
+               bridge_end_width=0.0,
                water_map_length=5,
                water_map_width=5,
                water_map_dx=0.5,
@@ -33,23 +34,33 @@ def make_model(base_model_string,
     floor_size = float(size_multiplier * 15 + bridge_length)
     floor_geom.attrib['size'] = f'{floor_size} {floor_size} .1'
 
-    before_bridge_length = 0 * size_multiplier
     bridge_offset = -1.0 * size_multiplier
+    # bridge_offset = 0.0
 
-    floor_x = floor_size - before_bridge_length + bridge_offset
+    floor_x = floor_size + bridge_offset
     floor_geom.attrib['pos'] = f"{floor_x} 0 0"
 
-    water_width = floor_size - bridge_start_width / 2
-    water_length_extra = 5.0 * size_multiplier
-    water_length = np.linalg.norm((bridge_start_width, bridge_length)) + water_length_extra
+    bridge_x = (bridge_length) / 2 + bridge_offset
+    # bridge_y_abs = (bridge_start_width + water_width) / 2
+    bridge_y = 0.0
 
-    bridge_x = (bridge_length + before_bridge_length) / 2 + bridge_offset
-    bridge_y_abs = (bridge_start_width + water_width) / 2
-    left_water_xy = np.array((bridge_x, bridge_y_abs))
-    water_angle = np.arctan2(bridge_start_width / 2, water_length - water_length_extra)
-    left_water_xy = rotate_around_z(
-        left_water_xy,
-        -water_angle)
+    water_width = floor_size - bridge_start_width / 2
+    water_length = np.linalg.norm((
+        (bridge_start_width - bridge_end_width) / 2, bridge_length))
+
+    water_angle = np.arctan2(
+        (bridge_start_width - bridge_end_width) / 2,
+        # water_length,
+        bridge_length,
+    )
+
+    # water_x = bridge_x
+    # water_y_abs = (bridge_start_width + water_width) / 2.0
+
+    left_water_bottom_right_corner_xy = (bridge_offset, bridge_start_width / 2.0)
+    left_water_xy = (
+        left_water_bottom_right_corner_xy
+        + rotate_around_z((water_length / 2.0, water_width / 2.0), -water_angle))
 
     left_water_position = np.array((*left_water_xy, 0.0))
     right_water_position = left_water_position * np.array((1.0, -1.0, 1.0))
@@ -81,12 +92,11 @@ def make_model(base_model_string,
         "geom",
         type="box",
         name="bridge",
-        pos=stringify((bridge_x, 0, 0)),
+        pos=stringify((bridge_x, bridge_y, 0)),
         size=stringify((bridge_length / 2, bridge_start_width / 2, 0.01)),
         contype="0",
         conaffinity="0",
-        rgba="0 0 0 0",
-    )
+        rgba="0 0 0 0")
     worldbody.insert(0, left_water_element)
     worldbody.insert(1, right_water_element)
     worldbody.insert(2, bridge_element)
@@ -109,42 +119,129 @@ def make_model(base_model_string,
 
 
 class MovePhysicsMixin:
-    def before_bridge(self):
-        key_geoms_x = self.key_geom_positions()[..., :1]
-        bridge_x = self.named.data.geom_xpos['bridge'][:1]
-        bridge_length = self.named.model.geom_size['bridge'][:1]
-        toes_before_bridge = key_geoms_x < bridge_x - bridge_length
+    def __init__(self, *args, **kwargs):
+        self._floor_geom_id = None
+        result = super(MovePhysicsMixin, self).__init__(*args, **kwargs)
 
-        before_bridge = np.all(toes_before_bridge)
+        bridge_size = self.named.model.geom_size['bridge']
+        bridge_pos = self.named.model.geom_pos['bridge']
+        bridge_quat = self.named.model.geom_quat['bridge']
+        np.testing.assert_equal(bridge_quat, (1, 0, 0, 0))
+
+        bridge_top_right_pos = bridge_pos + (1, +1, 1) * bridge_size
+        bridge_bottom_right_pos = bridge_pos + (1, -1, 1) * bridge_size
+        bridge_top_left_pos = bridge_pos + (-1, +1, 1) * bridge_size
+        bridge_bottom_left_pos = bridge_pos + (-1, -1, 1) * bridge_size
+
+
+        water_left_size = self.named.model.geom_size['water-left']
+        water_left_pos = self.named.model.geom_pos['water-left']
+        water_left_quat = self.named.model.geom_quat['water-left']
+
+        np.testing.assert_equal(water_left_quat[1:3], 0.0)
+        water_left_euler = Rotation.from_quat(np.roll(water_left_quat, -1)).as_euler('xyz')
+        np.testing.assert_equal(water_left_euler[:2], 0.0)
+
+        np.testing.assert_equal(water_left_quat[1:3], 0.0)
+        water_left_euler = Rotation.from_quat(np.roll(water_left_quat, -1)).as_euler('xyz')
+        np.testing.assert_equal(water_left_euler[:2], 0.0)
+
+        water_left_bottom_left_pos = water_left_pos + Rotation.from_quat(
+            np.roll(water_left_quat, -1)).apply(
+                (-1, -1, 1) * water_left_size)
+
+        water_left_bottom_right_pos = water_left_pos + Rotation.from_quat(
+            np.roll(water_left_quat, -1)).apply(
+                (1, -1, 1) * water_left_size)
+
+        water_right_size = self.named.model.geom_size['water-right']
+        water_right_pos = self.named.model.geom_pos['water-right']
+        water_right_quat = self.named.model.geom_quat['water-right']
+
+        np.testing.assert_equal(water_right_quat[1:3], 0.0)
+        water_right_euler = Rotation.from_quat(np.roll(water_right_quat, -1)).as_euler('xyz')
+        np.testing.assert_equal(water_right_euler[:2], 0.0)
+
+        water_right_top_left_pos = water_right_pos + Rotation.from_quat(
+            np.roll(water_right_quat, -1)).apply(
+                (-1, 1, 1) * water_right_size)
+
+        water_right_top_right_pos = water_right_pos + Rotation.from_quat(
+            np.roll(water_right_quat, -1)).apply(
+                (1, 1, 1) * water_right_size)
+
+        np.testing.assert_allclose(
+            Rotation.from_quat(water_right_quat).inv().as_quat(),
+            water_left_quat)
+
+        np.testing.assert_allclose(water_left_pos, (1, -1, 1) * water_right_pos)
+        
+        np.testing.assert_allclose(
+            water_left_bottom_left_pos, (1, -1, 1) * water_right_top_left_pos)
+
+        np.testing.assert_allclose(
+            water_left_bottom_left_pos, bridge_top_left_pos)
+        np.testing.assert_allclose(
+            water_right_top_left_pos, bridge_bottom_left_pos)
+
+        # # Should equal ``bridge_end_width``
+        # np.testing.assert_allclose(
+        #     water_left_bottom_right_pos[1] - water_right_top_right_pos[1], 0.3)
+
+        return result
+
+    @property
+    def agent_geom_ids(self):
+        raise NotImplementedError
+
+    @property
+    def floor_geom_id(self):
+        if self._floor_geom_id is None:
+            self._floor_geom_id = self.model.name2id('floor', 'geom')
+        return self._floor_geom_id
+
+    def before_bridge(self):
+        agent_x = self.center_of_mass()[0]
+        bridge_x = self.named.data.geom_xpos['bridge'][0]
+        bridge_length = self.named.model.geom_size['bridge'][0]
+        before_bridge = agent_x < bridge_x - bridge_length
 
         return before_bridge
 
     def after_bridge(self):
-        key_geoms_x = self.key_geom_positions()[..., :1]
-
-        bridge_x = self.named.data.geom_xpos['bridge'][:1]
-        bridge_length = self.named.model.geom_size['bridge'][:1]
-        toes_after_bridge = bridge_x + bridge_length < key_geoms_x
-
-        after_bridge = np.any(toes_after_bridge)
+        agent_x = self.center_of_mass()[0]
+        bridge_x = self.named.data.geom_xpos['bridge'][0]
+        bridge_length = self.named.model.geom_size['bridge'][0]
+        after_bridge = bridge_x + bridge_length < agent_x
 
         return after_bridge
 
     def on_bridge(self):
-        key_geoms_xy = self.key_geom_positions()[..., :2]
-
+        agent_xy = self.center_of_mass()[:2]
         bridge_xy = self.named.data.geom_xpos['bridge'][:2]
         bridge_size = self.named.model.geom_size['bridge'][:2]
 
-        toes_on_bridge = point_inside_2d_rectangle(
-            key_geoms_xy, bridge_xy, bridge_size)
-
-        on_bridge = np.any(toes_on_bridge)
+        on_bridge = point_inside_2d_rectangle(
+            agent_xy, bridge_xy, bridge_size)
 
         return on_bridge
 
     def any_key_geom_in_water(self):
-        key_geoms_xy = self.key_geom_positions()[..., :2]
+        floor_geom_id = self.floor_geom_id
+        agent_geom_ids = self.agent_geom_ids
+
+        contacts = self.data.contact
+        if contacts.size == 0:
+            return False
+
+        water_contacts_index = (
+            (np.isin(contacts.geom1, floor_geom_id)
+             & np.isin(contacts.geom2, agent_geom_ids))
+            | (np.isin(contacts.geom2, floor_geom_id)
+               & np.isin(contacts.geom1, agent_geom_ids)))
+        water_contacts = contacts[np.where(water_contacts_index)]
+
+        key_geoms_xy = water_contacts.pos[:, :2]
 
         water_names = ('water-left', 'water-right')
         waters_xy = np.stack([
@@ -187,8 +284,8 @@ class MovePhysicsMixin:
         direction.
         """
         com_x, com_y = self.center_of_mass()[:2]
-        nx = int(length / dx)
-        ny = int(width / dy)
+        nx = int(round(length / dx, 12))
+        ny = int(round(width / dy, 12))
         water_map_origin_xy = np.stack(np.meshgrid(
             np.linspace(
                 - length / 2,
@@ -200,7 +297,7 @@ class MovePhysicsMixin:
                 density * ny),
             indexing='ij',
         ), axis=-1)
-        water_map_origin_xy -= (length / 4, 0.0)
+        water_map_origin_xy += (length / 4, 0.0)
         mini_cell_centers_origin_xy = water_map_origin_xy + (
             dx / (density * 2), dy / (density * 2))
 
@@ -253,7 +350,8 @@ class MovePhysicsMixin:
         bridge_x = self.named.data.geom_xpos['bridge'][0]
         bridge_length = 2 * self.named.model.geom_size['bridge'][0]
         reward_bounds_x_low = bridge_x + bridge_length / 2
-        reward_bounds_x_high = 5.0
+        reward_bounds_x_high = reward_bounds_x_low + 3 * bridge_length
+        # reward_bounds_x_high = 5.0
 
         reward_bounds_y_low = (
             self.named.model.geom_pos['water-right'][1]
@@ -279,6 +377,7 @@ class MoveTaskMixin(base.Task):
                  after_bridge_reward_type='constant',
                  after_bridge_reward_weight=1.0,
                  terminate_outside_of_reward_bounds=False,
+                 randomize_initial_x_position=False,
                  water_map_length=10,
                  water_map_width=10,
                  water_map_dx=1.0,
@@ -297,6 +396,7 @@ class MoveTaskMixin(base.Task):
         self._after_bridge_reward_weight = after_bridge_reward_weight
         self._terminate_outside_of_reward_bounds = (
             terminate_outside_of_reward_bounds)
+        self._randomize_initial_x_position = randomize_initial_x_position
         self._water_map_length = water_map_length
         self._water_map_width = water_map_width
         self._water_map_dx = water_map_dx
@@ -331,10 +431,10 @@ class MoveTaskMixin(base.Task):
             for j in range(int(self._water_map_width / self._water_map_dy)):
                 cell_id = f'water-map-{i}-{j}'
                 physics.named.data.geom_xpos[cell_id][:2] = water_map_xy[i, j]
-                physics.named.data.geom_xmat[cell_id][:-3] = (
-                    physics.torso_xmat()[:-3])
+                # physics.named.data.geom_xmat[cell_id][-3:] = (
+                #     physics.torso_xmat()[-3:])
                 physics.named.model.geom_rgba[cell_id] = (
-                    water_map[i, j], 0, 0, 1)
+                    water_map[i, j], 0, 0, 0.1)
 
         return bridge_observations
 
@@ -344,19 +444,20 @@ class MoveTaskMixin(base.Task):
 
     def get_reward(self, physics):
         """Returns a reward to the agent."""
-        from softlearning.environments.dm_control.suite.point_mass import (
-            TaperingBridgeMovePhysics as PointTaperingBridgeMovePhysics)
-
-        if physics.before_bridge():
+        if physics.any_key_geom_in_water():
+            move_reward = -1.0
+        elif physics.before_bridge():
             move_reward = -1.0
         elif physics.on_bridge():
             x_velocity = physics.torso_velocity()[0]
             move_reward = np.minimum(x_velocity, self._desired_speed_on_bridge)
+            # move_reward = rewards.tolerance(
+            #     x_velocity,
+            #     bounds=(self._desired_speed_on_bridge, float('inf')),
+            #     margin=self._desired_speed_on_bridge,
+            #     value_at_margin=0.0,
+            #     sigmoid='linear')
         elif physics.after_bridge():
-            if not isinstance(physics, PointTaperingBridgeMovePhysics):
-                raise NotImplementedError(
-                    "TODO(hartikainen): Check this for other envs.")
-
             (reward_bounds_x_low,
              reward_bounds_x_high,
              reward_bounds_y_low,
@@ -388,8 +489,6 @@ class MoveTaskMixin(base.Task):
                     raise ValueError(self._after_bridge_reward_type)
             else:
                 move_reward = 0.0
-        elif physics.any_key_geom_in_water():
-            move_reward = -1.0
         else:
             move_reward = 0.0
 
