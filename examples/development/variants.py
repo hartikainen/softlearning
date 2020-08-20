@@ -371,7 +371,7 @@ EPOCH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
         'point_mass': {
             'orbit_pond': int(1e3),
             'bridge_run': int(1e3),
-            'tapering_bridge_run': int(1000),
+            'tapering_bridge_run': int(1e3),
         },
     },
 }
@@ -727,13 +727,9 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 'terminate_outside_of_reward_bounds': False,
             },
             'tapering_bridge_run': {
-                'bridge_start_width': tune.grid_search([
-                    1.0,
-                    2.0,
-                    3.0,
-                    4.0,
-                ]),
-                'bridge_length': 70,
+                'bridge_length': 70.0,
+                'bridge_start_width': 0.5,
+                'bridge_end_width': -0.1,
                 'after_bridge_reward_type': 'x_velocity',
                 'after_bridge_reward_weight': 5.0,
                 'terminate_outside_of_reward_bounds': False,
