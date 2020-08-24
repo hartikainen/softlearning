@@ -675,8 +675,9 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             'tapering_bridge_run': {
                 # Runs about 15/250 steps?
                 'bridge_length': 10.0,
+                # width: 0.075 minimum, 0.15 reasonable.
                 'bridge_start_width': 0.5,
-                'bridge_end_width': 0.1,
+                'bridge_end_width': 0.15,
                 'after_bridge_reward_type': tune.grid_search([
                     'x_velocity',
                     # 'xy_velocity',
