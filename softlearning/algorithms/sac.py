@@ -76,6 +76,7 @@ class SAC(RLAlgorithm):
             lr=3e-4,
             reward_scale=1.0,
             target_entropy='auto',
+            temperature_update_type='off-policy',
             discount=0.99,
             tau=5e-3,
             target_update_interval=1,
@@ -125,6 +126,7 @@ class SAC(RLAlgorithm):
             heuristic_target_entropy(self._training_environment.action_space)
             if target_entropy == 'auto'
             else target_entropy)
+        self._temperature_update_type = temperature_update_type
 
         self._discount = discount
         self._tau = tau
@@ -139,8 +141,15 @@ class SAC(RLAlgorithm):
     def _build(self):
         super(SAC, self)._build()
 
+        log_alpha = self._log_alpha = tf.compat.v1.get_variable(
+            'log_alpha',
+            dtype=tf.float32,
+            initializer=0.0)
+        self._alpha = tf.exp(log_alpha)
+
         self._init_actor_update()
         self._init_critic_update()
+        self._init_temperature_update()
         self._init_diagnostics_ops()
 
     def _get_Q_target(self):
@@ -238,6 +247,7 @@ class SAC(RLAlgorithm):
         and Section 5 in [1] for further information of the entropy update.
         """
 
+        temperature = self._alpha
         policy_inputs = flatten_input_structure({
             name: self._placeholders['observations'][name]
             for name in self._policy.observation_keys
@@ -245,28 +255,6 @@ class SAC(RLAlgorithm):
         actions = self._policy.actions(policy_inputs)
         log_pis = self._policy.log_pis(policy_inputs, actions)
         assert log_pis.shape.as_list() == [None, 1]
-
-        log_alpha = self._log_alpha = tf.compat.v1.get_variable(
-            'log_alpha',
-            dtype=tf.float32,
-            initializer=0.0)
-        alpha = tf.exp(log_alpha)
-
-        if isinstance(self._target_entropy, Number):
-            alpha_loss = -tf.reduce_mean(
-                log_alpha * tf.stop_gradient(log_pis + self._target_entropy))
-
-            self._alpha_optimizer = tf.compat.v1.train.AdamOptimizer(
-                self._alpha_lr, name='alpha_optimizer')
-
-            self._alpha_train_op = self._alpha_optimizer.minimize(
-                loss=alpha_loss, var_list=[log_alpha])
-
-            self._training_ops.update({
-                'temperature_alpha': self._alpha_train_op
-            })
-
-        self._alpha = alpha
 
         if self._action_prior == 'normal':
             policy_prior = tfp.distributions.MultivariateNormalDiag(
@@ -286,7 +274,7 @@ class SAC(RLAlgorithm):
         min_Q_log_target = tf.reduce_min(Q_log_targets, axis=0)
 
         policy_kl_losses = (
-            alpha * log_pis
+            temperature * log_pis
             - min_Q_log_target
             - policy_prior_log_probs)
 
@@ -304,6 +292,28 @@ class SAC(RLAlgorithm):
             var_list=self._policy.trainable_variables)
 
         self._training_ops.update({'policy_train_op': policy_train_op})
+
+    def _init_temperature_update(self):
+        temperature = self._alpha
+        log_temperature = self._log_alpha
+
+        policy_inputs = flatten_input_structure({
+            name: self._placeholders['observations'][name]
+            for name in self._policy.observation_keys
+        })
+        actions = self._policy.actions(policy_inputs)
+        log_pis = self._policy.log_pis(policy_inputs, actions)
+
+        if isinstance(self._target_entropy, Number):
+            alpha_loss = -tf.reduce_mean(
+                log_temperature
+                * tf.stop_gradient(log_pis + self._target_entropy))
+
+            self._alpha_optimizer = tf.compat.v1.train.AdamOptimizer(
+                self._alpha_lr, name='alpha_optimizer')
+
+            self._temperature_train_op = self._alpha_optimizer.minimize(
+                loss=alpha_loss, var_list=[log_temperature])
 
     def _init_diagnostics_ops(self):
         diagnosables = OrderedDict((
@@ -341,8 +351,28 @@ class SAC(RLAlgorithm):
     def _do_training(self, iteration, batch):
         """Runs the operations for updating training and target ops."""
 
-        feed_dict = self._get_feed_dict(iteration, batch)
-        self._session.run(self._training_ops, feed_dict)
+        if self._temperature_update_type == 'off-policy':
+            feed_dict = self._get_feed_dict(iteration, batch)
+            training_ops = {
+                **self._training_ops,
+                'temperature': self._temperature_train_op
+            }
+            self._session.run(training_ops, feed_dict)
+        elif self._temperature_update_type == 'on-policy':
+            feed_dict = self._get_feed_dict(iteration, batch)
+            self._session.run(self._training_ops, feed_dict)
+
+            temperature_observations = (
+                self.sampler._last_n_paths[-1]['observations'])
+            temperature_feed_dict = {
+                self._placeholders['observations'][key]:
+                temperature_observations[key]
+                for key in self._placeholders['observations'].keys()
+            }
+            self._session.run(
+                self._temperature_train_op, feed_dict=temperature_feed_dict)
+        else:
+            raise ValueError(self._temperature_update_type)
 
         if iteration % self._target_update_interval == 0:
             # Run target ops here.
