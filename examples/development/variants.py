@@ -641,6 +641,8 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             'bridge_run': {
                 'bridge_width': 1.3,
                 'bridge_length': 5.0,
+                'on_bridge_reward_type': 'x_velocity',
+                'on_bridge_reward_weight': 5.0,
                 'after_bridge_reward_type': tune.grid_search([
                     'x_velocity',
                     'xy_velocity',
@@ -659,12 +661,14 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             'bridge_run': {
                 'bridge_width': 0.4,
                 'bridge_length': 5.0,
+                'on_bridge_reward_type': 'x_velocity',
+                'on_bridge_reward_weight': 5.0,
                 'after_bridge_reward_type': tune.grid_search([
                     'x_velocity',
                     # 'xy_velocity',
                     # 'constant',
                 ]),
-                'after_bridge_reward_weight': 1.0,
+                'after_bridge_reward_weight': 5.0,
                 'desired_speed_on_bridge': tune.grid_search([1.0, 10.0]),
                 'desired_speed_after_bridge': tune.sample_from(lambda spec: (
                     spec.get('config', spec)
@@ -682,6 +686,8 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 # width: 0.075 minimum, 0.15 reasonable.
                 'bridge_start_width': 0.5,
                 'bridge_end_width': 0.15,
+                'on_bridge_reward_type': 'x_velocity',
+                'on_bridge_reward_weight': 5.0,
                 'after_bridge_reward_type': tune.grid_search([
                     'x_velocity',
                     # 'xy_velocity',
@@ -723,6 +729,8 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             },
             'bridge_run': {
                 'bridge_width': 0.5,
+                'on_bridge_reward_type': 'x_velocity',
+                'on_bridge_reward_weight': 5.0,
                 'after_bridge_reward_type': tune.grid_search([
                     'x_velocity',
                     'xy_velocity',
@@ -735,6 +743,8 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 'bridge_length': 70.0,
                 'bridge_start_width': 0.5,
                 'bridge_end_width': -0.1,
+                'on_bridge_reward_type': 'x_velocity',
+                'on_bridge_reward_weight': 5.0,
                 'after_bridge_reward_type': 'x_velocity',
                 'after_bridge_reward_weight': 5.0,
                 'terminate_outside_of_reward_bounds': False,

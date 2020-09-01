@@ -356,6 +356,8 @@ class MoveTaskMixin(base.Task):
     def __init__(self,
                  desired_speed_on_bridge,
                  desired_speed_after_bridge,
+                 on_bridge_reward_type='constant',
+                 on_bridge_reward_weight=1.0,
                  after_bridge_reward_type='constant',
                  after_bridge_reward_weight=1.0,
                  terminate_outside_of_reward_bounds=False,
@@ -374,6 +376,8 @@ class MoveTaskMixin(base.Task):
         """
         self._desired_speed_on_bridge = desired_speed_on_bridge
         self._desired_speed_after_bridge = desired_speed_after_bridge
+        self._on_bridge_reward_type = on_bridge_reward_type
+        self._on_bridge_reward_weight = on_bridge_reward_weight
         self._after_bridge_reward_type = after_bridge_reward_type
         self._after_bridge_reward_weight = after_bridge_reward_weight
         self._terminate_outside_of_reward_bounds = (
@@ -432,14 +436,23 @@ class MoveTaskMixin(base.Task):
         elif physics.before_bridge():
             move_reward = -1.0
         elif physics.on_bridge():
-            x_velocity = physics.torso_velocity()[0]
-            move_reward = np.minimum(x_velocity, self._desired_speed_on_bridge)
-            # move_reward = rewards.tolerance(
-            #     x_velocity,
-            #     bounds=(self._desired_speed_on_bridge, float('inf')),
-            #     margin=self._desired_speed_on_bridge,
-            #     value_at_margin=0.0,
-            #     sigmoid='linear')
+            if self._on_bridge_reward_type == 'x_velocity':
+                x_velocity = physics.torso_velocity()[0]
+                move_reward = (
+                    self._on_bridge_reward_weight * np.minimum(
+                        x_velocity, self._desired_speed_on_bridge))
+            elif self._on_bridge_reward_type == 'xy_velocity':
+                raise NotImplementedError("TODO(hartikainen): this seems wrong!")
+                xy_velocity = physics.torso_velocity()
+                velocity = np.linalg.norm(xy_velocity)
+                velocity /= np.maximum(velocity, 1.0)
+                move_reward = (
+                    self._on_bridge_reward_weight * np.minimum(
+                        velocity, self._desired_speed_on_bridge))
+            elif self._on_bridge_reward_type == 'constant':
+                move_reward = self._on_bridge_reward_weight
+            else:
+                raise ValueError(self._on_bridge_reward_type)
         elif physics.after_bridge():
             (reward_bounds_x_low,
              reward_bounds_x_high,
