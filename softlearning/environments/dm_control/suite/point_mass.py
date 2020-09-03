@@ -134,6 +134,7 @@ def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
         water_map_width=water_map_width,
         water_map_dx=water_map_dx,
         water_map_dy=water_map_dy,
+        water_map_offset=0,
         make_1d=make_1d,
         random=random)
     return control.Environment(
@@ -159,10 +160,11 @@ def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
     base_model_string = make_model(walls_and_target=False)
     size_multiplier = 0.05
 
-    water_map_length = 5 * size_multiplier
+    water_map_length = 3 * size_multiplier
     water_map_width = 2 * size_multiplier
     water_map_dx = 0.5 * size_multiplier / 2
     water_map_dy = 0.5 * size_multiplier / 2
+
     xml_string = bridge.make_model(
         base_model_string,
         size_multiplier=size_multiplier,
@@ -180,6 +182,7 @@ def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
         water_map_width=water_map_width,
         water_map_dx=water_map_dx,
         water_map_dy=water_map_dy,
+        water_map_offset=(-water_map_length / 4, 0.0),
         on_bridge_reward_type=on_bridge_reward_type,
         on_bridge_reward_weight=on_bridge_reward_weight,
         after_bridge_reward_type=after_bridge_reward_type,
@@ -211,11 +214,14 @@ def tapering_bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
     """Returns the BridgeRun task."""
     environment_kwargs = environment_kwargs or {}
     base_model_string = make_model(walls_and_target=False)
+
     size_multiplier = 0.05
-    water_map_length = 5 * size_multiplier
+
+    water_map_length = 3 * size_multiplier
     water_map_width = 2 * size_multiplier
     water_map_dx = 0.5 * size_multiplier / 2
     water_map_dy = 0.5 * size_multiplier / 2
+
     xml_string = tapering_bridge.make_model(
         base_model_string,
         size_multiplier=size_multiplier,
@@ -235,6 +241,7 @@ def tapering_bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
         water_map_width=water_map_width,
         water_map_dx=water_map_dx,
         water_map_dy=water_map_dy,
+        water_map_offset=(-water_map_length / 4, 0.0),
         on_bridge_reward_type=on_bridge_reward_type,
         on_bridge_reward_weight=on_bridge_reward_weight,
         after_bridge_reward_type=after_bridge_reward_type,

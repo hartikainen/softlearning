@@ -170,7 +170,7 @@ class PondPhysicsMixin:
     def _get_orientation(self):
         return self.named.data.qpos['root'][3:]
 
-    def water_map(self, length, width, dx, dy, density=10):
+    def water_map(self, length, width, dx, dy, offset=0, density=10):
         """Create a water map around the egocentric view.
 
         Water map is a float array of shape (length / dx, width / dy)
@@ -194,7 +194,7 @@ class PondPhysicsMixin:
                 density * ny),
             indexing='ij',
         ), axis=-1)
-        # water_map_origin_xy += (length / 4, 0.0)
+        water_map_origin_xy += offset
         mini_cell_centers_origin_xy = water_map_origin_xy + (
             dx / (density * 2), dy / (density * 2))
 
@@ -306,6 +306,7 @@ class OrbitTaskMixin(base.Task):
                  water_map_width=10,
                  water_map_dx=1.0,
                  water_map_dy=1.0,
+                 water_map_offset=0,
                  random=None):
         """Initializes an instance of `Orbit`.
 
@@ -325,6 +326,7 @@ class OrbitTaskMixin(base.Task):
         self._water_map_width = water_map_width
         self._water_map_dx = water_map_dx
         self._water_map_dy = water_map_dy
+        self._water_map_offset = water_map_offset
         self._previous_action = None
         return super(OrbitTaskMixin, self).__init__(random=random)
 
@@ -352,6 +354,7 @@ class OrbitTaskMixin(base.Task):
             width=self._water_map_width,
             dx=self._water_map_dx,
             dy=self._water_map_dy,
+            offset=self._water_map_offset,
             density=10)
 
         previous_action = (
