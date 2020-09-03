@@ -721,31 +721,32 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'point_mass': {
             'orbit_pond': {
-                'make_1d': tune.grid_search([False]),
-                'actuator_type': tune.grid_search(['motor',]),
-                'angular_velocity_reward_weight': tune.grid_search([
-                    10.0
-                ]),
+                'make_1d': False,
+                'actuator_type': 'motor',
+                'angular_velocity_reward_weight': 1.0,
             },
             'bridge_run': {
-                'bridge_width': 0.5,
+                'bridge_width': tune.grid_search([1e-1]),
+                'bridge_length': 5.0,
                 'on_bridge_reward_type': 'x_velocity',
                 'on_bridge_reward_weight': 5.0,
                 'after_bridge_reward_type': tune.grid_search([
                     'x_velocity',
-                    'xy_velocity',
                     'constant',
                 ]),
                 'after_bridge_reward_weight': 5.0,
                 'terminate_outside_of_reward_bounds': False,
             },
             'tapering_bridge_run': {
-                'bridge_length': 70.0,
-                'bridge_start_width': 0.5,
-                'bridge_end_width': -0.1,
+                'bridge_length': 4.0,
+                'bridge_start_width': 1.0,
+                'bridge_end_width': 0.1,
                 'on_bridge_reward_type': 'x_velocity',
                 'on_bridge_reward_weight': 5.0,
-                'after_bridge_reward_type': 'x_velocity',
+                'after_bridge_reward_type': tune.grid_search([
+                    'x_velocity',
+                    'constant',
+                ]),
                 'after_bridge_reward_weight': 5.0,
                 'terminate_outside_of_reward_bounds': False,
             },
