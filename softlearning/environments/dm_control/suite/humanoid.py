@@ -396,8 +396,11 @@ class BridgeMove(bridge.MoveTaskMixin):
             physics.named.model.geom_quat['bridge'], (1, 0, 0, 0))
 
         if self._randomize_initial_x_position:
-            x_pos = np.random.uniform(
-                0, bridge_pos[0] + bridge_size[0] + self._water_map_length / 4)
+            x_pos_max = (
+                bridge_pos[0]
+                + bridge_size[0]
+                - np.atleast_1d(self._water_map_offset)[0])
+            x_pos = np.random.uniform(0, x_pos_max)
         else:
             x_pos = 0.0
 

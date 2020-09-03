@@ -203,7 +203,8 @@ def tapering_bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
         after_bridge_reward_weight=after_bridge_reward_weight,
         desired_speed_on_bridge=desired_speed_on_bridge,
         desired_speed_after_bridge=desired_speed_after_bridge,
-        terminate_outside_of_reward_bounds=terminate_outside_of_reward_bounds)
+        terminate_outside_of_reward_bounds=terminate_outside_of_reward_bounds,
+        randomize_initial_x_position=randomize_initial_x_position)
 
     return control.Environment(
         physics, task, time_limit=time_limit, **environment_kwargs)
@@ -423,8 +424,13 @@ class BridgeMove(bridge.MoveTaskMixin):
 
     def initialize_episode(self, physics):
         if self._randomize_initial_x_position:
-            x_pos = np.random.uniform(
-                0, bridge_pos[0] + bridge_size[0] + self._water_map_length / 2)
+            bridge_pos = physics.named.model.geom_pos['bridge']
+            bridge_size = physics.named.model.geom_size['bridge']
+            x_pos_max = (
+                bridge_pos[0]
+                + bridge_size[0]
+                - np.atleast_1d(self._water_map_offset)[0])
+            x_pos = np.random.uniform(0, x_pos_max)
         else:
             x_pos = 0.0
 
