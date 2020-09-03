@@ -185,7 +185,16 @@ def simulate_policy(checkpoint_path,
     universe = environment_params['universe']
 
     if universe == 'dm_control':
-        return simulate_policy_dm_control(policy, environment_params)
+        return simulate_policy_dm_control(
+            policy,
+            environment_params,
+            checkpoint_path,
+            deterministic,
+            num_rollouts,
+            max_path_length,
+            render_kwargs,
+            video_save_path=video_save_path,
+            evaluation_environment_kwargs=evaluation_environment_kwargs)
 
     domain, task = environment_params['domain'], environment_params['task']
 
