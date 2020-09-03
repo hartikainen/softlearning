@@ -309,8 +309,8 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'point_mass': {
             DEFAULT_KEY: 200,
-            'bridge_run': 200,
-            'tapering_bridge_run': 200,
+            'bridge_run': 50,
+            'tapering_bridge_run': 50,
         },
         'quadruped': {
             DEFAULT_KEY: 1000,
