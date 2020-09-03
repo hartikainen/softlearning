@@ -52,44 +52,52 @@ def evaluate(bridge_length, noise_scale, episode_length, num_episodes):
                      policy,
                      path_length=episode_length,
                      render_kwargs=None)
-    past_bridges = [not path['terminals'][-1] for path in paths]
-    return np.mean(past_bridges)
+    fell_in_waters = [path['terminals'][-1] for path in paths]
+    return np.mean(fell_in_waters)
 
 
 def main():
-    EPISODE_LENGTH = 200
-    NUM_EPISODES = 25
-    # task_kwargs={'time_limit': 1, 'bridge_length': 50.0},
+    # results = {(1.0, 0.03): 1.0, (1.0, 0.1): 1.0, (1.0, 0.2): 1.0, (1.0, 0.3): 1.0, (1.0, 1.0): 1.0, (5.0, 0.03): 1.0, (5.0, 0.1): 0.96, (5.0, 0.2): 0.6, (5.0, 0.3): 0.52, (5.0, 1.0): 0.12, (10.0, 0.03): 1.0, (10.0, 0.1): 0.76, (10.0, 0.2): 0.52, (10.0, 0.3): 0.24, (10.0, 1.0): 0.0, (15.0, 0.03): 1.0, (15.0, 0.1): 0.64, (15.0, 0.2): 0.24, (15.0, 0.3): 0.08, (15.0, 1.0): 0.0, (20.0, 0.03): 1.0, (20.0, 0.1): 0.6, (20.0, 0.2): 0.12, (20.0, 0.3): 0.12, (20.0, 1.0): 0.0, (25.0, 0.03): 1.0, (25.0, 0.1): 0.56, (25.0, 0.2): 0.12, (25.0, 0.3): 0.0, (25.0, 1.0): 0.0}
+    # results = {(1.0, 0.03): 0.0, (1.0, 0.1): 0.0, (1.0, 0.3): 0.0, (1.0, 1.0): 0.0, (5.0, 0.03): 0.0, (5.0, 0.1): 0.04, (5.0, 0.3): 0.36, (5.0, 1.0): 0.8, (10.0, 0.03): 0.0, (10.0, 0.1): 0.32, (10.0, 0.3): 0.72, (10.0, 1.0): 0.92, (15.0, 0.03): 0.0, (15.0, 0.1): 0.4, (15.0, 0.3): 0.96, (15.0, 1.0): 1.0, (20.0, 0.03): 0.0, (20.0, 0.1): 0.4, (20.0, 0.3): 1.0, (20.0, 1.0): 1.0, (25.0, 0.03): 0.12, (25.0, 0.1): 0.44, (25.0, 0.3): 0.92, (25.0, 1.0): 1.0, (30.0, 0.03): 0.08, (30.0, 0.1): 0.68, (30.0, 0.3): 1.0, (30.0, 1.0): 1.0, (35.0, 0.03): 0.04, (35.0, 0.1): 0.72, (35.0, 0.3): 0.96, (35.0, 1.0): 1.0, (40.0, 0.03): 0.12, (40.0, 0.1): 0.84, (40.0, 0.3): 1.0, (40.0, 1.0): 1.0, (45.0, 0.03): 0.08, (45.0, 0.1): 0.8, (45.0, 0.3): 1.0, (45.0, 1.0): 1.0, (50.0, 0.03): 0.08, (50.0, 0.1): 0.92, (50.0, 0.3): 1.0, (50.0, 1.0): 1.0}
+    results = {(1.0, 0.03): 0.0, (1.0, 0.1): 0.0, (1.0, 0.3): 0.0, (1.0, 1.0): 0.0, (5.0, 0.03): 0.0, (5.0, 0.1): 0.04, (5.0, 0.3): 0.6, (5.0, 1.0): 0.84, (10.0, 0.03): 0.0, (10.0, 0.1): 0.16, (10.0, 0.3): 0.84, (10.0, 1.0): 1.0, (20.0, 0.03): 0.0, (20.0, 0.1): 0.44, (20.0, 0.3): 0.96, (20.0, 1.0): 1.0, (30.0, 0.03): 0.04, (30.0, 0.1): 0.56, (30.0, 0.3): 1.0, (30.0, 1.0): 1.0, (40.0, 0.03): 0.0, (40.0, 0.1): 0.8, (40.0, 0.3): 1.0, (40.0, 1.0): 1.0, (50.0, 0.03): 0.16, (50.0, 0.1): 0.64, (50.0, 0.3): 1.0, (50.0, 1.0): 1.0, (60.0, 0.03): 0.24, (60.0, 0.1): 0.96, (60.0, 0.3): 1.0, (60.0, 1.0): 1.0, (70.0, 0.03): 0.12, (70.0, 0.1): 0.96, (70.0, 0.3): 1.0, (70.0, 1.0): 1.0, (80.0, 0.03): 0.28, (80.0, 0.1): 0.92, (80.0, 0.3): 1.0, (80.0, 1.0): 1.0, (90.0, 0.03): 0.44, (90.0, 0.1): 0.96, (90.0, 0.3): 1.0, (90.0, 1.0): 1.0, (100.0, 0.03): 0.36, (100.0, 0.1): 0.92, (100.0, 0.3): 1.0, (100.0, 1.0): 1.0}
+    # results = None
+    if results is None:
+        EPISODE_LENGTH = 200
+        NUM_EPISODES = 25
+        # task_kwargs={'time_limit': 1, 'bridge_length': 50.0},
 
-    BRIDGE_LENGTHS = (1.0, 5.0, 10.0, 15.0, 20.0, 25.0)
-    NOISE_SCALES = (3e-2, 1e-1, 2e-1, 3e-1, 1.0)
+        # BRIDGE_LENGTHS = (1.0, 5.0, 10.0, 20.0, 40.0, 80.0, 160.0)
+        BRIDGE_LENGTHS = (1.0, 5.0, *np.arange(10.0, 105, 10.0))
 
-    ray.init()
+        NOISE_SCALES = (3e-2, 1e-1, 3e-1, 1.0)
 
-    remotes = {
-        (bridge_length, noise_scale):
-        evaluate.remote(
-            bridge_length, noise_scale, EPISODE_LENGTH, NUM_EPISODES)
-        for bridge_length in BRIDGE_LENGTHS
-        for noise_scale in NOISE_SCALES
-    }
+        ray.init()
 
-    keys, object_ids = list(zip(*remotes.items()))
+        remotes = {
+            (bridge_length, noise_scale):
+            evaluate.remote(
+                bridge_length, noise_scale, EPISODE_LENGTH, NUM_EPISODES)
+            for bridge_length in BRIDGE_LENGTHS
+            for noise_scale in NOISE_SCALES
+        }
 
-    values = ray.get(list(object_ids))
+        keys, object_ids = list(zip(*remotes.items()))
 
-    results = dict(zip(keys, values))
+        values = ray.get(list(object_ids))
+
+        results = dict(zip(keys, values))
+        print(results)
 
     dataframe = pd.DataFrame([
         {
             'bridge_length': bridge_length,
-            'noise_scale': str(noise_scale),
+            'noise_scale': f"={noise_scale}",
             'result': result,
         }
         for (bridge_length, noise_scale), result in results.items()
     ])
 
-    print(results)
+    print(dataframe)
 
     sns.lineplot(
         data=dataframe,
