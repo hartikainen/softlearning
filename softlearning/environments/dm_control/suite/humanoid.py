@@ -26,7 +26,6 @@ from .pond import (
     DEFAULT_POND_RADIUS,
     OrbitTaskMixin)
 from . import bridge, visualization
-from softlearning.environments.dm_control.suite import tapering_bridge
 
 
 KEY_GEOM_NAMES = [
@@ -139,53 +138,13 @@ def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
 
 
 @SUITE.add()
-def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
-               random=None,
-               bridge_length=bridge.DEFAULT_BRIDGE_LENGTH,
-               bridge_width=bridge.DEFAULT_BRIDGE_WIDTH,
-               on_bridge_reward_type='x_velocity',
-               on_bridge_reward_weight=5.0,
-               after_bridge_reward_type='constant',
-               after_bridge_reward_weight=5.0,
-               desired_speed_on_bridge=_WALK_SPEED,
-               desired_speed_after_bridge=_WALK_SPEED,
-               terminate_outside_of_reward_bounds=False,
-               randomize_initial_x_position=False,
-               environment_kwargs=None):
+def bridge_run(*args, bridge_width=bridge.DEFAULT_BRIDGE_WIDTH, **kwargs):
     """Returns the BridgeRun task."""
-    environment_kwargs = environment_kwargs or {}
-    base_model_string, common_assets = get_model_and_assets_common()
-    water_map_length = water_map_length
-    water_map_width = water_map_width
-    water_map_dx = water_map_dx
-    water_map_dy = water_map_dy
-    xml_string = bridge.make_model(
-        base_model_string,
-        bridge_length=bridge_length,
-        bridge_width=bridge_width,
-        water_map_length=water_map_length,
-        water_map_width=water_map_width,
-        water_map_dx=water_map_dx,
-        water_map_dy=water_map_dy)
-    physics = BridgeMovePhysics.from_xml_string(xml_string, common_assets)
-    task = BridgeMove(
-        random=random,
-        water_map_length=water_map_length,
-        water_map_width=water_map_width,
-        water_map_dx=water_map_dx,
-        water_map_dy=water_map_dy,
-        water_map_offset=(water_map_length / 4, 0.0),
-        on_bridge_reward_type=on_bridge_reward_type,
-        on_bridge_reward_weight=on_bridge_reward_weight,
-        after_bridge_reward_type=after_bridge_reward_type,
-        after_bridge_reward_weight=after_bridge_reward_weight,
-        desired_speed_on_bridge=desired_speed_on_bridge,
-        desired_speed_after_bridge=desired_speed_after_bridge,
-        terminate_outside_of_reward_bounds=terminate_outside_of_reward_bounds,
-        randomize_initial_x_position=randomize_initial_x_position)
-    return control.Environment(physics, task, time_limit=time_limit,
-                               control_timestep=_CONTROL_TIMESTEP,
-                               **environment_kwargs)
+    return tapering_bridge_run(
+        *args,
+        bridge_start_width=bridge_width,
+        bridge_end_width=bridge_width,
+        **kwargs)
 
 
 @SUITE.add()
@@ -211,7 +170,7 @@ def tapering_bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
     water_map_width = 4 * size_multiplier
     water_map_dx = 0.5 * size_multiplier / 2
     water_map_dy = 0.5 * size_multiplier / 2
-    xml_string = tapering_bridge.make_model(
+    xml_string = bridge.make_model(
         base_model_string,
         size_multiplier=size_multiplier,
         bridge_length=bridge_length * size_multiplier,
@@ -222,9 +181,9 @@ def tapering_bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
         water_map_dx=water_map_dx,
         water_map_dy=water_map_dy,
     )
-    physics = TaperingBridgeMovePhysics.from_xml_string(
+    physics = BridgeMovePhysics.from_xml_string(
         xml_string, common_assets)
-    task = TaperingBridgeMove(
+    task = BridgeMove(
         random=random,
         water_map_length=water_map_length,
         water_map_width=water_map_width,
@@ -353,7 +312,8 @@ class Orbit(OrbitTaskMixin):
         return fell_over or super(Orbit, self).get_termination(physics)
 
 
-class BridgeMovePhysics(bridge.MovePhysicsMixin, HumanoidPhysics):
+class BridgeMovePhysics(
+        bridge.MovePhysicsMixin, HumanoidPhysics):
     def __init__(self, *args,  **kwargs):
         self._agent_geom_ids = None
         self._fell_over_geom_ids = None
@@ -403,69 +363,7 @@ class BridgeMovePhysics(bridge.MovePhysicsMixin, HumanoidPhysics):
         floor_geom_id = self.floor_geom_id
         agent_geom_ids = self.fell_over_geom_ids
 
-        contacts = self.data.contact
-        if contacts.size == 0:
-            return False
-
-        floor_contacts_index = (
-            (np.isin(contacts.geom1, floor_geom_id)
-             & np.isin(contacts.geom2, agent_geom_ids))
-            | (np.isin(contacts.geom2, floor_geom_id)
-               & np.isin(contacts.geom1, agent_geom_ids)))
-        any_agent_geom_contact = np.any(floor_contacts_index)
-        return any_agent_geom_contact
-
-
-class TaperingBridgeMovePhysics(
-        tapering_bridge.MovePhysicsMixin, HumanoidPhysics):
-    def __init__(self, *args,  **kwargs):
-        self._agent_geom_ids = None
-        self._fell_over_geom_ids = None
-        return super(TaperingBridgeMovePhysics, self).__init__(*args, **kwargs)
-
-    @property
-    def agent_geom_ids(self):
-        if self._agent_geom_ids is None:
-            self._agent_geom_ids = np.array([
-                self.model.name2id(geom_name, 'geom')
-                for geom_name in KEY_GEOM_NAMES
-            ])
-        return self._agent_geom_ids
-
-    @property
-    def fell_over_geom_ids(self):
-        if self._fell_over_geom_ids is None:
-            self._fell_over_geom_ids = np.array([
-                self.model.name2id(geom_name, 'geom')
-                for geom_name in KEY_GEOM_NAMES
-                if 'foot' not in geom_name
-            ])
-        return self._fell_over_geom_ids
-
-    def torso_velocity(self, *args, **kwargs):
-        return self.center_of_mass_velocity(*args, **kwargs)
-
-    def key_geom_positions(self):
-        key_geom_positions = self.named.data.xpos[KEY_GEOM_NAMES]
-        return key_geom_positions
-
-    def center_of_mass(self):
-        return self.named.data.geom_xpos['torso'].copy()
-
-    def torso_xmat(self):
-        return self.named.data.geom_xmat['torso'].copy()
-
-    def imu(self, *args, **kwargs):
-        imu = super(TaperingBridgeMovePhysics, self).imu(*args, **kwargs)
-        imu = 50.0 * np.tanh(imu / 100.0)
-        return imu
-
-    def get_path_infos(self, *args, **kwargs):
-        return visualization.get_path_infos_bridge_move(self, *args, **kwargs)
-
-    def fell_over(self):
-        floor_geom_id = self.floor_geom_id
-        agent_geom_ids = self.fell_over_geom_ids
+        # breakpoint()
 
         contacts = self.data.contact
         if contacts.size == 0:
@@ -508,39 +406,6 @@ class BridgeMove(bridge.MoveTaskMixin):
 
     def get_termination(self, physics):
         super_termination = super(BridgeMove, self).get_termination(physics)
-        fell_over = physics.fell_over()
-        terminated = fell_over or super_termination
-        return terminated
-
-
-class TaperingBridgeMove(tapering_bridge.MoveTaskMixin):
-    def common_observations(self, physics):
-        common_observations = _common_observations(physics)
-        common_observations['position'] = physics.center_of_mass()
-        return common_observations
-
-    def upright_reward(self, physics):
-        return _upright_reward(physics)
-
-    def initialize_episode(self, physics):
-        # Make the agent initially face tangent relative to pond.
-        orientation = np.array([1.0, 0.0, 0.0, 0.0])
-        bridge_pos = physics.named.model.geom_pos['bridge']
-        bridge_size = physics.named.model.geom_size['bridge']
-        np.testing.assert_equal(
-            physics.named.model.geom_quat['bridge'], (1, 0, 0, 0))
-
-        if self._randomize_initial_x_position:
-            x_pos = np.random.uniform(
-                0, bridge_pos[0] + bridge_size[0] + self._water_map_length / 4)
-        else:
-            x_pos = 0.0
-
-        _find_non_contacting_height(physics, orientation, x_pos=x_pos)
-        return super(TaperingBridgeMove, self).initialize_episode(physics)
-
-    def get_termination(self, physics):
-        super_termination = super(TaperingBridgeMove, self).get_termination(physics)
         fell_over = physics.fell_over()
         terminated = fell_over or super_termination
         return terminated

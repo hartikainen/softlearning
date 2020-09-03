@@ -79,27 +79,41 @@ def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
 
 
 @SUITE.add()
-def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
-               random=None,
-               bridge_length=bridge.DEFAULT_BRIDGE_LENGTH,
-               bridge_width=bridge.DEFAULT_BRIDGE_WIDTH,
-               on_bridge_reward_type='x_velocity',
-               on_bridge_reward_weight=5.0,
-               after_bridge_reward_type='constant',
-               after_bridge_reward_weight=5.0,
-               terminate_outside_of_reward_bounds=False,
-               environment_kwargs=None):
+def bridge_run(*args, bridge_width=bridge.DEFAULT_BRIDGE_WIDTH, **kwargs):
+    """Returns the BridgeRun task."""
+    return tapering_bridge_run(
+        *args,
+        bridge_start_width=bridge_width,
+        bridge_end_width=bridge_width,
+        **kwargs)
+
+
+@SUITE.add()
+def tapering_bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
+                        random=None,
+                        bridge_length=bridge.DEFAULT_BRIDGE_LENGTH,
+                        bridge_start_width=bridge.DEFAULT_BRIDGE_WIDTH,
+                        bridge_end_width=0.0,
+                        on_bridge_reward_type='x_velocity',
+                        on_bridge_reward_weight=5.0,
+                        after_bridge_reward_type='constant',
+                        after_bridge_reward_weight=5.0,
+                        terminate_outside_of_reward_bounds=False,
+                        environment_kwargs=None):
     """Returns the BridgeRun task."""
     environment_kwargs = environment_kwargs or {}
     base_model_string = make_common_model()
+
     water_map_length = 4
     water_map_width = 4
     water_map_dx = 0.25
     water_map_dy = 0.25
+
     xml_string = bridge.make_model(
         base_model_string,
         bridge_length=bridge_length,
-        bridge_width=bridge_width,
+        bridge_start_width=bridge_start_width,
+        bridge_end_width=bridge_end_width,
         water_map_length=water_map_length,
         water_map_width=water_map_width,
         water_map_dx=water_map_dx,

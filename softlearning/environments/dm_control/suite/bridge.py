@@ -32,108 +32,6 @@ def rotate_around_z(positions, quaternion):
     return new_positions
 
 
-def make_model(base_model_string,
-               size_multiplier=1.0,
-               bridge_length=DEFAULT_BRIDGE_LENGTH,
-               bridge_width=DEFAULT_BRIDGE_WIDTH,
-               water_map_length=5,
-               water_map_width=5,
-               water_map_dx=0.5,
-               water_map_dy=0.5,
-               floor_geom_name='floor',
-               *args,
-               **kwargs):
-    size_multiplier = np.array(size_multiplier)
-
-    mjcf = etree.fromstring(base_model_string)
-    worldbody = mjcf.find('worldbody')
-
-    floor_geom = mjcf.find(".//geom[@name='floor']")
-    floor_size = float(size_multiplier * 15 + bridge_length)
-    floor_geom.attrib['size'] = f'{floor_size} {floor_size} .1'
-
-    before_bridge_length = 0 * size_multiplier
-
-    bridge_offset = -1.0 * size_multiplier
-
-    floor_x = floor_size - before_bridge_length + bridge_offset
-    floor_geom.attrib['pos'] = f"{floor_x} 0 0"
-
-    bridge_x = (bridge_length + before_bridge_length) / 2 + bridge_offset
-    water_width = floor_size / 2 - bridge_width / 2
-    bridge_y_abs = (bridge_width + water_width) / 2
-
-    left_water_element = etree.Element(
-        "geom",
-        type="box",
-        name="water-left",
-        pos=stringify((bridge_x, bridge_y_abs, 0)),
-        size=stringify((
-            bridge_length / 2, water_width / 2, 0.01)),
-        contype="0",
-        conaffinity="0",
-        rgba="0 0 1 1")
-    right_water_element = etree.Element(
-        "geom",
-        type="box",
-        name="water-right",
-        pos=stringify((bridge_x, -bridge_y_abs, 0)),
-        size=stringify((bridge_length / 2, water_width / 2, 0.01)),
-        contype="0",
-        conaffinity="0",
-        rgba="0 0 1 1")
-    bridge_element = etree.Element(
-        "geom",
-        type="box",
-        name="bridge",
-        pos=stringify((bridge_x, 0, 0)),
-        size=stringify((bridge_length / 2, bridge_width / 2, 0.01)),
-        contype="0",
-        conaffinity="0",
-        # rgba="0.247 0.165 0.078 1",
-        rgba="0 0 0 0",
-    )
-    # grass_length = floor_size - (bridge_length + before_bridge_length) / 2
-    # grass_width = floor_size
-    # grass_x = before_bridge_length / 2 + bridge_length + grass_length + bridge_offset
-    # grass_element = etree.Element(
-    #     "geom",
-    #     type="box",
-    #     name="grass",
-    #     pos=stringify((grass_x, 0, 0)),
-    #     size=stringify((grass_length, grass_width, 0.01)),
-    #     contype="98",
-    #     conaffinity="68",
-    #     rgba="0 0.502 0 1")
-    worldbody.insert(0, left_water_element)
-    worldbody.insert(1, right_water_element)
-    worldbody.insert(2, bridge_element)
-    # worldbody.insert(3, grass_element)
-
-    # size_element = etree.Element(
-    #     "size",
-    #     njmax="500",
-    #     nconmax="500")
-
-    # mjcf.insert(0, size_element)
-
-    for x in range(int(water_map_length / water_map_dx)):
-        for y in range(int(water_map_width / water_map_dy)):
-            water_map_cell_element = etree.Element(
-                "geom",
-                type="box",
-                contype="0",
-                conaffinity="0",
-                name=f"water-map-{x}-{y}",
-                pos=stringify((0, 0, 0.01 * size_multiplier)),
-                size=stringify(
-                    (water_map_dx, water_map_dy, 0.01 * size_multiplier)),
-                rgba="0 0 0 1")
-            worldbody.insert(-1, water_map_cell_element)
-
-    return etree.tostring(mjcf, pretty_print=True)
-
-
 def point_inside_2d_rectangle(points,
                               rectangle_positions,
                               rectangle_sizes,
@@ -187,11 +85,176 @@ def point_inside_2d_rectangle(points,
     return np.reshape(point_inside_2d_rectangle, result_shape)
 
 
+def make_model(base_model_string,
+               size_multiplier=1.0,
+               bridge_length=DEFAULT_BRIDGE_LENGTH,
+               bridge_start_width=DEFAULT_BRIDGE_WIDTH,
+               bridge_end_width=0.0,
+               water_map_length=5,
+               water_map_width=5,
+               water_map_dx=0.5,
+               water_map_dy=0.5,
+               floor_geom_name='floor',
+               *args,
+               **kwargs):
+    size_multiplier = np.array(size_multiplier)
+
+    mjcf = etree.fromstring(base_model_string)
+    worldbody = mjcf.find('worldbody')
+
+    floor_geom = mjcf.find(".//geom[@name='floor']")
+    floor_size = float(size_multiplier * 15 + bridge_length)
+    floor_geom.attrib['size'] = f'{floor_size} {floor_size} .1'
+
+    bridge_offset = -1.0 * size_multiplier
+
+    floor_x = floor_size + bridge_offset
+    floor_geom.attrib['pos'] = f"{floor_x} 0 0"
+
+    bridge_x = (bridge_length) / 2 + bridge_offset
+    bridge_y = 0.0
+
+    water_width = floor_size - bridge_start_width / 2
+    water_length = np.linalg.norm((
+        (bridge_start_width - bridge_end_width) / 2, bridge_length))
+
+    water_angle = np.arctan2(
+        (bridge_start_width - bridge_end_width) / 2,
+        bridge_length,
+    )
+
+    left_water_bottom_right_corner_xy = (bridge_offset, bridge_start_width / 2.0)
+    left_water_xy = (
+        left_water_bottom_right_corner_xy
+        + rotate_around_z((water_length / 2.0, water_width / 2.0), -water_angle))
+
+    left_water_position = np.array((*left_water_xy, 0.0))
+    right_water_position = left_water_position * np.array((1.0, -1.0, 1.0))
+
+    left_water_quat = np.roll(Rotation.from_euler('z', -water_angle).as_quat(), 1)
+    right_water_quat = np.roll(Rotation.from_euler('z', water_angle).as_quat(), 1)
+
+    left_water_element = etree.Element(
+        "geom",
+        type="box",
+        name="water-left",
+        pos=stringify(left_water_position),
+        quat=stringify((left_water_quat)),
+        size=stringify((water_length / 2, water_width / 2, 0.01)),
+        contype="0",
+        conaffinity="0",
+        rgba="0 0 1 0.1")
+    right_water_element = etree.Element(
+        "geom",
+        type="box",
+        name="water-right",
+        pos=stringify(right_water_position),
+        quat=stringify((right_water_quat)),
+        size=stringify((water_length / 2, water_width / 2, 0.01)),
+        contype="0",
+        conaffinity="0",
+        rgba="0 0 1 0.1")
+    bridge_element = etree.Element(
+        "geom",
+        type="box",
+        name="bridge",
+        pos=stringify((bridge_x, bridge_y, 0)),
+        size=stringify((bridge_length / 2, bridge_start_width / 2, 0.01)),
+        contype="0",
+        conaffinity="0",
+        rgba="0 0 0 0")
+    worldbody.insert(0, left_water_element)
+    worldbody.insert(1, right_water_element)
+    worldbody.insert(2, bridge_element)
+
+    for x in range(int(water_map_length / water_map_dx)):
+        for y in range(int(water_map_width / water_map_dy)):
+            water_map_cell_element = etree.Element(
+                "geom",
+                type="box",
+                contype="0",
+                conaffinity="0",
+                name=f"water-map-{x}-{y}",
+                pos=stringify((0, 0, 0.01 * size_multiplier)),
+                size=stringify(
+                    (water_map_dx, water_map_dy, 0.01 * size_multiplier)),
+                rgba="0 0 0 1")
+            worldbody.insert(-1, water_map_cell_element)
+
+    return etree.tostring(mjcf, pretty_print=True)
+
+
 class MovePhysicsMixin:
     def __init__(self, *args, **kwargs):
         self._floor_geom_id = None
-        self._agent_geom_ids = None
-        return super(MovePhysicsMixin, self).__init__(*args, **kwargs)
+        result = super(MovePhysicsMixin, self).__init__(*args, **kwargs)
+
+        bridge_size = self.named.model.geom_size['bridge']
+        bridge_pos = self.named.model.geom_pos['bridge']
+        bridge_quat = self.named.model.geom_quat['bridge']
+        np.testing.assert_equal(bridge_quat, (1, 0, 0, 0))
+
+        bridge_top_right_pos = bridge_pos + (1, +1, 1) * bridge_size
+        bridge_bottom_right_pos = bridge_pos + (1, -1, 1) * bridge_size
+        bridge_top_left_pos = bridge_pos + (-1, +1, 1) * bridge_size
+        bridge_bottom_left_pos = bridge_pos + (-1, -1, 1) * bridge_size
+
+
+        water_left_size = self.named.model.geom_size['water-left']
+        water_left_pos = self.named.model.geom_pos['water-left']
+        water_left_quat = self.named.model.geom_quat['water-left']
+
+        np.testing.assert_equal(water_left_quat[1:3], 0.0)
+        water_left_euler = Rotation.from_quat(np.roll(water_left_quat, -1)).as_euler('xyz')
+        np.testing.assert_equal(water_left_euler[:2], 0.0)
+
+        np.testing.assert_equal(water_left_quat[1:3], 0.0)
+        water_left_euler = Rotation.from_quat(np.roll(water_left_quat, -1)).as_euler('xyz')
+        np.testing.assert_equal(water_left_euler[:2], 0.0)
+
+        water_left_bottom_left_pos = water_left_pos + Rotation.from_quat(
+            np.roll(water_left_quat, -1)).apply(
+                (-1, -1, 1) * water_left_size)
+
+        water_left_bottom_right_pos = water_left_pos + Rotation.from_quat(
+            np.roll(water_left_quat, -1)).apply(
+                (1, -1, 1) * water_left_size)
+
+        water_right_size = self.named.model.geom_size['water-right']
+        water_right_pos = self.named.model.geom_pos['water-right']
+        water_right_quat = self.named.model.geom_quat['water-right']
+
+        np.testing.assert_equal(water_right_quat[1:3], 0.0)
+        water_right_euler = Rotation.from_quat(np.roll(water_right_quat, -1)).as_euler('xyz')
+        np.testing.assert_equal(water_right_euler[:2], 0.0)
+
+        water_right_top_left_pos = water_right_pos + Rotation.from_quat(
+            np.roll(water_right_quat, -1)).apply(
+                (-1, 1, 1) * water_right_size)
+
+        water_right_top_right_pos = water_right_pos + Rotation.from_quat(
+            np.roll(water_right_quat, -1)).apply(
+                (1, 1, 1) * water_right_size)
+
+        np.testing.assert_allclose(
+            Rotation.from_quat(water_right_quat).inv().as_quat(),
+            water_left_quat)
+
+        np.testing.assert_allclose(water_left_pos, (1, -1, 1) * water_right_pos)
+
+        np.testing.assert_allclose(
+            water_left_bottom_left_pos, (1, -1, 1) * water_right_top_left_pos)
+
+        np.testing.assert_allclose(
+            water_left_bottom_left_pos, bridge_top_left_pos)
+        np.testing.assert_allclose(
+            water_right_top_left_pos, bridge_bottom_left_pos)
+
+        # # Should equal ``bridge_end_width``
+        # np.testing.assert_allclose(
+        #     water_left_bottom_right_pos[1] - water_right_top_right_pos[1], 0.3)
+
+        return result
 
     @property
     def agent_geom_ids(self):
@@ -246,15 +309,24 @@ class MovePhysicsMixin:
 
         key_geoms_xy = water_contacts.pos[:, :2]
 
-        water_left_xy = self.named.model.geom_pos['water-left'][:2]
-        water_left_size = self.named.model.geom_size['water-left'][:2]
-        water_right_xy = self.named.model.geom_pos['water-right'][:2]
-        water_right_size = self.named.model.geom_size['water-right'][:2]
+        water_names = ('water-left', 'water-right')
+        waters_xy = np.stack([
+            self.named.model.geom_pos[water_name][:2]
+            for water_name in water_names
+        ], axis=0)
+        waters_size = np.stack([
+            self.named.model.geom_size[water_name][:2]
+            for water_name in water_names
+        ], axis=0)
+        waters_angle = np.stack([
+            Rotation.from_quat(
+                np.roll(self.named.model.geom_quat[water_name], -1)
+            ).as_euler('xyz')[-1:]
+            for water_name in water_names
+        ], axis=0)
 
         key_geoms_in_waters = point_inside_2d_rectangle(
-            key_geoms_xy,
-            np.stack((water_left_xy, water_right_xy)),
-            np.stack((water_left_size, water_right_size)))
+            key_geoms_xy, waters_xy, waters_size, waters_angle)
 
         assert key_geoms_in_waters.shape == (
             *key_geoms_xy.shape[:-1], 2), (
@@ -291,6 +363,7 @@ class MovePhysicsMixin:
                 density * ny),
             indexing='ij',
         ), axis=-1)
+
         water_map_origin_xy += offset
         mini_cell_centers_origin_xy = water_map_origin_xy + (
             dx / (density * 2), dy / (density * 2))
@@ -304,15 +377,27 @@ class MovePhysicsMixin:
             mini_cell_centers_origin_xy, self._get_orientation())
         mini_cell_centers_xy += (com_x, com_y)
 
-        water_left_xy = self.named.model.geom_pos['water-left'][:2]
-        water_left_size = self.named.model.geom_size['water-left'][:2]
-        water_right_xy = self.named.model.geom_pos['water-right'][:2]
-        water_right_size = self.named.model.geom_size['water-right'][:2]
+        water_names = ('water-left', 'water-right')
+        waters_xy = np.stack([
+            self.named.model.geom_pos[water_name][:2]
+            for water_name in water_names
+        ], axis=0)
+        waters_size = np.stack([
+            self.named.model.geom_size[water_name][:2]
+            for water_name in water_names
+        ], axis=0)
+        waters_angle = np.stack([
+            Rotation.from_quat(
+                np.roll(self.named.model.geom_quat[water_name], -1)
+            ).as_euler('xyz')[-1:]
+            for water_name in water_names
+        ], axis=0)
 
         cells_in_waters = point_inside_2d_rectangle(
             mini_cell_centers_xy,
-            np.stack((water_left_xy, water_right_xy)),
-            np.stack((water_left_size, water_right_size)))
+            waters_xy,
+            waters_size,
+            waters_angle)
 
         water_map = np.any(cells_in_waters, axis=-1)
         water_map = skimage.measure.block_reduce(
@@ -416,7 +501,6 @@ class MoveTaskMixin(base.Task):
             *common_observations.items(),
             ('water_map', water_map),
         ))
-
         for i in range(int(self._water_map_length / self._water_map_dx)):
             for j in range(int(self._water_map_width / self._water_map_dy)):
                 cell_id = f'water-map-{i}-{j}'

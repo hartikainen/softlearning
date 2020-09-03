@@ -20,7 +20,7 @@ from .pond import (
     DEFAULT_POND_XY,
     DEFAULT_POND_RADIUS,
     OrbitTaskMixin)
-from . import bridge, tapering_bridge, visualization
+from . import bridge, visualization
 
 
 _WALLS = ('wall_x', 'wall_y', 'wall_neg_x', 'wall_neg_y')
@@ -142,58 +142,13 @@ def orbit_pond(time_limit=_DEFAULT_TIME_LIMIT,
 
 
 @SUITE.add()
-def bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
-               random=None,
-               bridge_length=bridge.DEFAULT_BRIDGE_LENGTH,
-               bridge_width=bridge.DEFAULT_BRIDGE_WIDTH,
-               on_bridge_reward_type='x_velocity',
-               on_bridge_reward_weight=5.0,
-               after_bridge_reward_type='constant',
-               after_bridge_reward_weight=5.0,
-               desired_speed_on_bridge=DEFAULT_DESIRED_SPEED_ON_BRIDGE,
-               desired_speed_after_bridge=DEFAULT_DESIRED_SPEED_AFTER_BRIDGE,
-               terminate_outside_of_reward_bounds=False,
-               randomize_initial_x_position=False,
-               environment_kwargs=None):
+def bridge_run(*args, bridge_width=bridge.DEFAULT_BRIDGE_WIDTH, **kwargs):
     """Returns the BridgeRun task."""
-    environment_kwargs = environment_kwargs or {}
-    base_model_string = make_model(walls_and_target=False)
-    size_multiplier = 0.05
-
-    water_map_length = 3 * size_multiplier
-    water_map_width = 2 * size_multiplier
-    water_map_dx = 0.5 * size_multiplier / 2
-    water_map_dy = 0.5 * size_multiplier / 2
-
-    xml_string = bridge.make_model(
-        base_model_string,
-        size_multiplier=size_multiplier,
-        bridge_length=bridge_length * size_multiplier,
-        bridge_width=bridge_width * size_multiplier / 5,
-        water_map_length=water_map_length,
-        water_map_width=water_map_width,
-        water_map_dx=water_map_dx,
-        water_map_dy=water_map_dy,
-    )
-    physics = BridgeMovePhysics.from_xml_string(xml_string, common.ASSETS)
-    task = BridgeMove(
-        random=random,
-        water_map_length=water_map_length,
-        water_map_width=water_map_width,
-        water_map_dx=water_map_dx,
-        water_map_dy=water_map_dy,
-        water_map_offset=(-water_map_length / 4, 0.0),
-        on_bridge_reward_type=on_bridge_reward_type,
-        on_bridge_reward_weight=on_bridge_reward_weight,
-        after_bridge_reward_type=after_bridge_reward_type,
-        after_bridge_reward_weight=after_bridge_reward_weight,
-        desired_speed_on_bridge=desired_speed_on_bridge,
-        desired_speed_after_bridge=desired_speed_after_bridge,
-        terminate_outside_of_reward_bounds=terminate_outside_of_reward_bounds,
-        randomize_initial_x_position=randomize_initial_x_position)
-
-    return control.Environment(
-        physics, task, time_limit=time_limit, **environment_kwargs)
+    return tapering_bridge_run(
+        *args,
+        bridge_start_width=bridge_width,
+        bridge_end_width=bridge_width,
+        **kwargs)
 
 
 @SUITE.add()
@@ -222,7 +177,7 @@ def tapering_bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
     water_map_dx = 0.5 * size_multiplier / 2
     water_map_dy = 0.5 * size_multiplier / 2
 
-    xml_string = tapering_bridge.make_model(
+    xml_string = bridge.make_model(
         base_model_string,
         size_multiplier=size_multiplier,
         bridge_length=bridge_length * size_multiplier,
@@ -233,9 +188,9 @@ def tapering_bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
         water_map_dx=water_map_dx,
         water_map_dy=water_map_dy,
     )
-    physics = TaperingBridgeMovePhysics.from_xml_string(
+    physics = BridgeMovePhysics.from_xml_string(
         xml_string, common.ASSETS)
-    task = TaperingBridgeMove(
+    task = BridgeMove(
         random=random,
         water_map_length=water_map_length,
         water_map_width=water_map_width,
@@ -405,45 +360,6 @@ class BridgeMovePhysics(bridge.MovePhysicsMixin, PointMassPhysics):
     def fell_over_geom_ids(self):
         return []
 
-    def torso_velocity(self):
-        return self.velocity()
-
-    def key_geom_positions(self):
-        return self.named.data.xpos['pointmass'][np.newaxis, ...]
-
-    def center_of_mass(self):
-        return self.named.data.geom_xpos['pointmass']
-
-    def torso_xmat(self):
-        return self.named.data.geom_xmat['pointmass']
-
-    def get_path_infos(self, *args, **kwargs):
-        return visualization.get_path_infos_bridge_move(self, *args, **kwargs)
-
-    def _get_orientation(self):
-        return Rotation.from_euler('z', 0).as_quat()
-
-
-class TaperingBridgeMovePhysics(
-        tapering_bridge.MovePhysicsMixin, PointMassPhysics):
-    def __init__(self, *args,  **kwargs):
-        self._agent_geom_ids = None
-        self._fell_over_geom_ids = None
-        return super(TaperingBridgeMovePhysics, self).__init__(*args, **kwargs)
-
-    @property
-    def agent_geom_ids(self):
-        if self._agent_geom_ids is None:
-            self._agent_geom_ids = np.array([
-                self.model.name2id(geom_name, 'geom')
-                for geom_name in KEY_GEOM_NAMES
-            ])
-        return self._agent_geom_ids
-
-    @property
-    def fell_over_geom_ids(self):
-        return []
-
     def any_key_geom_in_water(self):
         key_geoms_xy = self.key_geom_positions()[:, :2]
 
@@ -516,28 +432,3 @@ class BridgeMove(bridge.MoveTaskMixin):
         physics.named.data.qpos['root_y'] = 0.0
         physics.named.data.geom_xpos['pointmass'][:2] = (x_pos, 0.0)
         return super(BridgeMove, self).initialize_episode(physics)
-
-
-class TaperingBridgeMove(tapering_bridge.MoveTaskMixin):
-    def common_observations(self, physics):
-        observation = collections.OrderedDict((
-            ('position', physics.position()),
-            ('velocity', physics.velocity()),
-            # ('velocity', physics.velocity_to_pond()),
-        ))
-        return observation
-
-    def upright_reward(self, physics):
-        return 1.0
-
-    def initialize_episode(self, physics):
-        if self._randomize_initial_x_position:
-            x_pos = np.random.uniform(
-                0, bridge_pos[0] + bridge_size[0] + self._water_map_length / 2)
-        else:
-            x_pos = 0.0
-
-        physics.named.data.qpos['root_x'] = x_pos
-        physics.named.data.qpos['root_y'] = 0.0
-        physics.named.data.geom_xpos['pointmass'][:2] = (x_pos, 0.0)
-        return super(TaperingBridgeMove, self).initialize_episode(physics)
