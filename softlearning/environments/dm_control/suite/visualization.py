@@ -13,6 +13,7 @@ import tree
 from .pond import compute_angular_deltas
 
 from softlearning.models.utils import flatten_input_structure
+from collections import defaultdict
 
 
 def get_path_infos_stand(physics,
@@ -28,6 +29,28 @@ def get_path_infos_stand(physics,
         ]
         for path in paths
     ]))), 2, axis=-1)
+
+    results = defaultdict(list)
+    info_keys = ('head_height', )
+    for path in paths:
+        for info_key in info_keys:
+            info_values = np.array(path['observations'][info_key])
+            results[info_key + '-first'].append(info_values[0])
+            results[info_key + '-last'].append(info_values[-1])
+            results[info_key + '-mean'].append(np.mean(info_values))
+            results[info_key + '-median'].append(np.median(info_values))
+            results[info_key + '-sum'].append(np.sum(info_values))
+            if np.array(info_values).dtype != np.dtype('bool'):
+                results[info_key + '-range'].append(np.ptp(info_values))
+
+    aggregated_results = {}
+    for key, value in results.items():
+        aggregated_results[key + '-mean'] = np.mean(value)
+        aggregated_results[key + '-median'] = np.median(value)
+        aggregated_results[key + '-min'] = np.min(value)
+        aggregated_results[key + '-max'] = np.max(value)
+
+    infos.update(aggregated_results)
 
     origin = np.array((0.0, 0.0))
     distances_from_origin = np.linalg.norm(
