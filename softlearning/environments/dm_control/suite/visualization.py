@@ -15,6 +15,142 @@ from .pond import compute_angular_deltas
 from softlearning.models.utils import flatten_input_structure
 
 
+def get_path_infos_stand(physics,
+                         paths,
+                         evaluation_type='training',
+                         figure_save_path=None):
+    infos = {}
+
+    x, y = np.split(np.concatenate(tuple(itertools.chain(*[
+        [
+            path['observations']['position'][..., :2],
+            path['next_observations']['position'][[-1], ..., :2]
+        ]
+        for path in paths
+    ]))), 2, axis=-1)
+
+    origin = np.array((0.0, 0.0))
+    distances_from_origin = np.linalg.norm(
+        np.concatenate((x, y), axis=-1) - origin, ord=2, axis=1)
+
+    infos.update([
+        (f"{metric_name}-{metric_fn_name}",
+         getattr(np, metric_fn_name)(metric_values))
+        for metric_name, metric_values in (
+                ('distances_from_origin', distances_from_origin),
+        )
+        for metric_fn_name in ('mean', 'max', 'min', 'mean')
+    ])
+
+    log_base_dir = (
+        os.getcwd()
+        if figure_save_path is None
+        else figure_save_path)
+    heatmap_dir = os.path.join(log_base_dir, 'heatmap')
+    os.makedirs(heatmap_dir, exist_ok=True)
+
+    previous_heatmaps = glob.glob(os.path.join(
+        glob.escape(heatmap_dir),
+        f"{evaluation_type}-iteration-*-heatmap.png"))
+    heatmap_iterations = [
+        int(re.search(f"{evaluation_type}-iteration-(\d+)-heatmap.png", x).group(1))
+        for x in previous_heatmaps
+    ]
+    if not heatmap_iterations:
+        iteration = 0
+    else:
+        iteration = int(max(heatmap_iterations) + 1)
+
+    base_size = 6.4
+    x_max = y_max = 7
+    x_min = y_min = - x_max
+    width = x_max - x_min
+    height = y_max - y_min
+
+    if width > height:
+        figsize = (base_size, base_size * (height / width))
+    else:
+        figsize = (base_size * (width / height), base_size)
+
+    figure, axis = plt.subplots(1, 1, figsize=figsize)
+
+    axis.set_xlim((x_min - 1, x_max + 1))
+    axis.set_ylim((y_min - 1, y_max + 1))
+
+    color_map = plt.cm.get_cmap('tab10', len(paths))
+    for i, path in enumerate(paths):
+        positions = np.concatenate((
+            path['observations']['position'][..., :2],
+            path['next_observations']['position'][[-1], ..., :2],
+        ), axis=0)
+
+        color = color_map(i)
+        axis.plot(
+            positions[:, 0],
+            positions[:, 1],
+            color=color,
+            linestyle=':',
+            linewidth=1.0,
+            label='evaluation_paths' if i == 0 else None,
+        )
+        axis.scatter(
+            *positions[0, :2],
+            edgecolors='black',
+            c=[color],
+            marker='o',
+            s=75.0,
+        )
+        axis.scatter(
+            *positions[-1, :2],
+            edgecolors='black',
+            c=[color],
+            marker='X',
+            s=90.0,
+        )
+
+        if 'perturbed' in path.get('infos', {}):
+            perturbed = np.array(path['infos']['perturbed'])
+            perturbed_xy = positions[:-1, ...][perturbed]
+
+            if 'perturbation' in path['infos']:
+                perturbations = np.stack(
+                    path['infos']['perturbation'], axis=0)[perturbed]
+            elif 'original_action' in path['infos']:
+                perturbations = np.stack(
+                    path['infos']['original_action'], axis=0)[perturbed]
+            else:
+                raise NotImplementedError("TODO(hartikainen)")
+
+            axis.quiver(
+                perturbed_xy[:, 0],
+                perturbed_xy[:, 1],
+                perturbations[:, 0],
+                perturbations[:, 1],
+                units='xy',
+                # units='width',
+                angles='xy',
+                # scale=1.0,
+                scale_units='xy',
+                # width=0.1,
+                # headwidth=15,
+                # headlength=10,
+                linestyle='dashed',
+                color=(*color[:3], 0.1),
+                zorder=0,
+            )
+
+    axis.grid(True, linestyle='-', linewidth=0.2)
+
+    heatmap_path = os.path.join(
+        heatmap_dir,
+        f'{evaluation_type}-iteration-{iteration:05}-heatmap.png')
+    plt.savefig(heatmap_path)
+    figure.clf()
+    plt.close(figure)
+
+    return infos
+
+
 def get_path_infos_orbit_pond(physics,
                               paths,
                               evaluation_type='training',

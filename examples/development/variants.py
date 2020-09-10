@@ -795,6 +795,15 @@ OBSERVATION_KEYS_PER_UNIVERSE_DOMAIN_TASK = {
         'distance_from_pond',
         'previous_action',
     ),
+    ('dm_control', 'humanoid', 'custom_stand'): (
+        'joint_angles',
+        'head_height',
+        'extremities',
+        'torso_vertical',
+        'com_velocity',
+        'velocity',
+        # 'position',
+    ),
     ('dm_control', 'humanoid', 'orbit_pond'): (
         'joint_angles',
         'head_height',

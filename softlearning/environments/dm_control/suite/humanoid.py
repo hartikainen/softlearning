@@ -124,13 +124,24 @@ class SimpleResetHumanoid(HumanoidTask):
         _find_non_contacting_height(physics, orientation)
         return super(HumanoidTask, self).initialize_episode(physics)
 
+    def get_observation(self, physics):
+        observation =  super().get_observation(physics)
+        observation['position'] = physics.center_of_mass_position()
+        return observation
+
+
+class SimpleResetHumanoidPhysics(HumanoidPhysics):
+    def get_path_infos(self, *args, **kwargs):
+        return visualization.get_path_infos_stand(self, *args, **kwargs)
+
 
 @SUITE.add()
 def custom_stand(time_limit=_DEFAULT_TIME_LIMIT,
                  random=None,
                  environment_kwargs=None):
     """Returns the Stand task."""
-    physics = HumanoidPhysics.from_xml_string(*get_model_and_assets_common())
+    physics = SimpleResetHumanoidPhysics.from_xml_string(
+        *get_model_and_assets_common())
     task = SimpleResetHumanoid(move_speed=0, pure_state=False, random=random)
     environment_kwargs = environment_kwargs or {}
     return control.Environment(
