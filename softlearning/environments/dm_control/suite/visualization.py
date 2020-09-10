@@ -39,7 +39,7 @@ def get_path_infos_stand(physics,
         for metric_name, metric_values in (
                 ('distances_from_origin', distances_from_origin),
         )
-        for metric_fn_name in ('mean', 'max', 'min', 'mean')
+        for metric_fn_name in ('mean', 'max', 'min', 'median')
     ])
 
     log_base_dir = (
@@ -194,7 +194,7 @@ def get_path_infos_orbit_pond(physics,
                 ('cumulative_angles_travelled', cumulative_angles_travelled),
                 ('angular_velocity_mean',
                  cumulative_angles_travelled / x.size))
-        for metric_fn_name in ('mean', 'max', 'min', 'mean')
+        for metric_fn_name in ('mean', 'max', 'min', 'median')
     ])
 
     if 'acceleration' in paths[0]['observations']:
@@ -212,7 +212,7 @@ def get_path_infos_orbit_pond(physics,
                     ('accelerations-x', accelerations_xyz[:, 0]),
                     ('accelerations-y', accelerations_xyz[:, 1]),
                     ('accelerations-z', accelerations_xyz[:, 2]))
-            for metric_fn_name in ('mean', 'max', 'min', 'mean')
+            for metric_fn_name in ('mean', 'max', 'min', 'median')
         ])
 
     if 'velocity' in paths[0]['observations']:
@@ -231,7 +231,7 @@ def get_path_infos_orbit_pond(physics,
                     ('velocities-y', velocities_xyz[:, 1]),
                     # ('velocities-z', velocities_xyz[:, 2]),
             )
-            for metric_fn_name in ('mean', 'max', 'min', 'mean')
+            for metric_fn_name in ('mean', 'max', 'min', 'median')
         ])
 
     histogram_margin = 3.0
