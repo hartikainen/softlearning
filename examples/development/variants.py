@@ -653,6 +653,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             },
         },
         'humanoid': {
+            'custom_stand': {},
             'orbit_pond': {
                 'angular_velocity_reward_weight': tune.grid_search([
                     50.0,

@@ -11,6 +11,7 @@ from dm_control.suite.humanoid import (
     SUITE,
     get_model_and_assets as get_model_and_assets_common,
     Physics as HumanoidPhysics,
+    Humanoid as HumanoidTask,
 )
 
 from dm_control.suite.quadruped import _find_non_contacting_height
@@ -108,6 +109,33 @@ def _localize_xy_value(physics, value):
     rotated_value = rotation_matrix @ value
 
     return rotated_value
+
+
+class SimpleResetHumanoid(HumanoidTask):
+    def initialize_episode(self, physics):
+        """Sets the state of the environment at the start of each episode.
+
+        Args:
+          physics: An instance of `Physics`.
+
+        """
+        # Find a collision-free random initial configuration.
+        orientation = np.array([1.0, 0.0, 0.0, 0.0])
+        _find_non_contacting_height(physics, orientation)
+        return super(HumanoidTask, self).initialize_episode(physics)
+
+
+@SUITE.add()
+def custom_stand(time_limit=_DEFAULT_TIME_LIMIT,
+                 random=None,
+                 environment_kwargs=None):
+    """Returns the Stand task."""
+    physics = HumanoidPhysics.from_xml_string(*get_model_and_assets_common())
+    task = SimpleResetHumanoid(move_speed=0, pure_state=False, random=random)
+    environment_kwargs = environment_kwargs or {}
+    return control.Environment(
+        physics, task, time_limit=time_limit, control_timestep=_CONTROL_TIMESTEP,
+        **environment_kwargs)
 
 
 @SUITE.add()
