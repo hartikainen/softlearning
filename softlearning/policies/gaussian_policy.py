@@ -21,6 +21,7 @@ class GaussianPolicy(LatentSpacePolicy):
                  *args,
                  squash=True,
                  preprocessors=None,
+                 layer_normalize_inputs=False,
                  name=None,
                  **kwargs):
 
@@ -34,6 +35,7 @@ class GaussianPolicy(LatentSpacePolicy):
         self._input_shapes = input_shapes
         self._output_shape = output_shape
         self._squash = squash
+        self._layer_normalize_inputs = layer_normalize_inputs
         self._name = name
 
         super(GaussianPolicy, self).__init__(*args, **kwargs)
@@ -65,6 +67,9 @@ class GaussianPolicy(LatentSpacePolicy):
         )(preprocessed_inputs)
 
         self.condition_inputs = inputs_flat
+
+        if self._layer_normalize_inputs:
+            conditions = tf.keras.layers.LayerNormalization()(conditions)
 
         shift_and_log_scale_diag = self._shift_and_log_scale_diag_net(
             output_size=np.prod(output_shape) * 2,

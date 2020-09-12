@@ -129,6 +129,12 @@ GAUSSIAN_POLICY_PARAMS_BASE = {
         'hidden_layer_sizes': (M, M),
         'activation': 'relu',
         'squash': True,
+        'layer_normalize_inputs': tune.sample_from(lambda spec: (
+            spec.get('config', spec)
+            ['Q_params']
+            ['kwargs']
+            .get('observation_keys')
+        )),
         'observation_keys': None,
         'observation_preprocessors_params': {}
     }
@@ -1060,6 +1066,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             'type': 'double_feedforward_Q_function',
             'kwargs': {
                 'hidden_layer_sizes': (M, M),
+                'layer_normalize_inputs': False,
                 'observation_keys': tune.sample_from(lambda spec: (
                     spec.get('config', spec)
                     ['policy_params']
