@@ -21,6 +21,7 @@ class DeterministicPolicy(BasePolicy):
                  *args,
                  squash=True,
                  preprocessors=None,
+                 layer_normalize_inputs=False,
                  name=None,
                  **kwargs):
 
@@ -34,6 +35,7 @@ class DeterministicPolicy(BasePolicy):
         self._input_shapes = input_shapes
         self._output_shape = output_shape
         self._squash = squash
+        self._layer_normalize_inputs = layer_normalize_inputs
         self._name = name
 
         super(DeterministicPolicy, self).__init__(*args, **kwargs)
@@ -63,6 +65,9 @@ class DeterministicPolicy(BasePolicy):
         conditions = tf.keras.layers.Lambda(
             cast_and_concat
         )(preprocessed_inputs)
+
+        if self._layer_normalize_inputs:
+            conditions = tf.keras.layers.LayerNormalization()(conditions)
 
         self.condition_inputs = inputs_flat
 
