@@ -13,6 +13,7 @@ import tree
 from .pond import compute_angular_deltas
 
 from softlearning.models.utils import flatten_input_structure
+from softlearning.policies.deterministic_policy import DeterministicPolicy
 from collections import defaultdict
 
 
@@ -564,18 +565,25 @@ def get_path_infos_bridge_move(physics,
     figsize = (figsize[0], main_axis_height + base_size / 2)
 
     figure, axes = plt.subplots(
-        2,
+        (2 if not isinstance(physics.policy, DeterministicPolicy) else 1),
         1,
         figsize=figsize,
         gridspec_kw={
-            'height_ratios': [main_axis_height] + [base_size / 2],
+            'height_ratios': (
+                [main_axis_height] + [base_size / 2]
+                if not isinstance(physics.policy, DeterministicPolicy)
+                else [main_axis_height]
+            ),
         })
 
+    axes = np.atleast_1d(axes)
     axis = axes[0]
 
     axis.set_xlim(xlim)
     axis.set_ylim(ylim)
-    axes[1].set_xlim(xlim)
+
+    if len(axes) == 2:
+        axes[1].set_xlim(xlim)
 
     color_map = plt.cm.get_cmap('tab10', len(paths))
     for i, path in enumerate(paths):
@@ -607,14 +615,14 @@ def get_path_infos_bridge_move(physics,
             marker='X',
             s=90.0)
 
-        entropies = compute_entropies(
-            physics.policy, path['observations'])
-        axes[1].plot(
-            positions[:-1, 0],
-            entropies,
-            color=color_map(i),
-            label=f'path-{i}')
-
+        if not isinstance(physics.policy, DeterministicPolicy):
+            entropies = compute_entropies(
+                physics.policy, path['observations'])
+            axes[1].plot(
+                positions[:-1, 0],
+                entropies,
+                color=color_map(i),
+                label=f'path-{i}')
 
     water_left_bottom_left_xy = water_left_pos + Rotation.from_quat(
         np.roll(water_left_quat, -1)).apply(
