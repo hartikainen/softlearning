@@ -647,9 +647,11 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             'bridge_run': {
                 'bridge_width': 1.3,
                 'bridge_length': 5.0,
+                'bridge_offset': -1.0,
+                'before_bridge_reward_type': 'constant',
+                'before_bridge_reward_weight': 1.0,
                 'on_bridge_reward_type': 'x_velocity',
                 'on_bridge_reward_weight': 5.0,
-                'bridge_offset': -1.0,
                 'after_bridge_reward_type': tune.grid_search([
                     'x_velocity',
                     'xy_velocity',
@@ -670,6 +672,8 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 'bridge_width': 0.4,
                 'bridge_length': 5.0,
                 'bridge_offset': -1.0,
+                'before_bridge_reward_type': 'constant',
+                'before_bridge_reward_weight': 1.0,
                 'on_bridge_reward_type': 'x_velocity',
                 'on_bridge_reward_weight': 5.0,
                 'after_bridge_reward_type': tune.grid_search([
@@ -678,6 +682,13 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     # 'constant',
                 ]),
                 'after_bridge_reward_weight': 5.0,
+                'desired_speed_before_bridge': tune.sample_from(lambda spec: (
+                    spec.get('config', spec)
+                    ['environment_params']
+                    ['training']
+                    ['kwargs']
+                    ['desired_speed_on_bridge']
+                )),
                 'desired_speed_on_bridge': tune.grid_search([1.0, 10.0]),
                 'desired_speed_after_bridge': tune.sample_from(lambda spec: (
                     spec.get('config', spec)
@@ -696,6 +707,8 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 'bridge_start_width': 0.5,
                 'bridge_end_width': 0.15,
                 'bridge_offset': -1.0,
+                'before_bridge_reward_type': 'constant',
+                'before_bridge_reward_weight': 1.0,
                 'on_bridge_reward_type': 'x_velocity',
                 'on_bridge_reward_weight': 5.0,
                 'after_bridge_reward_type': tune.grid_search([
@@ -715,7 +728,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 ]),
                 'control_cost_weight': 0.0,
                 'desired_angular_velocity': tune.grid_search([
-                    1.0, 5.0, 10.0, 20.0
+                    1.0, 5.0, 10.0, 20.0,
                 ]),
                 'friction': tune.grid_search([
                     # default: (0.5, 0.02, 0.02)
@@ -738,6 +751,8 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             'bridge_run': {
                 'bridge_width': tune.grid_search([1e-1]),
                 'bridge_length': 5.0,
+                'before_bridge_reward_type': 'constant',
+                'before_bridge_reward_weight': 1.0,
                 'on_bridge_reward_type': 'x_velocity',
                 'on_bridge_reward_weight': 5.0,
                 'bridge_offset': -1.0,
@@ -752,6 +767,8 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 'bridge_length': 4.0,
                 'bridge_start_width': 1.0,
                 'bridge_end_width': 0.1,
+                'before_bridge_reward_type': 'constant',
+                'before_bridge_reward_weight': 1.0,
                 'on_bridge_reward_type': 'x_velocity',
                 'on_bridge_reward_weight': 5.0,
                 'bridge_offset': -1.0,

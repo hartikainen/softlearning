@@ -442,6 +442,9 @@ class MoveTaskMixin(base.Task):
     def __init__(self,
                  desired_speed_on_bridge,
                  desired_speed_after_bridge,
+                 desired_speed_before_bridge=None,
+                 before_bridge_reward_type='constant',
+                 before_bridge_reward_weight=1.0,
                  on_bridge_reward_type='constant',
                  on_bridge_reward_weight=1.0,
                  after_bridge_reward_type='constant',
@@ -461,8 +464,11 @@ class MoveTaskMixin(base.Task):
             integer seed for creating a new `RandomState`, or None to select a
             seed automatically (default).
         """
+        self._desired_speed_before_bridge = desired_speed_before_bridge
         self._desired_speed_on_bridge = desired_speed_on_bridge
         self._desired_speed_after_bridge = desired_speed_after_bridge
+        self._before_bridge_reward_type = before_bridge_reward_type
+        self._before_bridge_reward_weight = before_bridge_reward_weight
         self._on_bridge_reward_type = on_bridge_reward_type
         self._on_bridge_reward_weight = on_bridge_reward_weight
         self._after_bridge_reward_type = after_bridge_reward_type
@@ -519,10 +525,27 @@ class MoveTaskMixin(base.Task):
 
     def get_reward(self, physics):
         """Returns a reward to the agent."""
+
         if physics.any_key_geom_in_water():
             move_reward = -1.0
         elif physics.before_bridge():
-            move_reward = -1.0
+            if self._before_bridge_reward_type == 'x_velocity':
+                x_velocity = physics.torso_velocity()[0]
+                move_reward = (
+                    self._before_bridge_reward_weight * np.minimum(
+                        x_velocity, self._desired_speed_before_bridge))
+            elif self._before_bridge_reward_type == 'xy_velocity':
+                raise NotImplementedError("TODO(hartikainen): this seems wrong!")
+                xy_velocity = physics.torso_velocity()
+                velocity = np.linalg.norm(xy_velocity)
+                velocity /= np.maximum(velocity, 1.0)
+                move_reward = (
+                    self._before_bridge_reward_weight * np.minimum(
+                        velocity, self._desired_speed_before_bridge))
+            elif self._before_bridge_reward_type == 'constant':
+                move_reward = self._before_bridge_reward_weight
+            else:
+                raise ValueError(self._before_bridge_reward_type)
         elif physics.on_bridge():
             if self._on_bridge_reward_type == 'x_velocity':
                 x_velocity = physics.torso_velocity()[0]
@@ -581,9 +604,6 @@ class MoveTaskMixin(base.Task):
     def get_termination(self, physics):
         """Terminates when any of the key geoms are in the water."""
         if physics.any_key_geom_in_water():
-            return 0
-
-        if physics.before_bridge():
             return 0
 
         if self._terminate_outside_of_reward_bounds and not physics.on_bridge():
