@@ -90,6 +90,7 @@ def make_model(base_model_string,
                bridge_length=DEFAULT_BRIDGE_LENGTH,
                bridge_start_width=DEFAULT_BRIDGE_WIDTH,
                bridge_end_width=0.0,
+               bridge_offset=-1.0,
                water_map_length=5,
                water_map_width=5,
                water_map_dx=0.5,
@@ -106,7 +107,7 @@ def make_model(base_model_string,
     floor_size = float(size_multiplier * 15 + bridge_length)
     floor_geom.attrib['size'] = f'{floor_size} {floor_size} .1'
 
-    bridge_offset = -1.0 * size_multiplier
+    bridge_offset = bridge_offset * size_multiplier
 
     floor_x = floor_size + bridge_offset
     floor_geom.attrib['pos'] = f"{floor_x} 0 0"
