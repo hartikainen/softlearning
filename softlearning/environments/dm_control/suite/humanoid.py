@@ -189,6 +189,10 @@ def bridge_run(*args, bridge_width=bridge.DEFAULT_BRIDGE_WIDTH, **kwargs):
 @SUITE.add()
 def tapering_bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
                         random=None,
+                        water_map_length=3,
+                        water_map_width=3,
+                        water_map_dx=0.25,
+                        water_map_dy=0.25,
                         bridge_length=bridge.DEFAULT_BRIDGE_LENGTH,
                         bridge_start_width=bridge.DEFAULT_BRIDGE_WIDTH,
                         bridge_end_width=0.0,
@@ -209,10 +213,10 @@ def tapering_bridge_run(time_limit=_DEFAULT_TIME_LIMIT,
     environment_kwargs = environment_kwargs or {}
     base_model_string, common_assets = get_model_and_assets_common()
     size_multiplier = 1.0
-    water_map_length = 3 * size_multiplier
-    water_map_width = 3 * size_multiplier
-    water_map_dx = 0.5 * size_multiplier / 2
-    water_map_dy = 0.5 * size_multiplier / 2
+    water_map_length = water_map_length * size_multiplier
+    water_map_width = water_map_width * size_multiplier
+    water_map_dx = water_map_dx * size_multiplier
+    water_map_dy = water_map_dy * size_multiplier
     xml_string = bridge.make_model(
         base_model_string,
         size_multiplier=size_multiplier,
