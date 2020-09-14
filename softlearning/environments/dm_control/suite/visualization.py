@@ -546,8 +546,9 @@ def get_path_infos_bridge_move(physics,
         physics.named.model.geom_pos['bridge'][0]
         - physics.named.model.geom_size['bridge'][0])
     x_margin = y_margin = physics.named.model.geom_pos['bridge'][0] / 10
-    xlim = np.array((
-        bridge_x_low - x_margin, reward_bounds_x_high + x_margin))
+
+    x_low = min(bridge_x_low, 0.0) - x_margin
+    xlim = np.array((x_low, reward_bounds_x_high + x_margin))
     ylim = np.array((
         reward_bounds_y_low - y_margin, reward_bounds_y_high + y_margin))
 

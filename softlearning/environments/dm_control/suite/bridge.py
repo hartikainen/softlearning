@@ -115,7 +115,7 @@ def make_model(base_model_string,
     bridge_x = (bridge_length) / 2 + bridge_offset
     bridge_y = 0.0
 
-    water_width = floor_size - bridge_start_width / 2
+    water_width = floor_size / 6 - bridge_start_width / 2
     water_length = np.linalg.norm((
         (bridge_start_width - bridge_end_width) / 2, bridge_length))
 
