@@ -95,6 +95,7 @@ def simulate_policy(checkpoint_path,
                     render_kwargs,
                     video_save_path=None,
                     evaluation_environment_params=None):
+    from variational_option_discovery import environments  # noqa: unused-import
     checkpoint_path = os.path.abspath(checkpoint_path.rstrip('/'))
     variant, progress, metadata = load_variant_progress_metadata(
         checkpoint_path)
