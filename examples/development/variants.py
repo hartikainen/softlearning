@@ -365,20 +365,24 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'MetaWorld': {
             'ML1-v1': {
+                'aggregate_path_infos_fn': metaworld_aggregate_path_infos_fn,
                 'benchmark_kwargs': {
                     'env_name': 'reach-v1',
                 },
             },
             'ML10-v1': {
+                'aggregate_path_infos_fn': metaworld_aggregate_path_infos_fn,
                 # Use `train_classes` to filter tasks within the benchmark.
                 'train_classes': None,
             },
             'MT1-v1': {
+                'aggregate_path_infos_fn': metaworld_aggregate_path_infos_fn,
                 'benchmark_kwargs': {
                     'env_name': 'reach-v1',
                 },
             },
             'MT10-v1': {
+                'aggregate_path_infos_fn': metaworld_aggregate_path_infos_fn,
                 # Use `train_classes` to filter tasks within the benchmark.
                 'train_classes': None,
                 # 'train_classes': (
