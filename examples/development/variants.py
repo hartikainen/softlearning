@@ -1,8 +1,9 @@
-
+from collections import defaultdict
 from copy import deepcopy
 
 from ray import tune
 import numpy as np
+import tree
 
 from softlearning.utils.git import get_git_rev
 from softlearning.utils.misc import get_host_name
@@ -12,6 +13,49 @@ DEFAULT_KEY = "__DEFAULT_KEY__"
 
 M = 256
 NUM_COUPLING_LAYERS = 2
+
+
+def metaworld_aggregate_path_infos_fn(paths):
+    """Simple path info aggregator that works for most standard environments.
+
+    Simply returns the aggregated {first,last,mean,median} mean infos, and
+    ignores the rest of the path data (e.g. observations).
+    """
+    def aggregate_infos(info_key_tuple, *paths_info_values):
+        # if info_key_tuple[-1] == 'goal':
+        #     return float('nan')
+
+        result = defaultdict(list)
+        for path_info_values in paths_info_values:
+            path_info_values = np.array(path_info_values)
+
+            # If all values are non-finite, then ignore. If there are mixed
+            # finite and non-finite values, then process normally and allow
+            # downstream (potentially) handle the errors.
+            if np.all(~np.isfinite(path_info_values)):
+                continue
+
+            result['mean'].append(np.mean(path_info_values, axis=0))
+            result['median'].append(np.median(path_info_values, axis=0))
+
+            if path_info_values.ndim == 1:
+                result['first'].append(path_info_values[0])
+                result['last'].append(path_info_values[-1])
+
+            if path_info_values.dtype != np.dtype('bool'):
+                result['range'].append(np.ptp(path_info_values, axis=0))
+
+        result = {
+            key: np.mean(values, axis=0)
+            for key, values in result.items()
+        }
+
+        return result
+
+    aggregated_infos = tree.map_structure_with_path(
+        aggregate_infos, *(path.get('infos', {}) for path in paths))
+
+    return aggregated_infos
 
 
 ALGORITHM_PARAMS_BASE = {
