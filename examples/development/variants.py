@@ -571,7 +571,18 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
         'replay_pool_params': {
             'class_name': 'SimpleReplayPool',
             'config': {
-                'max_size': int(1e6),
+                'max_size': tune.sample_from(
+                    lambda spec: min(
+                        int(1e6),
+                        spec.get('config', spec)
+                        ['algorithm_params']
+                        ['config']
+                        ['n_epochs']
+                        * spec.get('config', spec)
+                        ['algorithm_params']
+                        ['config']
+                        ['epoch_length']
+                    )),
             },
         },
         'sampler_params': {
