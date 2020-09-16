@@ -296,16 +296,16 @@ class RLAlgorithm(Checkpointable):
         """Compute evaluation metrics for the given rollouts."""
 
         episodes_rewards = [episode['rewards'] for episode in episodes]
-        episodes_reward = [np.sum(episode_rewards)
+        episodes_return = [np.sum(episode_rewards)
                            for episode_rewards in episodes_rewards]
         episodes_length = [episode_rewards.shape[0]
                            for episode_rewards in episodes_rewards]
 
         diagnostics = OrderedDict((
-            ('episode-reward-mean', np.mean(episodes_reward)),
-            ('episode-reward-min', np.min(episodes_reward)),
-            ('episode-reward-max', np.max(episodes_reward)),
-            ('episode-reward-std', np.std(episodes_reward)),
+            ('episode-return-mean', np.mean(episodes_return)),
+            ('episode-return-min', np.min(episodes_return)),
+            ('episode-return-max', np.max(episodes_return)),
+            ('episode-return-std', np.std(episodes_return)),
             ('episode-length-mean', np.mean(episodes_length)),
             ('episode-length-min', np.min(episodes_length)),
             ('episode-length-max', np.max(episodes_length)),
