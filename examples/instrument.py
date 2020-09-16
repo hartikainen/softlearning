@@ -226,6 +226,7 @@ def run_example_local(example_module_name, example_argv, local_mode=False):
 
     experiment_kwargs = generate_experiment_kwargs(variant_spec, example_args)
 
+    ray.services.get_node_ip_address = lambda: '127.0.0.1'
     ray.init(
         num_cpus=example_args.cpus,
         num_gpus=example_args.gpus,

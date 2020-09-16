@@ -8,7 +8,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 import tree
 
-from softlearning.models.utils import create_inputs
+from softlearning.models.utils import create_inputs, create_sequence_inputs
 from softlearning.utils.tensorflow import cast_and_concat, apply_preprocessors
 from softlearning import preprocessors as preprocessors_lib
 
@@ -44,6 +44,7 @@ class BasePolicy:
 
     def _create_inputs(self, input_shapes):
         self._inputs = create_inputs(input_shapes)
+        # self._inputs = create_sequence_inputs(input_shapes)
 
     @property
     def name(self):
