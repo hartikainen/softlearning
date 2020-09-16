@@ -23,7 +23,8 @@ from examples.instrument import run_example_local
 
 
 class ExperimentRunner(tune.Trainable):
-    def setup(self, variant):
+    def _setup(self, variant):
+        from variational_option_discovery import environments  # noqa: unused-import
         # Set the current working directory such that the local mode
         # logs into the correct place. This would not be needed on
         # local/cluster mode.
@@ -46,9 +47,14 @@ class ExperimentRunner(tune.Trainable):
         environment_params = variant['environment_params']
         training_environment = self.training_environment = (
             get_environment_from_params(environment_params['training']))
+
+        # NOTE(hartikainen): It's currently impossible to recreate the same
+        # training and evaluation environment for multiworld. Thus we use
+        # training environment for evaluation.
         evaluation_environment = self.evaluation_environment = (
             get_environment_from_params(environment_params['evaluation'])
-            if 'evaluation' in environment_params
+            if ('evaluation' in environment_params and (
+                    environment_params['evaluation']['domain'] != 'MetaWorld'))
             else training_environment)
 
         variant['Q_params']['config'].update({
