@@ -4,6 +4,7 @@ import numpy as np
 
 from softlearning import replay_pools
 from . import simple_sampler
+import tree
 
 
 DEFAULT_PIXEL_RENDER_KWARGS = {
@@ -48,13 +49,12 @@ def rollout(environment,
         render_kwargs = None
 
     images = []
-    infos = defaultdict(list)
+    infos = []
 
     t = 0
     for t in range(path_length):
         observation, reward, terminal, info = sampler.sample()
-        for key, value in info.items():
-            infos[key].append(value)
+        infos.append(info)
 
         if render_kwargs:
             image = environment.render(**render_kwargs)
@@ -67,7 +67,7 @@ def rollout(environment,
     assert pool._size == t + 1
 
     path = pool.batch_by_indices(np.arange(pool._size))
-    path['infos'] = infos
+    path['infos'] = tree.map_structure(lambda *x: np.stack(x), *infos)
 
     if render_mode == 'rgb_array':
         path['images'] = np.stack(images, axis=0)
