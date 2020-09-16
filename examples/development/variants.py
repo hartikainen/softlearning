@@ -63,7 +63,15 @@ ALGORITHM_PARAMS_BASE = {
         'train_every_n_steps': 1,
         'n_train_repeat': 1,
         'eval_render_kwargs': {},
-        'eval_n_episodes': 1,
+        'eval_n_episodes': tune.sample_from(lambda spec: (
+            {
+                'MetaWorld': 20,
+            }.get(spec.get('config', spec)
+                  ['environment_params']
+                  ['training']
+                  ['domain'],
+                  5)
+        )),
         'num_warmup_samples': tune.sample_from(lambda spec: (
             10 * (spec.get('config', spec)
                   ['sampler_params']
@@ -164,6 +172,11 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'Point2DEnv': {
             DEFAULT_KEY: int(5e4),
+        },
+        'MetaWorld': {
+            DEFAULT_KEY: int(1.5e6),
+            'MT10-v1': int(1e8),
+            'ML10-v1': int(1e8),
         },
     },
     'dm_control': {
@@ -271,6 +284,9 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
         'Pendulum': {
             DEFAULT_KEY: 200,
         },
+        'MetaWorld': {
+            DEFAULT_KEY: 200,
+        }
     },
 }
 
@@ -282,6 +298,9 @@ EPOCH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: 1000,
             'v0': 1000,
         },
+        'MetaWorld': {
+            DEFAULT_KEY: 50000,
+        }
     },
 }
 
@@ -342,6 +361,38 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             },
             'Wall-v0': {
                 'observation_keys': ('observation', 'desired_goal'),
+            },
+        },
+        'MetaWorld': {
+            'ML1-v1': {
+                'benchmark_kwargs': {
+                    'env_name': 'reach-v1',
+                },
+            },
+            'ML10-v1': {
+                # Use `train_classes` to filter tasks within the benchmark.
+                'train_classes': None,
+            },
+            'MT1-v1': {
+                'benchmark_kwargs': {
+                    'env_name': 'reach-v1',
+                },
+            },
+            'MT10-v1': {
+                # Use `train_classes` to filter tasks within the benchmark.
+                'train_classes': None,
+                # 'train_classes': (
+                #     'reach-v1',
+                #     'push-v1',
+                #     'pick-place-v1',
+                #     'door-open-v1',
+                #     'drawer-open-v1',
+                #     'drawer-close-v1',
+                #     'button-press-topdown-v1',
+                #     'peg-insert-side-v1',
+                #     'window-open-v1',
+                #     'window-close-v1',
+                # ),
             },
         },
     },
