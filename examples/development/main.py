@@ -1,10 +1,12 @@
 import os
+from collections import deque
 import copy
 import glob
 import pickle
 import sys
 import json
 
+import numpy as np
 import tensorflow as tf
 import tree
 import ray
@@ -24,6 +26,8 @@ from examples.instrument import run_example_local
 
 class ExperimentRunner(tune.Trainable):
     def _setup(self, variant):
+        set_gpu_memory_growth(True)
+
         from variational_option_discovery import environments  # noqa: unused-import
         # Set the current working directory such that the local mode
         # logs into the correct place. This would not be needed on
@@ -37,7 +41,6 @@ class ExperimentRunner(tune.Trainable):
             tf.config.experimental_run_functions_eagerly(True)
 
         self._variant = variant
-        set_gpu_memory_growth(True)
 
         self.train_generator = None
         self._built = False
@@ -93,6 +96,7 @@ class ExperimentRunner(tune.Trainable):
             'pool': replay_pool,
             'sampler': sampler
         })
+        self._succeeded = deque(maxlen=10)
         self.algorithm = algorithms.get(variant['algorithm_params'])
 
         self._built = True
@@ -105,6 +109,16 @@ class ExperimentRunner(tune.Trainable):
             self.train_generator = self.algorithm.train()
 
         diagnostics = next(self.train_generator)
+
+        if (self.config['environment_params']['training']['domain']
+            == 'MetaWorld'):
+            succeeded = (
+                0.9 < diagnostics['training']['environment_infos']['success']['median']
+                or 0.9 < diagnostics['evaluation']['environment_infos']['success']['median'])
+            self._succeeded.append(succeeded)
+
+            if 0.8 < np.mean(self._succeeded):
+                diagnostics['done'] = True
 
         return diagnostics
 
