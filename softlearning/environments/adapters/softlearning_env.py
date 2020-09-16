@@ -10,31 +10,39 @@ import tree
 from gym import spaces
 
 
-def naive_aggregate_path_infos_fn(key, *values_list):
+def naive_aggregate_path_infos_fn(paths):
     """Simple path info aggregator that works for most standard environments.
 
-    Simply returns the aggregated {first,last,mean,median} mean infos.
+    Simply returns the aggregated {first,last,mean,median} mean infos, and
+    ignores the rest of the path data (e.g. observations).
     """
-    values = np.stack(values_list)
 
-    info_values = {
-        'mean': np.mean(values, axis=1),
-        'median': np.median(values, axis=1),
-    }
+    def aggregate_infos(info_key_tuple, *paths_info_values):
+        result = defaultdict(list)
+        for path_info_values in paths_info_values:
+            path_info_values = np.array(path_info_values)
 
-    if values.ndim == 2:
-        info_values.update({
-            'first': values[:, 0],
-            'last': values[:, -1],
-        })
+            result['mean'].append(np.mean(path_info_values, axis=0))
+            result['median'].append(np.median(path_info_values, axis=0))
 
-    aggregate_info = {
-        f"{key}-{aggregate_name}": aggregate_function(values, axis=0)
-        for key, values in info_values.items()
-        for aggregate_function, aggregate_name in ((np.mean, 'mean'), )
-    }
+            if path_info_values.ndim == 1:
+                result['first'].append(path_info_values[0])
+                result['last'].append(path_info_values[-1])
 
-    return aggregate_info
+            if path_info_values.dtype != np.dtype('bool'):
+                result['range'].append(np.ptp(path_info_values, axis=0))
+
+        result = {
+            key: np.mean(values, axis=0)
+            for key, values in result.items()
+        }
+
+        return result
+
+    aggregated_infos = tree.map_structure_with_path(
+        aggregate_infos, *(path.get('infos', {}) for path in paths))
+
+    return aggregated_infos
 
 
 class SoftlearningEnv(metaclass=ABCMeta):
@@ -258,9 +266,7 @@ class SoftlearningEnv(metaclass=ABCMeta):
         environment infos.
         """
 
-        aggregated_infos = tree.map_structure_with_path(
-            self.aggregate_path_infos_fn,
-            *(path.get('infos', {}) for path in paths))
+        aggregated_infos = self.aggregate_path_infos_fn(paths)
 
         if hasattr(self.unwrapped, 'get_path_infos'):
             env_path_infos = self.unwrapped.get_path_infos(
