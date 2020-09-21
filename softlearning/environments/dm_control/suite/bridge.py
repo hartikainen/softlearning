@@ -284,12 +284,15 @@ class MovePhysicsMixin:
         return after_bridge
 
     def on_bridge(self):
-        agent_xy = self.center_of_mass()[:2]
-        bridge_xy = self.named.data.geom_xpos['bridge'][:2]
-        bridge_size = self.named.model.geom_size['bridge'][:2]
+        agent_x = self.center_of_mass()[0]
 
-        on_bridge = point_inside_2d_rectangle(
-            agent_xy, bridge_xy, bridge_size)
+        bridge_x = self.named.data.geom_xpos['bridge'][0]
+        bridge_length = self.named.model.geom_size['bridge'][0]
+
+        bridge_x0 = bridge_x - bridge_length
+        bridge_x1 = bridge_x + bridge_length
+
+        on_bridge = bridge_x0 <= agent_x <= bridge_x1
 
         return on_bridge
 
