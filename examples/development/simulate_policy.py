@@ -95,6 +95,7 @@ def load_policy_and_environment(picklable, variant):
 
 
 def simulate_policy_dm_control(policy,
+                               variant,
                                environment_params,
                                checkpoint_path,
                                deterministic,
@@ -137,15 +138,50 @@ def simulate_policy_dm_control(policy,
         observation = time_step.observation
         observation = tree.map_structure(lambda x: np.ravel(x), observation)
         observations = tree.map_structure(lambda x: x[None, ...], observation)
-        actions = policy.actions_np(observations)
-        action = tree.map_structure(lambda x: x[0], actions)
+
+        assert policy._deterministic == deterministic, (
+            policy._deterministic == deterministic)
+
+        if policy.__class__.__name__ == 'FeedforwardDeterministicPolicy':
+            exploration_noise = (
+                variant
+                ['sampler_params']
+                ['kwargs']
+                ['exploration_noise'])
+
+            if exploration_noise is None:
+                actions = policy.actions_np(observations)
+                action = tree.map_structure(lambda x: x[0], actions)
+            else:
+                with policy.set_deterministic(deterministic):
+                    actions = policy.actions_np(observations)
+                action = tree.map_structure(lambda x: x[0], actions)
+
+                noise_shift = 0
+                noise_scale = exploration_noise * (
+                    (environment.action_space.high - environment.action_space.low) / 2)
+                noise = np.random.normal(
+                    noise_shift,
+                    noise_scale,
+                    size=environment.action_space.shape)
+                action = np.clip(
+                    action + noise,
+                    environment.action_space.low,
+                    environment.action_space.high)
+        else:
+            actions = policy.actions_np(observations)
+            action = tree.map_structure(lambda x: x[0], actions)
+
         # log_pis_np = policy.log_pis_np(observations, actions)
         # print(log_pis_np)
         return action
 
     if render_kwargs['mode'] == 'human':
         from dm_control import viewer
-        viewer.launch(environment._env, policy=policy_fn)
+        with policy.set_deterministic(deterministic):
+            viewer.launch(environment._env, policy=policy_fn)
+
+        return
 
     with policy.set_deterministic(deterministic):
         paths = rollouts(num_rollouts,
@@ -187,6 +223,7 @@ def simulate_policy(checkpoint_path,
     if universe == 'dm_control':
         return simulate_policy_dm_control(
             policy,
+            variant,
             environment_params,
             checkpoint_path,
             deterministic,
