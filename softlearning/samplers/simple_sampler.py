@@ -64,10 +64,12 @@ class SimpleSampler(BaseSampler):
                 noise_shift,
                 noise_scale,
                 size=self.env.action_space.shape)
-            action = np.clip(
-                action + noise,
-                self.env.action_space.low,
-                self.env.action_space.high)
+            action = action + noise
+
+        action = np.clip(
+            action,
+            self.env.action_space.low,
+            self.env.action_space.high)
 
         next_observation, reward, terminal, info = self.env.step(action)
         self._path_length += 1

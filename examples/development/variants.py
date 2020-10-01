@@ -125,7 +125,12 @@ GAUSSIAN_POLICY_PARAMS_BASE = {
     'kwargs': {
         'hidden_layer_sizes': (M, M),
         'activation': 'relu',
-        'squash': True,
+        'squash': tune.sample_from(lambda spec: (
+            (spec.get('config', spec)
+             ['algorithm_params']
+             ['type'].lower()
+             ) != 'ddpg'
+        )),
         'layer_normalize_inputs': tune.sample_from(lambda spec: (
             spec.get('config', spec)
             ['Q_params']

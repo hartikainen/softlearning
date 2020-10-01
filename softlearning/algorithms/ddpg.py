@@ -102,6 +102,7 @@ class DDPG(RLAlgorithm):
 
         next_actions = self._policy.actions(policy_inputs)
         action_space = self._training_environment.action_space
+        assert not self._policy._squash, "DDPG policy should no be squashed."
         noise_mean = 0.0
         noise_stddev = self._Q_target_action_noise * (
             (action_space.high - action_space.low) / 2)
