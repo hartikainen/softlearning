@@ -52,7 +52,6 @@ ALGORITHM_PARAMS_ADDITIONAL = {
                     ),
                     0.99)
             )),
-            'tau': 5e-3,
             'reward_scale': 1.0,
             'terminal_next_value_type': 'zeros',
             'temperature_update_type': 'off-policy',
@@ -160,14 +159,14 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
         'Ant': {
             DEFAULT_KEY: int(1e7),
             'v3': int(3e6),
-            'Pond-v0': int(2e7),
-            'BridgeRun-v0': int(2e7),
+            'Pond-v0': int(5e7),
+            'BridgeRun-v0': int(5e7),
         },
         'Humanoid': {
             DEFAULT_KEY: int(3e6),
             'Stand-v3': int(1e8),
             'SimpleStand-v3': int(1e8),
-            'Pond-v0': int(5e7),
+            'Pond-v0': int(1e8),
             'v3': int(1e8),
         },
         'Pendulum': {
@@ -248,9 +247,9 @@ TOTAL_STEPS_PER_UNIVERSE_DOMAIN_TASK = {
         },
         'point_mass': {
             DEFAULT_KEY: int(3e6),
-            'orbit_pond': int(2e4),
-            'bridge_run': int(5e4),
-            'tapering_bridge_run': int(5e4),
+            'orbit_pond': int(5e5),
+            'bridge_run': int(2.5e4),
+            'tapering_bridge_run': int(2.5e4),
             # 'hard': int(None),
         },
         'reacher': {
@@ -325,6 +324,8 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
             'orbit_pond': 1000,
             'bridge_run': 250,
             'tapering_bridge_run': 250,
+            'custom_stand': 250,
+            'freeze_step': 250,
         },
     }
 }
@@ -349,29 +350,29 @@ EPOCH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
             DEFAULT_KEY: int(5e4),
             'v3': int(5e4),
             'BridgeRun-v0': int(2.5e4),
-            'Pond-v0': int(2.5e4),
+            'Pond-v0': int(5e4),
             'RiverRun-v0': int(2.5e4),
         },
         'Humanoid': {
             DEFAULT_KEY: int(5e4),
             'v3': int(5e4),
-            'Pond-v0': int(2.5e4),
+            'Pond-v0': int(5e4),
         },
     },
     'dm_control': {
         DEFAULT_KEY: int(1e3),
         'quadruped': {
             DEFAULT_KEY: int(1e4),
-            'orbit_pond': int(2e3),
-            'bridge_run': int(2.5e4),
+            'orbit_pond': int(5e4),
+            'bridge_run': int(5e4),
         },
         'humanoid': {
             DEFAULT_KEY: int(1e4),
-            'orbit_pond': int(2.5e4),
-            'bridge_run': int(2.5e4),
-            'tapering_bridge_run': int(2.5e4),
-            'custom_stand': 1000,
-            'freeze_step': 200,
+            'orbit_pond': int(5e4),
+            'bridge_run': int(5e4),
+            'tapering_bridge_run': int(5e4),
+            'custom_stand': int(1e4),
+            'freeze_step': int(1e4),
         },
         'boxhead': {
             'orbit_pond': int(1e4),
@@ -639,9 +640,9 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                     50.0,
                 ]),
                 'control_range_multiplier': tune.grid_search([
-                    2.0, 3.0, 4.0, 6.0, 8.0, 10.0,
+                    2.0
                 ]),
-                'friction': tune.grid_search([1.0]),
+                'friction': 1.0,
             },
             'bridge_run': {
                 'bridge_width': 1.3,
@@ -653,8 +654,8 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 'on_bridge_reward_weight': 5.0,
                 'after_bridge_reward_type': tune.grid_search([
                     'x_velocity',
-                    'xy_velocity',
-                    'constant',
+                    # 'xy_velocity',
+                    # 'constant',
                 ]),
                 'after_bridge_reward_weight': 5.0,
                 'terminate_outside_of_reward_bounds': False,
@@ -665,7 +666,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 'constant_reward': 10.0,
             },
             'freeze_step': {
-                'freeze_interval': 200,
+                'freeze_interval': 250,
                 'constant_reward': 5.0,
                 'freeze_reward_weight': 5.0,
             },
@@ -961,7 +962,7 @@ def get_policy_params(spec):
     algorithm = config['algorithm_params']['type']
     policy_params = GAUSSIAN_POLICY_PARAMS_BASE.copy()
     if algorithm.lower() == 'ddpg':
-        policy_params['kwargs']['activation'] = 'tanh'
+        policy_params['kwargs']['activation'] = 'relu'
         policy_params['type'] = 'FeedforwardDeterministicPolicy'
 
     observation_keys = OBSERVATION_KEYS_PER_UNIVERSE_DOMAIN_TASK.get((
@@ -1034,7 +1035,10 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
             ),
             'humanoid': tune.grid_search(
                 # np.round(np.linspace(1, 5, 11), 2).tolist()
-                np.arange(5, 10).astype(np.float32).tolist()
+                # np.arange(5, 10).astype(np.float32).tolist()
+                # [-10.0, 3.0, 6.0, 9.0, 12.0]
+                # [-10.0, 4.0]
+                ['auto', -10.0, 4.0]
             ),
             'Humanoid': tune.grid_search(
                 [-17.0, -10.0, -5.0, 0.0, 3.0, 6.0, 9.0]
@@ -1079,7 +1083,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
     }
     if algorithm == 'DDPG':
         sampler_params['kwargs']['exploration_noise'] = tune.grid_search([
-            0.01, 0.03, 0.1, 0.2, 0.3, 0.6, 1.0,
+            0.0, 2e-1, 4e-1,
         ])
     variant_spec = {
         'git_sha': get_git_rev(__file__),
