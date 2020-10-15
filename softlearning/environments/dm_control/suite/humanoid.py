@@ -27,6 +27,7 @@ from .pond import (
     DEFAULT_POND_RADIUS,
     OrbitTaskMixin)
 from . import bridge, visualization
+from . import freeze_step as freeze_step_lib
 
 
 KEY_GEOM_NAMES = [
@@ -125,12 +126,60 @@ class SimpleResetHumanoid(HumanoidTask):
         return super(HumanoidTask, self).initialize_episode(physics)
 
     def get_observation(self, physics):
-        observation =  super().get_observation(physics)
+        observation = super().get_observation(physics)
         observation['position'] = physics.center_of_mass_position()
         return observation
 
+    def get_termination(self, physics):
+        super_termination = super(SimpleResetHumanoid, self).get_termination(physics)
+        fell_over = physics.fell_over()
+        terminated = fell_over or super_termination
+        return terminated
+
+
+class CustomStandHumanoid(SimpleResetHumanoid):
+    def __init__(self, *args, constant_reward=0.0, **kwargs):
+        self._constant_reward = constant_reward
+        return super(CustomStandHumanoid, self).__init__(*args, **kwargs)
+
+    def get_reward(self, physics):
+        """Returns a reward to the agent."""
+        return self._constant_reward
+
 
 class SimpleResetHumanoidPhysics(HumanoidPhysics):
+    @property
+    def floor_geom_id(self):
+        if getattr(self, '_floor_geom_id', None) is None:
+            self._floor_geom_id = self.model.name2id('floor', 'geom')
+        return self._floor_geom_id
+
+    @property
+    def fell_over_geom_ids(self):
+        if getattr(self, '_fell_over_geom_ids', None) is None:
+            self._fell_over_geom_ids = np.array([
+                self.model.name2id(geom_name, 'geom')
+                for geom_name in KEY_GEOM_NAMES
+                if 'foot' not in geom_name
+            ])
+        return self._fell_over_geom_ids
+
+    def fell_over(self):
+        floor_geom_id = self.floor_geom_id
+        agent_geom_ids = self.fell_over_geom_ids
+
+        contacts = self.data.contact
+        if contacts.size == 0:
+            return False
+
+        floor_contacts_index = (
+            (np.isin(contacts.geom1, floor_geom_id)
+             & np.isin(contacts.geom2, agent_geom_ids))
+            | (np.isin(contacts.geom2, floor_geom_id)
+               & np.isin(contacts.geom1, agent_geom_ids)))
+        any_agent_geom_contact = np.any(floor_contacts_index)
+        return any_agent_geom_contact
+
     def get_path_infos(self, *args, **kwargs):
         return visualization.get_path_infos_stand(self, *args, **kwargs)
 
@@ -138,11 +187,53 @@ class SimpleResetHumanoidPhysics(HumanoidPhysics):
 @SUITE.add()
 def custom_stand(time_limit=_DEFAULT_TIME_LIMIT,
                  random=None,
-                 environment_kwargs=None):
-    """Returns the Stand task."""
+                 environment_kwargs=None,
+                 **kwargs):
+    """Returns the CustomStand task."""
     physics = SimpleResetHumanoidPhysics.from_xml_string(
         *get_model_and_assets_common())
-    task = SimpleResetHumanoid(move_speed=0, pure_state=False, random=random)
+    task = CustomStandHumanoid(
+        move_speed=0,
+        pure_state=False,
+        random=random,
+        **kwargs)
+    environment_kwargs = environment_kwargs or {}
+    return control.Environment(
+        physics, task, time_limit=time_limit, control_timestep=_CONTROL_TIMESTEP,
+        **environment_kwargs)
+
+
+class FreezeStepPhysics(freeze_step_lib.FreezeStepPhysicsMixin,
+                        SimpleResetHumanoidPhysics):
+    @property
+    def agent_geom_ids(self):
+        if getattr(self, '_agent_geom_ids', None) is None:
+            self._agent_geom_ids = np.array([
+                self.model.name2id(geom_name, 'geom')
+                for geom_name in KEY_GEOM_NAMES
+            ])
+        return self._agent_geom_ids
+
+
+class FreezeStepHumanoid(freeze_step_lib.FreezeStepTaskMixin, SimpleResetHumanoid):
+    pass
+
+
+@SUITE.add()
+def freeze_step(time_limit=_DEFAULT_TIME_LIMIT,
+                random=None,
+                environment_kwargs=None,
+                **kwargs):
+    """Returns the FreezeStep task."""
+    base_model_string, common_assets = get_model_and_assets_common()
+    xml_string = freeze_step_lib.make_model(base_model_string)
+    physics = FreezeStepPhysics.from_xml_string(xml_string, common_assets)
+    task = FreezeStepHumanoid(
+        move_speed=0,
+        pure_state=False,
+        **kwargs,
+        random=random)
+
     environment_kwargs = environment_kwargs or {}
     return control.Environment(
         physics, task, time_limit=time_limit, control_timestep=_CONTROL_TIMESTEP,
@@ -409,6 +500,12 @@ class BridgeMovePhysics(
 
     def get_path_infos(self, *args, **kwargs):
         return visualization.get_path_infos_bridge_move(self, *args, **kwargs)
+
+    @property
+    def floor_geom_id(self):
+        if getattr(self, '_floor_geom_id', None) is None:
+            self._floor_geom_id = self.model.name2id('floor', 'geom')
+        return self._floor_geom_id
 
     def fell_over(self):
         floor_geom_id = self.floor_geom_id

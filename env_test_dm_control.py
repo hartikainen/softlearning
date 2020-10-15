@@ -41,6 +41,8 @@ env = suite.load(
     task_name="tapering_bridge_run",
     # task_name="tapering_bridge_run",
     # task_name="run",
+    task_name="custom_stand",
+    # task_name="freeze_step",
     task_kwargs={
         # 'make_1d': True,
         # 'lateral_control_magnitude': 3.0,

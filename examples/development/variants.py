@@ -370,6 +370,8 @@ EPOCH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
             'orbit_pond': int(2.5e4),
             'bridge_run': int(2.5e4),
             'tapering_bridge_run': int(2.5e4),
+            'custom_stand': 1000,
+            'freeze_step': 200,
         },
         'boxhead': {
             'orbit_pond': int(1e4),
@@ -659,7 +661,14 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             },
         },
         'humanoid': {
-            'custom_stand': {},
+            'custom_stand': {
+                'constant_reward': 10.0,
+            },
+            'freeze_step': {
+                'freeze_interval': 200,
+                'constant_reward': 5.0,
+                'freeze_reward_weight': 5.0,
+            },
             'orbit_pond': {
                 'angular_velocity_reward_weight': tune.grid_search([
                     50.0,
@@ -831,6 +840,16 @@ OBSERVATION_KEYS_PER_UNIVERSE_DOMAIN_TASK = {
         'torso_vertical',
         'com_velocity',
         'velocity',
+        # 'position',
+    ),
+    ('dm_control', 'humanoid', 'freeze_step'): (
+        'joint_angles',
+        'head_height',
+        'extremities',
+        'torso_vertical',
+        'com_velocity',
+        'velocity',
+        # 'feet_velocity',
         # 'position',
     ),
     ('dm_control', 'humanoid', 'orbit_pond'): (
