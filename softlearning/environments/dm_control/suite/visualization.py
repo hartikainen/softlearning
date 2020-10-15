@@ -31,6 +31,30 @@ def get_path_infos_stand(physics,
         for path in paths
     ]))), 2, axis=-1)
 
+    if 'feet_velocity' in paths[0]['observations']:
+        feet_velocities = np.concatenate([
+            path['observations']['feet_velocity'] for path in paths
+        ], axis=0)
+        left_foot_velocities_xyz = feet_velocities[:, :3]
+        right_foot_velocities_xyz = feet_velocities[:, 3:]
+
+        left_foot_velocities = np.linalg.norm(
+            left_foot_velocities_xyz, axis=1)
+        right_foot_velocities = np.linalg.norm(
+            right_foot_velocities_xyz, axis=1)
+
+        left_foot_velocity_mean = np.mean(left_foot_velocities)
+        right_foot_velocity_mean = np.mean(right_foot_velocities)
+
+        feet_velocity_mean = np.mean(
+            (left_foot_velocities + right_foot_velocities) / 2)
+
+        infos.update((
+            ('left_foot_velocity-mean', left_foot_velocity_mean),
+            ('right_foot_velocity-mean', right_foot_velocity_mean),
+            ('feet_velocity-mean', feet_velocity_mean),
+        ))
+
     results = defaultdict(list)
     info_keys = ('head_height', )
     for path in paths:
@@ -86,7 +110,7 @@ def get_path_infos_stand(physics,
         iteration = int(max(heatmap_iterations) + 1)
 
     base_size = 6.4
-    x_max = y_max = 7
+    x_max = y_max = 4
     x_min = y_min = - x_max
     width = x_max - x_min
     height = y_max - y_min
