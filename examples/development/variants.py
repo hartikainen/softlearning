@@ -669,6 +669,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 'freeze_interval': 250,
                 'constant_reward': 5.0,
                 'freeze_reward_weight': 5.0,
+                'feet_com_target_range': 1.0,
             },
             'orbit_pond': {
                 'angular_velocity_reward_weight': tune.grid_search([
@@ -851,6 +852,8 @@ OBSERVATION_KEYS_PER_UNIVERSE_DOMAIN_TASK = {
         'com_velocity',
         'velocity',
         # 'feet_velocity',
+        # 'feet_position',
+        'feet_target_offset',
         # 'position',
     ),
     ('dm_control', 'humanoid', 'orbit_pond'): (

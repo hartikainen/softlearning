@@ -37,6 +37,7 @@ class FreezeStepTaskMixin(base.Task):
                  freeze_interval=DEFAULT_FREEZE_INTERVAL,
                  constant_reward=DEFAULT_CONSTANT_REWARD,
                  freeze_reward_weight=DEFAULT_FREEZE_REWARD_WEIGHT,
+                 feet_com_target_range=1.0,
                  **kwargs):
         """Initializes an instance of `FreezeStepTask`.
 
@@ -48,6 +49,8 @@ class FreezeStepTaskMixin(base.Task):
         self._freeze_interval = freeze_interval
         self._constant_reward = constant_reward
         self._freeze_reward_weight = freeze_reward_weight
+        self._feet_com_target_range = feet_com_target_range
+        self._feet_target_position = None
         return super(FreezeStepTaskMixin, self).__init__(**kwargs)
 
     def initialize_episode(self, physics):
@@ -60,9 +63,40 @@ class FreezeStepTaskMixin(base.Task):
         self._current_timestep = -1
         return super(FreezeStepTaskMixin, self).initialize_episode(physics)
 
-    def before_step(self, *args, **kwargs):
+    def before_step(self, action, physics):
         self._current_timestep += 1
-        return super(FreezeStepTaskMixin, self).before_step(*args, **kwargs)
+
+        freeze_started = (
+            (self._freeze_interval // 2)
+            == (self._current_timestep % self._freeze_interval))
+
+        freeze_ended = (
+            0 == self._current_timestep % self._freeze_interval)
+
+        if freeze_started:
+            feet_orientation = physics.named.data.xmat[
+                ['left_foot', 'right_foot']].reshape(2, 3, 3)
+            torso_com_xy = physics.center_of_mass_position()[:2]
+            feet_com_target_xy_offset = np.random.uniform(
+                low=-self._feet_com_target_range,
+                high=+self._feet_com_target_range,
+                size=(2, ))
+            feet_com_target_xy = torso_com_xy + feet_com_target_xy_offset
+            feet_com_target = np.array((*feet_com_target_xy, 0))
+
+            default_feet_position = np.array(
+                ((-0.00267608, +0.09, 0.02834923),
+                 (-0.00267608, -0.09, 0.02834923)))
+
+            random_feet_rotation = np.random.uniform(-np.pi, np.pi)
+            self._feet_target_position = (
+                feet_com_target
+                + (Rotation.from_euler('z', random_feet_rotation)
+                   .apply(default_feet_position)))
+        elif freeze_ended:
+            self._feet_target_position = None
+
+        return super(FreezeStepTaskMixin, self).before_step(action, physics)
 
     def after_step(self, physics):
         return super(FreezeStepTaskMixin, self).after_step(physics)
@@ -73,20 +107,38 @@ class FreezeStepTaskMixin(base.Task):
             super(FreezeStepTaskMixin, self).get_observation(physics))
         observation['feet_velocity'] = physics.named.data.subtree_linvel[
             ['left_foot', 'right_foot']]
+
+        feet_position = physics.named.data.xpos[
+            ['left_foot', 'right_foot']]
+
+        if self._feet_target_position is not None:
+            observation['feet_target_offset'] = (
+                feet_position - self._feet_target_position)
+            observation['feet_target_position'] = self._feet_target_position
+        else:
+            observation['feet_target_offset'] = np.zeros((2, 3))
+            observation['feet_target_position'] = np.zeros((2, 3))
+
+        observation['feet_position'] = feet_position
+
         return observation
 
     def get_reward(self, physics):
         """Returns a reward to the agent."""
+        print(self._feet_target_com)
+
         if (self._current_timestep % self._freeze_interval
-            < self._freeze_interval / 2):
+            < self._freeze_interval // 2):
             reward = self._constant_reward
-        elif (self._freeze_interval / 2
+
+        elif (self._freeze_interval // 2
               <= self._current_timestep % self._freeze_interval):
-            feet_velocity = physics.named.data.subtree_linvel[
+            feet_position = physics.named.data.xpos[
                 ['left_foot', 'right_foot']]
-            left_foot_velocity, right_foot_velocity = feet_velocity
             reward = -1.0 * self._freeze_reward_weight * np.sum(
-                np.linalg.norm(feet_velocity, axis=1))
+                np.linalg.norm(
+                    feet_position - self._feet_target_position,
+                    axis=1))
         else:
             raise ValueError(self._current_timestep, self._freeze_interval)
 
