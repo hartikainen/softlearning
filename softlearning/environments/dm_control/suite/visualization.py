@@ -55,6 +55,37 @@ def get_path_infos_stand(physics,
             ('feet_velocity-mean', feet_velocity_mean),
         ))
 
+    if 'feet_target_offset' in paths[0]['observations']:
+        feet_target_offsets = np.concatenate([
+            path['observations']['feet_target_offset'] for path in paths
+        ], axis=0)
+
+        non_zero_feet_target_offsets_mask = ~np.all(
+            feet_target_offsets == 0, axis=1)
+        left_foot_target_offsets, right_foot_target_offsets = np.split(
+            feet_target_offsets[non_zero_feet_target_offsets_mask],
+            [3],
+            axis=-1)
+
+        left_foot_target_distances = np.linalg.norm(
+            left_foot_target_offsets, ord=2, axis=-1)
+        right_foot_target_distances = np.linalg.norm(
+            right_foot_target_offsets, ord=2, axis=-1)
+
+        left_foot_target_distance_mean = np.mean(left_foot_target_distances)
+        right_foot_target_distance_mean = np.mean(right_foot_target_distances)
+
+        feet_target_distances_mean = np.mean((
+            left_foot_target_distance_mean,
+            right_foot_target_distance_mean))
+        infos.update((
+            ('left_foot_target_distance-mean',
+             left_foot_target_distance_mean),
+            ('right_foot_target_distance-mean',
+             right_foot_target_distance_mean),
+            ('feet_target_distance-mean', feet_target_distances_mean),
+        ))
+
     results = defaultdict(list)
     info_keys = ('head_height', )
     for path in paths:
@@ -125,7 +156,13 @@ def get_path_infos_stand(physics,
     axis.set_xlim((x_min - 1, x_max + 1))
     axis.set_ylim((y_min - 1, y_max + 1))
 
-    color_map = plt.cm.get_cmap('tab10', len(paths))
+    if len(paths) <= 10:
+        color_map = plt.cm.get_cmap('tab10')
+    elif len(paths) <= 20:
+        color_map = plt.cm.get_cmap('tab20')
+    else:
+        color_map = plt.cm.get_cmap('tab20', len(paths))
+
     for i, path in enumerate(paths):
         positions = np.concatenate((
             path['observations']['position'][..., :2],
@@ -186,6 +223,37 @@ def get_path_infos_stand(physics,
                 color=(*color[:3], 0.1),
                 zorder=0,
             )
+
+    if 'feet_target_offset' in paths[0]['observations']:
+        feet_target_offsets = np.concatenate([
+            path['observations']['feet_target_offset'] for path in paths
+        ], axis=0)
+        feet_positions = np.concatenate([
+            path['observations']['feet_position'] for path in paths
+        ], axis=0)
+        all_feet_target_positions = np.concatenate([
+            path['observations']['feet_target_position'] for path in paths
+        ], axis=0)
+        non_zero_feet_target_offsets_mask = ~np.all(
+            feet_target_offsets == 0, axis=1)
+        freeze_start_mask = 1 + np.flatnonzero(
+            np.diff(non_zero_feet_target_offsets_mask)
+            & non_zero_feet_target_offsets_mask[1:])
+
+        feet_target_positions = all_feet_target_positions[
+            freeze_start_mask]
+
+        axis.scatter(
+            feet_target_positions[:, [0, 3]].reshape(-1),
+            feet_target_positions[:, [1, 4]].reshape(-1),
+            c=color_map(
+                np.stack((
+                    np.arange(feet_target_positions.shape[0]),
+                    np.arange(feet_target_positions.shape[0]),
+                )).T.reshape(-1),
+                alpha=0.5),
+            marker='*',
+            s=90.0)
 
     axis.grid(True, linestyle='-', linewidth=0.2)
 
