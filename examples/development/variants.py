@@ -326,6 +326,7 @@ MAX_PATH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
             'tapering_bridge_run': 250,
             'custom_stand': 250,
             'freeze_step': 250,
+            'platform_jump': 250,
         },
     }
 }
@@ -373,6 +374,7 @@ EPOCH_LENGTH_PER_UNIVERSE_DOMAIN_TASK = {
             'tapering_bridge_run': int(5e4),
             'custom_stand': int(1e4),
             'freeze_step': int(1e4),
+            'platform_jump': int(1e4),
         },
         'boxhead': {
             'orbit_pond': int(1e4),
@@ -671,6 +673,11 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 'freeze_reward_weight': 5.0,
                 'feet_com_target_range': 1.0,
             },
+            'platform_jump': {
+                'constant_reward': 0.0,
+                'jump_reward_weight': 5.0,
+                'platform_size': 0.1,
+            },
             'orbit_pond': {
                 'angular_velocity_reward_weight': tune.grid_search([
                     50.0,
@@ -855,6 +862,17 @@ OBSERVATION_KEYS_PER_UNIVERSE_DOMAIN_TASK = {
         # 'feet_position',
         'feet_target_offset',
         # 'position',
+    ),
+    ('dm_control', 'humanoid', 'platform_jump'): (
+        'joint_angles',
+        'head_height',
+        'extremities',
+        'torso_vertical',
+        'com_velocity',
+        'velocity',
+        # 'position',
+        # 'feet_velocity',
+        'feet_platform_difference'
     ),
     ('dm_control', 'humanoid', 'orbit_pond'): (
         'joint_angles',

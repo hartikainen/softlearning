@@ -43,6 +43,7 @@ env = suite.load(
     # task_name="run",
     task_name="custom_stand",
     # task_name="freeze_step",
+    task_name="platform_jump",
     task_kwargs={
         # 'make_1d': True,
         # 'lateral_control_magnitude': 3.0,
@@ -62,6 +63,8 @@ env = suite.load(
         'bridge_start_width': 0.5,
         'bridge_end_width': 0.5,
         # 'bridge_end_width': 0.0,
+        # 'platform_size': 0.05,
+        # 'jump_reward_weight': 100.0,
     },
 )
 

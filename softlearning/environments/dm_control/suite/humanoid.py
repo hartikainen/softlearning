@@ -28,6 +28,7 @@ from .pond import (
     OrbitTaskMixin)
 from . import bridge, visualization
 from . import freeze_step as freeze_step_lib
+from . import platform_jump as platform_jump_lib
 
 
 KEY_GEOM_NAMES = [
@@ -52,6 +53,14 @@ KEY_GEOM_NAMES = [
     'left_upper_arm',
     'left_lower_arm',
     'left_hand',
+]
+
+
+FEET_GEOM_NAMES = [
+    'left_left_foot',
+    'right_left_foot',
+    'right_right_foot',
+    'left_right_foot',
 ]
 
 
@@ -214,7 +223,6 @@ class FreezeStepPhysics(freeze_step_lib.FreezeStepPhysicsMixin,
             ])
         return self._agent_geom_ids
 
-
 class FreezeStepHumanoid(freeze_step_lib.FreezeStepTaskMixin, SimpleResetHumanoid):
     pass
 
@@ -234,6 +242,136 @@ def freeze_step(time_limit=_DEFAULT_TIME_LIMIT,
         **kwargs,
         random=random)
 
+    environment_kwargs = environment_kwargs or {}
+    return control.Environment(
+        physics, task, time_limit=time_limit, control_timestep=_CONTROL_TIMESTEP,
+        **environment_kwargs)
+
+
+class PlatformJumpHumanoidPhysics(platform_jump_lib.PlatformJumpPhysicsMixin,
+                                  SimpleResetHumanoidPhysics):
+    @property
+    def agent_geom_ids(self):
+        if getattr(self, '_agent_geom_ids', None) is None:
+            self._agent_geom_ids = np.array([
+                self.model.name2id(geom_name, 'geom')
+                for geom_name in KEY_GEOM_NAMES
+            ])
+        return self._agent_geom_ids
+
+    @property
+    def feet_geom_ids(self):
+        if getattr(self, '_feet_geom_ids', None) is None:
+            self._feet_geom_ids = np.array([
+                self.model.name2id(geom_name, 'geom')
+                for geom_name in FEET_GEOM_NAMES
+            ])
+        return np.split(self._feet_geom_ids, 2)
+
+    def feet_outside_platform(self):
+        right_platform_pos_xy = self.named.model.geom_pos[
+            'right-foot-platform'][:2]
+
+        right_platform_size = self.named.model.geom_size[
+            'right-foot-platform'][:2]
+
+        floor_geom_id = self.floor_geom_id
+        left_foot_geom_ids, right_foot_geom_ids = self.feet_geom_ids
+
+        contacts = self.data.contact
+        if contacts.size == 0:
+            return False
+
+        left_foot_contacts_index = (
+            (np.isin(contacts.geom1, floor_geom_id)
+             & np.isin(contacts.geom2, left_foot_geom_ids))
+            | (np.isin(contacts.geom2, floor_geom_id)
+               & np.isin(contacts.geom1, left_foot_geom_ids)))
+        right_foot_contacts_index = (
+            (np.isin(contacts.geom1, floor_geom_id)
+             & np.isin(contacts.geom2, right_foot_geom_ids))
+            | (np.isin(contacts.geom2, floor_geom_id)
+               & np.isin(contacts.geom1, right_foot_geom_ids)))
+
+        left_foot_contacts = contacts[np.where(left_foot_contacts_index)]
+        right_foot_contacts = contacts[np.where(right_foot_contacts_index)]
+
+        if 0 < left_foot_contacts.size:
+            left_platform_pos_xy = self.named.model.geom_pos[
+                'left-foot-platform'][:2]
+            left_platform_radius = self.named.model.geom_size[
+                'left-foot-platform'][0]
+
+            left_foot_pos_xy = self.named.data.xpos['left_foot'][:2]
+
+            left_foot_distance_to_platform_center = np.linalg.norm(
+                left_foot_pos_xy - left_platform_pos_xy,
+                ord=2,
+                keepdims=True,
+                axis=-1)
+
+            left_foot_outside_of_platform = (
+                left_platform_radius < left_foot_distance_to_platform_center)
+
+            if left_foot_outside_of_platform:
+                return True
+
+        if 0 < right_foot_contacts.size:
+            right_platform_pos_xy = self.named.model.geom_pos[
+                'right-foot-platform'][:2]
+            right_platform_radius = self.named.model.geom_size[
+                'right-foot-platform'][0]
+
+            right_foot_pos_xy = self.named.data.xpos['right_foot'][:2]
+
+            right_foot_distance_to_platform_center = np.linalg.norm(
+                right_foot_pos_xy - right_platform_pos_xy,
+                ord=2,
+                keepdims=True,
+                axis=-1)
+
+            right_foot_outside_of_platform = (
+                right_platform_radius < right_foot_distance_to_platform_center)
+
+            if right_foot_outside_of_platform:
+                return True
+
+        return False
+
+    def get_path_infos(self, *args, **kwargs):
+        return visualization.get_path_infos_platform_jump(self, *args, **kwargs)
+
+
+class PlatformJumpHumanoid(platform_jump_lib.PlatformJumpTaskMixin,
+                           SimpleResetHumanoid):
+    def get_termination(self, physics):
+        super_termination = super(PlatformJumpHumanoid, self).get_termination(physics)
+        feet_outside_platform = physics.feet_outside_platform()
+        terminated = super_termination or feet_outside_platform
+
+        if terminated:
+            return 0
+
+        return None
+
+
+@SUITE.add()
+def platform_jump(time_limit=_DEFAULT_TIME_LIMIT,
+                  environment_kwargs=None,
+                  platform_size=platform_jump_lib.DEFAULT_PLATFORM_SIZE,
+                  **kwargs):
+    """Returns the CustomStand task."""
+    base_model_string, common_assets = get_model_and_assets_common()
+    xml_string = platform_jump_lib.make_model(
+        base_model_string,
+        platform_size=platform_size)
+    physics = PlatformJumpHumanoidPhysics.from_xml_string(
+        xml_string,
+        common_assets)
+    task = PlatformJumpHumanoid(
+        move_speed=0,
+        pure_state=False,
+        **kwargs)
     environment_kwargs = environment_kwargs or {}
     return control.Environment(
         physics, task, time_limit=time_limit, control_timestep=_CONTROL_TIMESTEP,

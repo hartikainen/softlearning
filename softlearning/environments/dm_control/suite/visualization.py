@@ -17,12 +17,167 @@ from softlearning.policies.deterministic_policy import DeterministicPolicy
 from collections import defaultdict
 
 
+def get_path_infos_platform_jump(physics,
+                                 paths,
+                                 evaluation_type,
+                                 figure_save_path=None):
+    left_platform_pos = physics.named.model.geom_pos['left-foot-platform']
+    right_platform_pos = physics.named.model.geom_pos['right-foot-platform']
+
+    infos = {}
+
+    feet_platform_difference = np.concatenate([
+        path['observations']['feet_platform_difference'] for path in paths
+    ], axis=0)
+
+    feet_heights = feet_platform_difference[:, [2, 5]]
+    feet_min_heights = np.min(feet_heights, axis=-1)
+
+    infos.update((
+        ('left_foot_height-mean', np.mean(feet_heights[:, 0])),
+        ('right_foot_height-mean', np.mean(feet_heights[:, 1])),
+        ('feet_min_height-mean', np.mean(feet_min_heights)),
+    ))
+
+    log_base_dir = (
+        os.getcwd()
+        if figure_save_path is None
+        else figure_save_path)
+    heatmap_dir = os.path.join(log_base_dir, 'heatmap')
+    os.makedirs(heatmap_dir, exist_ok=True)
+
+    previous_heatmaps = glob.glob(os.path.join(
+        glob.escape(heatmap_dir),
+        f"{evaluation_type}-iteration-*-heatmap.png"))
+    heatmap_iterations = [
+        int(re.search(f"{evaluation_type}-iteration-(\d+)-heatmap.png", x).group(1))
+        for x in previous_heatmaps
+    ]
+    if not heatmap_iterations:
+        iteration = 0
+    else:
+        iteration = int(max(heatmap_iterations) + 1)
+
+    def round_to_most_significant_digit(x):
+        return round(x, -int(np.floor(np.log10(abs(x)))))
+
+    x_low, x_high = 0, 250
+    xlim = np.array((x_low, x_high))
+    y_low = -1.0 * round_to_most_significant_digit(
+        physics.named.model.geom_size['left_left_foot'][0])
+    y_high = 3.0
+    ylim = np.array((y_low, y_high))
+
+    base_size = 6.4
+    # figure_width = reward_bounds_x_high - reward_bounds_x_low
+    # figure_height = reward_bounds_y_high - reward_bounds_y_low
+    figure_width = xlim[1] - xlim[0]
+    figure_height = ylim[1] - ylim[0]
+    if figure_width > figure_height:
+        figsize = (base_size, base_size * (figure_height / figure_width))
+    else:
+        figsize = (base_size * (figure_width / figure_height), base_size)
+
+    main_axis_height = figsize[1]
+    figsize = (figsize[0], main_axis_height + base_size / 2)
+
+    figure, axes = plt.subplots(
+        (2 if not isinstance(physics.policy, DeterministicPolicy) else 1),
+        1,
+        figsize=figsize,
+        gridspec_kw={
+            # 'height_ratios': (
+            #     [main_axis_height] + [base_size / 2]
+            #     if not isinstance(physics.policy, DeterministicPolicy)
+            #     else [main_axis_height]
+            # ),
+        })
+
+    axes = np.atleast_1d(axes)
+    axis = axes[0]
+
+    axis.set_xlim(xlim)
+    axis.set_ylim(ylim)
+
+    if len(axes) == 2:
+        axes[1].set_xlim(xlim)
+
+    if len(paths) <= 10:
+        color_map = plt.cm.get_cmap('tab10')
+    elif len(paths) <= 20:
+        color_map = plt.cm.get_cmap('tab20')
+    else:
+        color_map = plt.cm.get_cmap('tab20', len(paths))
+
+    for i, path in enumerate(paths):
+        feet_heights = np.concatenate((
+            path['observations']['feet_platform_difference'][..., [2, 5]],
+            path['next_observations']['feet_platform_difference'][
+                -1, ..., [2, 5]][None],
+        ), axis=0)
+
+        # feet_heights = feet_platform_differences[:, [2, 5]]
+        feet_min_heights = np.min(feet_heights, axis=-1)
+
+        head_heights = np.concatenate((
+            path['observations']['head_height'][..., 0],
+            path['next_observations']['head_height'][[-1], 0],
+        ), axis=0)
+
+        color = color_map(i)
+
+        axis.plot(
+            np.arange(head_heights.size),
+            head_heights,
+            color=(*color[:3], 0.3),
+            linestyle='-',
+            linewidth=0.5,
+            marker='2',
+        )
+        axis.plot(
+            np.arange(feet_heights[:, 0].size),
+            feet_heights[:, 0],
+            color=color,
+            linestyle='-',
+            linewidth=0.5,
+            marker='3',
+        )
+        axis.plot(
+            np.arange(feet_heights[:, 1].size),
+            feet_heights[:, 1],
+            color=color,
+            linestyle='-',
+            linewidth=0.5,
+            marker='4',
+        )
+
+        if not isinstance(physics.policy, DeterministicPolicy):
+            entropies = compute_entropies(
+                physics.policy, path['observations'])
+            axes[1].plot(
+                np.arange(entropies.shape[0]),
+                entropies,
+                color=color,
+                label=f'path-{i}')
+
+    axis.grid(True, linestyle='-', linewidth=0.2)
+
+    heatmap_path = os.path.join(
+        heatmap_dir,
+        f'{evaluation_type}-iteration-{iteration:05}-heatmap.pdf')
+    plt.savefig(heatmap_path)
+    figure.clf()
+    plt.close(figure)
+
+    return infos
+
 def get_path_infos_stand(physics,
                          paths,
                          evaluation_type='training',
                          figure_save_path=None):
     infos = {}
 
+    paths[0]['observations']['feet_platform_difference'][:, -1]
     x, y = np.split(np.concatenate(tuple(itertools.chain(*[
         [
             path['observations']['position'][..., :2],
