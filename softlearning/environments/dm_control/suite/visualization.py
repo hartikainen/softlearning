@@ -48,9 +48,9 @@ def get_path_infos_platform_jump(physics,
 
     previous_heatmaps = glob.glob(os.path.join(
         glob.escape(heatmap_dir),
-        f"{evaluation_type}-iteration-*-heatmap.png"))
+        f"{evaluation_type}-iteration-*-heatmap.pdf"))
     heatmap_iterations = [
-        int(re.search(f"{evaluation_type}-iteration-(\d+)-heatmap.png", x).group(1))
+        int(re.search(f"{evaluation_type}-iteration-(\d+)-heatmap.pdf", x).group(1))
         for x in previous_heatmaps
     ]
     if not heatmap_iterations:
