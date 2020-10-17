@@ -57,6 +57,20 @@ class PlatformJumpPhysicsMixin:
             self._floor_geom_id = self.model.name2id('floor', 'geom')
         return self._floor_geom_id
 
+    def feet_platform_difference(self):
+        left_platform_pos = self.named.model.geom_pos['left-foot-platform']
+        right_platform_pos = self.named.model.geom_pos['right-foot-platform']
+
+        left_foot_pos = self.named.data.xpos['left_foot']
+        right_foot_pos = self.named.data.xpos['right_foot']
+
+        feet_platform_difference = np.array((
+            left_foot_pos - left_platform_pos,
+            right_foot_pos - right_platform_pos,
+        ))
+
+        return feet_platform_difference
+
 
 class PlatformJumpTaskMixin(base.Task):
     """A task solved by running across a bridge."""
@@ -97,33 +111,30 @@ class PlatformJumpTaskMixin(base.Task):
         """Returns an observation to the agent."""
         observation = (
             super(PlatformJumpTaskMixin, self).get_observation(physics))
-        # breakpoint()
-
-        left_platform_pos = physics.named.model.geom_pos['left-foot-platform']
-        right_platform_pos = physics.named.model.geom_pos['right-foot-platform']
-
-        left_foot_pos = physics.named.data.xpos['left_foot']
-        right_foot_pos = physics.named.data.xpos['right_foot']
 
         observation.update((
             ('feet_velocity', physics.named.data.subtree_linvel[
                 ['left_foot', 'right_foot']]),
-            ('feet_platform_difference', np.array((
-                left_foot_pos - left_platform_pos,
-                right_foot_pos - right_platform_pos,
-            ))),
+            ('feet_platform_difference', physics.feet_platform_difference()),
         ))
 
         return observation
 
     def get_reward(self, physics):
         """Returns a reward to the agent."""
+        torso_height = physics.named.data.xpos['torso'][-1]
         feet_height = physics.named.data.xpos[
             ['left_foot', 'right_foot']][:, -1]
         minimum_feet_height = np.min(feet_height)
 
+        feet_platform_difference_xy = physics.feet_platform_difference()[:, :2]
+        feet_platform_difference_xy_cost = np.sum(np.linalg.norm(
+            feet_platform_difference_xy, ord=2, axis=-1))
+
         reward = (
-            self._constant_reward
-            + self._jump_reward_weight * minimum_feet_height)
+            (minimum_feet_height <= torso_height) * (
+                self._constant_reward
+                + self._jump_reward_weight * minimum_feet_height
+                - self._jump_reward_weight * feet_platform_difference_xy_cost))
 
         return reward
