@@ -355,6 +355,34 @@ class PlatformJumpHumanoid(platform_jump_lib.PlatformJumpTaskMixin,
         return None
 
 
+class PlatformDropHumanoid(platform_jump_lib.PlatformDropTaskMixin,
+                           SimpleResetHumanoid):
+    def initialize_episode(self, physics):
+        """Sets the state of the environment at the start of each episode.
+
+        Args:
+          physics: An instance of `Physics`.
+
+        """
+        platform_jump_lib.PlatformDropTaskMixin.initialize_episode(
+            self, physics)
+        # Find a collision-free random initial configuration.
+        orientation = np.array([1.0, 0.0, 0.0, 0.0])
+        _find_non_contacting_height(physics, orientation)
+        physics.named.data.qpos['root'][2] += 1.0
+        return super(HumanoidTask, self).initialize_episode(physics)
+
+    def get_termination(self, physics):
+        super_termination = super(PlatformDropHumanoid, self).get_termination(physics)
+        feet_outside_platform = physics.feet_outside_platform()
+        terminated = super_termination or feet_outside_platform
+
+        if terminated:
+            return 0
+
+        return None
+
+
 @SUITE.add()
 def platform_jump(time_limit=_DEFAULT_TIME_LIMIT,
                   environment_kwargs=None,
@@ -369,6 +397,29 @@ def platform_jump(time_limit=_DEFAULT_TIME_LIMIT,
         xml_string,
         common_assets)
     task = PlatformJumpHumanoid(
+        move_speed=0,
+        pure_state=False,
+        **kwargs)
+    environment_kwargs = environment_kwargs or {}
+    return control.Environment(
+        physics, task, time_limit=time_limit, control_timestep=_CONTROL_TIMESTEP,
+        **environment_kwargs)
+
+
+@SUITE.add()
+def platform_drop(time_limit=_DEFAULT_TIME_LIMIT,
+                  environment_kwargs=None,
+                  platform_size=platform_jump_lib.DEFAULT_PLATFORM_SIZE,
+                  **kwargs):
+    """Returns the CustomStand task."""
+    base_model_string, common_assets = get_model_and_assets_common()
+    xml_string = platform_jump_lib.make_model(
+        base_model_string,
+        platform_size=platform_size)
+    physics = PlatformJumpHumanoidPhysics.from_xml_string(
+        xml_string,
+        common_assets)
+    task = PlatformDropHumanoid(
         move_speed=0,
         pure_state=False,
         **kwargs)

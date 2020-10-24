@@ -138,3 +138,56 @@ class PlatformJumpTaskMixin(base.Task):
                 - self._jump_reward_weight * feet_platform_difference_xy_cost))
 
         return reward
+
+
+class PlatformDropTaskMixin(base.Task):
+    """A task solved by running across a bridge."""
+
+    def __init__(self,
+                 constant_reward=DEFAULT_CONSTANT_REWARD,
+                 drop_reward_weight=DEFAULT_JUMP_REWARD_WEIGHT,
+                 **kwargs):
+        """Initializes an instance of `PlatformDropTask`.
+
+        Args:
+          random: Optional, either a `numpy.random.RandomState` instance, an
+            integer seed for creating a new `RandomState`, or None to select a
+            seed automatically (default).
+        """
+        self._constant_reward = constant_reward
+        self._drop_reward_weight = drop_reward_weight
+        return super(PlatformDropTaskMixin, self).__init__(**kwargs)
+
+    def initialize_episode(self, physics):
+        """Sets the state of the environment at the start of each episode.
+
+        Args:
+          physics: An instance of `Physics`.
+
+        """
+        self._current_timestep = -1
+        return super(PlatformDropTaskMixin, self).initialize_episode(physics)
+
+    def before_step(self, action, physics):
+        self._current_timestep += 1
+        return super(PlatformDropTaskMixin, self).before_step(action, physics)
+
+    def after_step(self, physics):
+        return super(PlatformDropTaskMixin, self).after_step(physics)
+
+    def get_observation(self, physics):
+        """Returns an observation to the agent."""
+        observation = (
+            super(PlatformDropTaskMixin, self).get_observation(physics))
+
+        observation.update((
+            ('feet_velocity', physics.named.data.subtree_linvel[
+                ['left_foot', 'right_foot']]),
+            ('feet_platform_difference', physics.feet_platform_difference()),
+        ))
+
+        return observation
+
+    def get_reward(self, physics):
+        """Returns a reward to the agent."""
+        return self._constant_reward
