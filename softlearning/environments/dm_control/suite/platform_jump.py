@@ -14,10 +14,18 @@ DEFAULT_CONSTANT_REWARD = 0.0
 
 
 def make_model(base_model_string,
-               platform_size=DEFAULT_PLATFORM_SIZE):
+               platform_size=DEFAULT_PLATFORM_SIZE,
+               extra_position_attrib=None):
+    extra_position_attrib = extra_position_attrib or {}
     mjcf = etree.fromstring(base_model_string)
     sensor_element = mjcf.find('sensor')
     worldbody = mjcf.find('worldbody')
+    default_element = mjcf.find('default')
+    default_element.insert(-1, etree.Element(
+        'position',
+        # ctrlrange='-1 1',
+        ctrllimited='true',
+    ))
 
     default_feet_position = np.array(
         ((-0.00267608, +0.09, 0.02834923),
@@ -43,6 +51,31 @@ def make_model(base_model_string,
         rgba="1 0 0 0.1")
     worldbody.insert(0, left_foot_platform_element)
     worldbody.insert(1, right_foot_platform_element)
+
+    all_joints = {
+        x.attrib['name']: x
+        for x in worldbody.iter('joint')
+    }
+
+    actuator_element = mjcf.find('actuator')
+    motor_elements = actuator_element.findall('motor')
+    for motor_element in motor_elements:
+        position_attrib = {
+            **motor_element.attrib,
+            'gear': "1",
+            **extra_position_attrib,
+        }
+
+        joint_element = all_joints[position_attrib['joint']]
+        joint_range = joint_element.attrib['range']
+        position_attrib['ctrlrange'] = " ".join([
+            f"{(float(x) / (180.0 / np.pi)):.2f}" for x in joint_range.split(' ')
+        ])
+
+        position_element = etree.Element("position", **position_attrib)
+        actuator_element.remove(motor_element)
+        actuator_element.insert(-1, position_element)
+
     return etree.tostring(mjcf, pretty_print=True)
 
 
