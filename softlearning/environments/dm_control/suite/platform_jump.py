@@ -27,6 +27,11 @@ def make_model(base_model_string,
         ctrllimited='true',
     ))
 
+    friction = "0.05 0.005 0.0001"
+    default_element.find('default').find('geom').attrib['friction'] = friction
+    floor_geom = mjcf.find(".//geom[@name='floor']")
+    floor_geom.attrib['friction'] = friction
+
     default_feet_position = np.array(
         ((-0.00267608, +0.09, 0.02834923),
          (-0.00267608, -0.09, 0.02834923)))
