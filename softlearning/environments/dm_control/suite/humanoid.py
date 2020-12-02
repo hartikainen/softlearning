@@ -131,7 +131,7 @@ class SimpleResetHumanoid(HumanoidTask):
         """
         # Find a collision-free random initial configuration.
         orientation = np.array([1.0, 0.0, 0.0, 0.0])
-        _find_non_contacting_height(physics, orientation)
+        # _find_non_contacting_height(physics, orientation)
         return super(HumanoidTask, self).initialize_episode(physics)
 
     def get_observation(self, physics):
@@ -368,8 +368,8 @@ class PlatformDropHumanoid(platform_jump_lib.PlatformDropTaskMixin,
             self, physics)
         # Find a collision-free random initial configuration.
         orientation = np.array([1.0, 0.0, 0.0, 0.0])
-        _find_non_contacting_height(physics, orientation)
-        physics.named.data.qpos['root'][2] += 1.0
+        # physics.named.data.qpos['root'][2] += 1.0
+        # _find_non_contacting_height(physics, orientation)
         return super(HumanoidTask, self).initialize_episode(physics)
 
     def get_termination(self, physics):
@@ -743,7 +743,7 @@ class BridgeMove(bridge.MoveTaskMixin):
         else:
             x_pos = 0.0
 
-        _find_non_contacting_height(physics, orientation, x_pos=x_pos)
+        # _find_non_contacting_height(physics, orientation, x_pos=x_pos)
         return super(BridgeMove, self).initialize_episode(physics)
 
     def get_termination(self, physics):

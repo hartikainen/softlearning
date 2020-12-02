@@ -31,6 +31,9 @@ def make_model(base_model_string,
     default_element.find('default').find('geom').attrib['friction'] = friction
     floor_geom = mjcf.find(".//geom[@name='floor']")
     floor_geom.attrib['friction'] = friction
+    torso_body_element = worldbody.find(".//body[@name='torso']")
+    torso_body_element.remove(
+        torso_body_element.find(".//freejoint[@name='root']"))
 
     default_feet_position = np.array(
         ((-0.00267608, +0.09, 0.02834923),
@@ -96,8 +99,11 @@ class PlatformJumpPhysicsMixin:
         return self._floor_geom_id
 
     def feet_platform_difference(self):
-        left_platform_pos = self.named.model.geom_pos['left-foot-platform']
-        right_platform_pos = self.named.model.geom_pos['right-foot-platform']
+        left_platform_pos = np.array([-0.00267608, 0.09, 0.24202798])
+        right_platform_pos = np.array([-0.00267608, -0.09, 0.24202798])
+
+        # left_platform_pos = self.named.model.geom_pos['left-foot-platform']
+        # right_platform_pos = self.named.model.geom_pos['right-foot-platform']
 
         left_foot_pos = self.named.data.xpos['left_foot']
         right_foot_pos = self.named.data.xpos['right_foot']
@@ -228,4 +234,26 @@ class PlatformDropTaskMixin(base.Task):
 
     def get_reward(self, physics):
         """Returns a reward to the agent."""
-        return self._constant_reward
+        torso_height = physics.named.data.xpos['torso'][-1]
+        feet_height = physics.named.data.xpos[
+            ['left_foot', 'right_foot']][:, -1]
+        minimum_feet_height = np.min(feet_height)
+
+        feet_platform_difference_xy = physics.feet_platform_difference()[:, :3]
+        feet_platform_difference_xy_cost = np.sum(np.linalg.norm(
+            feet_platform_difference_xy, ord=2, axis=-1))
+
+        reward = self._constant_reward - (
+            self._drop_reward_weight * (feet_platform_difference_xy_cost))
+
+        # print(minimum_feet_height, feet_platform_difference_xy_cost, reward)
+        # print(feet_platform_difference_xy_cost)
+
+        # reward = (
+        #     (0.2 < minimum_feet_height)
+        #     * (minimum_feet_height <= torso_height) * (
+        #         self._constant_reward
+        #         + self._jump_reward_weight * minimum_feet_height
+        #         - self._jump_reward_weight * feet_platform_difference_xy_cost))
+
+        return reward

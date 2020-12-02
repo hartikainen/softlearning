@@ -682,7 +682,7 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
             },
             'platform_drop': {
                 'constant_reward': 5.0,
-                'drop_reward_weight': float('nan'),
+                'drop_reward_weight': 50.0,
                 'platform_size': 0.1,
             },
             'orbit_pond': {
