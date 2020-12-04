@@ -37,6 +37,10 @@ def get_path_infos_platform_jump(physics,
         ('left_foot_height-mean', np.mean(feet_heights[:, 0])),
         ('right_foot_height-mean', np.mean(feet_heights[:, 1])),
         ('feet_min_height-mean', np.mean(feet_min_heights)),
+        ('left_foot_xy_distance-mean', np.mean(
+            np.linalg.norm(feet_platform_difference[:, 0:2], axis=1))),
+        ('right_foot_xy_distance-mean', np.mean(
+            np.linalg.norm(feet_platform_difference[:, 3:5], axis=1))),
     ))
 
     log_base_dir = (
