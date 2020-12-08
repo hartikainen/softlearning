@@ -411,13 +411,17 @@ def platform_drop(time_limit=_DEFAULT_TIME_LIMIT,
                   environment_kwargs=None,
                   platform_size=platform_jump_lib.DEFAULT_PLATFORM_SIZE,
                   extra_position_attrib=None,
+                  friction=None,
+                  hang=False,
                   **kwargs):
     """Returns the CustomStand task."""
     base_model_string, common_assets = get_model_and_assets_common()
     xml_string = platform_jump_lib.make_model(
         base_model_string,
         platform_size=platform_size,
-        extra_position_attrib=extra_position_attrib)
+        extra_position_attrib=extra_position_attrib,
+        friction=friction,
+        hang=hang)
     physics = PlatformJumpHumanoidPhysics.from_xml_string(
         xml_string,
         common_assets)

@@ -15,7 +15,9 @@ DEFAULT_CONSTANT_REWARD = 0.0
 
 def make_model(base_model_string,
                platform_size=DEFAULT_PLATFORM_SIZE,
-               extra_position_attrib=None):
+               extra_position_attrib=None,
+               friction=None,
+               hang=False):
     extra_position_attrib = extra_position_attrib or {}
     mjcf = etree.fromstring(base_model_string)
     sensor_element = mjcf.find('sensor')
@@ -27,13 +29,16 @@ def make_model(base_model_string,
         ctrllimited='true',
     ))
 
-    friction = "0.05 0.005 0.0001"
-    default_element.find('default').find('geom').attrib['friction'] = friction
-    floor_geom = mjcf.find(".//geom[@name='floor']")
-    floor_geom.attrib['friction'] = friction
-    torso_body_element = worldbody.find(".//body[@name='torso']")
-    torso_body_element.remove(
-        torso_body_element.find(".//freejoint[@name='root']"))
+    if friction is not None:
+        default_element.find('default').find('geom').attrib['friction'] = friction
+        floor_geom = mjcf.find(".//geom[@name='floor']")
+        floor_geom.attrib['friction'] = friction
+
+
+    if hang:
+        torso_body_element = worldbody.find(".//body[@name='torso']")
+        torso_body_element.remove(
+            torso_body_element.find(".//freejoint[@name='root']"))
 
     default_feet_position = np.array(
         ((-0.00267608, +0.09, 0.02834923),
@@ -65,24 +70,26 @@ def make_model(base_model_string,
         for x in worldbody.iter('joint')
     }
 
-    actuator_element = mjcf.find('actuator')
-    motor_elements = actuator_element.findall('motor')
-    for motor_element in motor_elements:
-        position_attrib = {
-            **motor_element.attrib,
-            'gear': "1",
-            **extra_position_attrib,
-        }
+    if extra_position_attrib:
+        actuator_element = mjcf.find('actuator')
+        motor_elements = actuator_element.findall('motor')
+        for motor_element in motor_elements:
+            position_attrib = {
+                **motor_element.attrib,
+                'gear': "1",
+                **extra_position_attrib,
+            }
 
-        joint_element = all_joints[position_attrib['joint']]
-        joint_range = joint_element.attrib['range']
-        position_attrib['ctrlrange'] = " ".join([
-            f"{(float(x) / (180.0 / np.pi)):.2f}" for x in joint_range.split(' ')
-        ])
+            joint_element = all_joints[position_attrib['joint']]
+            joint_range = joint_element.attrib['range']
+            position_attrib['ctrlrange'] = " ".join([
+                f"{(float(x) / (180.0 / np.pi)):.2f}"
+                for x in joint_range.split(' ')
+            ])
 
-        position_element = etree.Element("position", **position_attrib)
-        actuator_element.remove(motor_element)
-        actuator_element.insert(-1, position_element)
+            position_element = etree.Element("position", **position_attrib)
+            actuator_element.remove(motor_element)
+            actuator_element.insert(-1, position_element)
 
     return etree.tostring(mjcf, pretty_print=True)
 
