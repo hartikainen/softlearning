@@ -91,6 +91,19 @@ def make_model(base_model_string,
             actuator_element.remove(motor_element)
             actuator_element.insert(-1, position_element)
 
+        damping_elements = [
+            x for x in default_element.iterdescendants()
+            if 'damping' in x.attrib
+        ]
+        assert all(x.tag == 'joint' for x in damping_elements), [
+            x.tag for x in damping_elements]
+        for damping_element in damping_elements:
+            old_damping = float(damping_element.attrib['damping'])
+            kp = float(extra_position_attrib['kp'])
+            damping_scale = np.sqrt(kp)
+            new_damping = old_damping * damping_scale
+            damping_element.attrib['damping'] = str(new_damping)
+
     return etree.tostring(mjcf, pretty_print=True)
 
 
