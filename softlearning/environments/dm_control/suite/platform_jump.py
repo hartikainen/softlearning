@@ -101,7 +101,8 @@ def make_model(base_model_string,
             old_damping = float(damping_element.attrib['damping'])
             kp = float(extra_position_attrib['kp'])
             damping_scale = np.sqrt(kp)
-            new_damping = old_damping * damping_scale
+            # new_damping = old_damping * damping_scale * 1.75
+            new_damping = old_damping * damping_scale * np.log10(kp / 10)
             damping_element.attrib['damping'] = str(new_damping)
 
     return etree.tostring(mjcf, pretty_print=True)
