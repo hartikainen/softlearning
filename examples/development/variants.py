@@ -684,9 +684,13 @@ ENVIRONMENT_PARAMS_PER_UNIVERSE_DOMAIN_TASK = {
                 'constant_reward': 5.0,
                 'drop_reward_weight': 50.0,
                 'platform_size': 0.03,
-                'extra_position_attrib': {'kp': "10000"},
+                'extra_position_attrib': tune.grid_search([
+                    {'kp': "100"},
+                    {'kp': "1000"},
+                    {'kp': "10000"},
+                ]),
                 'hang': True,
-                'friction': "0.05 0.005 0.0001",
+                # 'friction': "0.05 0.005 0.0001",
             },
             'orbit_pond': {
                 'angular_velocity_reward_weight': tune.grid_search([
@@ -1080,7 +1084,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
                 # np.arange(5, 10).astype(np.float32).tolist()
                 # [-10.0, 3.0, 6.0, 9.0, 12.0]
                 # [-10.0, 4.0]
-                ['auto', -10.0, 4.0]
+                ['auto', -10.0, 0.0, 2.0, 4.0]
             ),
             'Humanoid': tune.grid_search(
                 [-17.0, -10.0, -5.0, 0.0, 3.0, 6.0, 9.0]
@@ -1125,7 +1129,7 @@ def get_variant_spec_base(universe, domain, task, policy, algorithm):
     }
     if algorithm == 'DDPG':
         sampler_params['kwargs']['exploration_noise'] = tune.grid_search([
-            0.0, 2e-1, 4e-1,
+            0.0, 1e-2, 1e-1, 2e-1, 4e-1,
         ])
     variant_spec = {
         'git_sha': get_git_rev(__file__),
