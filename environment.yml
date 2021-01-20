@@ -1,4 +1,4 @@
-name: softlearning
+name: softlearning-pcc
 channels:
 - defaults
 - conda-forge
