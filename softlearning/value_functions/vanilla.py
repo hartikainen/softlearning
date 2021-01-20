@@ -2,7 +2,7 @@ import tensorflow as tf
 import tree
 
 from softlearning.models.feedforward import feedforward_model
-from softlearning.models.utils import create_inputs
+from softlearning.models.utils import create_sequence_inputs
 from softlearning.utils.tensorflow import apply_preprocessors
 from softlearning import preprocessors as preprocessors_lib
 from softlearning.utils.tensorflow import cast_and_concat
@@ -34,7 +34,7 @@ def feedforward_Q_function(input_shapes,
                            observation_keys=None,
                            name='feedforward_Q',
                            **kwargs):
-    inputs = create_inputs(input_shapes)
+    inputs = create_sequence_inputs(input_shapes)
 
     if preprocessors is None:
         preprocessors = tree.map_structure(lambda _: None, inputs)

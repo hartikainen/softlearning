@@ -36,6 +36,7 @@ class RLAlgorithm(Checkpointable):
             n_epochs=1000,
             min_pool_size=1,
             batch_size=1,
+            sequence_length=1,
             train_steps_per_environment_step=1,
             epoch_length=1000,
             eval_n_episodes=10,
@@ -62,6 +63,7 @@ class RLAlgorithm(Checkpointable):
             train_steps_per_environment_step)
         self._min_pool_size = min_pool_size
         self._batch_size = batch_size
+        self._sequence_length = sequence_length
         self._epoch_length = epoch_length
 
         self._eval_n_episodes = eval_n_episodes
@@ -118,9 +120,16 @@ class RLAlgorithm(Checkpointable):
         """Hook called at the end of each epoch."""
         pass
 
-    def _training_batch(self, batch_size=None, **kwargs):
+    def _training_batch(self,
+                        batch_size=None,
+                        sequence_length=None,
+                        **kwargs):
         batch_size = batch_size or self._batch_size
-        return self.pool.random_batch(batch_size, **kwargs)
+        sequence_length = sequence_length or self._sequence_length
+        return self.pool.random_sequence_batch(
+            batch_size=batch_size,
+            sequence_length=sequence_length,
+            **kwargs)
 
     def _evaluation_batch(self, *args, **kwargs):
         return self._training_batch(*args, **kwargs)

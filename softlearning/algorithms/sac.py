@@ -187,7 +187,7 @@ class SAC(RLAlgorithm):
         rewards = batch['rewards']
 
         tf.debugging.assert_shapes((
-            (Q_targets, ('B', 1)), (rewards, ('B', 1))))
+            (Q_targets, ('B', 'S', 1)), (rewards, ('B', 'S', 1))))
 
         Qs_values = []
         Qs_losses = []
@@ -228,9 +228,9 @@ class SAC(RLAlgorithm):
             policy_loss = tf.nn.compute_average_loss(policy_losses)
 
         tf.debugging.assert_shapes((
-            (actions, ('B', 'nA')),
-            (log_pis, ('B', 1)),
-            (policy_losses, ('B', 1)),
+            (actions, ('B', 'S', 'nA')),
+            (log_pis, ('B', 'S', 1)),
+            (policy_losses, ('B', 'S', 1)),
         ))
 
         policy_gradients = tape.gradient(

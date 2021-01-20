@@ -406,6 +406,7 @@ def get_algorithm_params(universe, domain, task):
             'epoch_length': epoch_length,
             'min_pool_size': get_max_path_length(universe, domain, task),
             'batch_size': 256,
+            'sequence_length': 1,
         }
     }
 
