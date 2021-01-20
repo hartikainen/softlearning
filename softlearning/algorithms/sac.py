@@ -76,6 +76,7 @@ class SAC(RLAlgorithm):
             tau=5e-3,
             target_update_interval=1,
             Q_target_type='td0',
+            Q_target_reduce_type='min',
             retrace_lambda=None,
 
             save_full_state=False,
@@ -86,9 +87,8 @@ class SAC(RLAlgorithm):
         Args:
             env (`SoftlearningEnv`): Environment used for training.
             policy: A policy function approximator.
-            Qs: Q-function approximators. The min of these
-                approximators will be used. Usage of at least two Q-functions
-                improves performance by reducing overestimation bias.
+            Qs: Q-function approximators. The values of these approximators are
+                reduced based on the `Q_target_reduce_type`.
             plotter (`QFPolicyPlotter`): Plotter instance to be used for
                 visualizing Q-function during training.
             lr (`float`): Learning rate used for the function approximators.
@@ -132,6 +132,7 @@ class SAC(RLAlgorithm):
             self._retrace_lambda = retrace_lambda
         else:
             assert retrace_lambda is None, retrace_lambda
+        self._Q_target_reduce_type = Q_target_reduce_type
 
         self._save_full_state = save_full_state
 
@@ -166,7 +167,11 @@ class SAC(RLAlgorithm):
         expected_Qs_values_t_1 = tuple(
             Q.values(observations_t_1, actions_t_1_sampled)
             for Q in self._Q_targets)
-        expected_Q_values_t_1 = tf.reduce_min(expected_Qs_values_t_1, axis=0)
+        reduce_fn = {
+            'min': tf.reduce_min,
+            'mean': tf.reduce_mean,
+        }[self._Q_target_reduce_type]
+        expected_Q_values_t_1 = reduce_fn(expected_Qs_values_t_1, axis=0)
 
         Q_targets = compute_Q_targets(
             expected_Q_values_t_1,
@@ -249,12 +254,17 @@ class SAC(RLAlgorithm):
             traces_t_0[:, 1:, ...], tf.zeros(tf.shape(traces_t_0[:, -1:, ...])),
         ), axis=1)
 
+        reduce_fn = {
+            'min': tf.reduce_min,
+            'mean': tf.reduce_mean,
+        }[self._Q_target_reduce_type]
+
         actions_t_1_sampled, log_p_a_t_1_sampled = self._policy.actions_and_log_probs(
             observations_t_1)
         expected_Qs_values_t_1 = tuple(
             Q.values(observations_t_1, actions_t_1_sampled)
             for Q in self._Q_targets)
-        expected_Q_values_t_1 = tf.reduce_min(expected_Qs_values_t_1, axis=0)
+        expected_Q_values_t_1 = reduce_fn(expected_Qs_values_t_1, axis=0)
 
         # NOTE(hartikainen): The recursive implementation of retrace requires
         # us to input Q(s_T,a_T) even though we have never executed a_T in the
@@ -271,7 +281,7 @@ class SAC(RLAlgorithm):
         Qs_values_t_1 = tuple(
             Q.values(observations_t_1, actions_t_1)
             for Q in self._Q_targets)
-        Q_values_t_1 = tf.reduce_min(Qs_values_t_1, axis=0)
+        Q_values_t_1 = reduce_fn(Qs_values_t_1, axis=0)
 
         retrace_inputs = (
             # rewards and continuation_probs should be of t_1

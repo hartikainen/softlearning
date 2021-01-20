@@ -40,6 +40,7 @@ ALGORITHM_PARAMS_ADDITIONAL = {
             'tau': 5e-3,
             'target_entropy': 'auto',
             'Q_target_type': 'retrace',
+            'Q_target_reduce_type': tune.grid_search(['min', 'mean']),
             'retrace_lambda': tune.sample_from(lambda spec: (
                 {
                     'retrace': 0.99,
