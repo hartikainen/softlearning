@@ -5,8 +5,10 @@ from numbers import Number
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
+import tree
 
 from softlearning.utils.gym import is_continuous_space, is_discrete_space
+from softlearning.reinforcement_learning_ops import retrace_ops
 from .rl_algorithm import RLAlgorithm
 
 
@@ -73,6 +75,8 @@ class SAC(RLAlgorithm):
             discount=0.99,
             tau=5e-3,
             target_update_interval=1,
+            Q_target_type='td0',
+            retrace_lambda=None,
 
             save_full_state=False,
             Q_targets=None,
@@ -123,6 +127,11 @@ class SAC(RLAlgorithm):
         self._discount = discount
         self._tau = tau
         self._target_update_interval = target_update_interval
+        self._Q_target_type = Q_target_type
+        if self._Q_target_type == 'retrace':
+            self._retrace_lambda = retrace_lambda
+        else:
+            assert retrace_lambda is None, retrace_lambda
 
         self._save_full_state = save_full_state
 
@@ -143,7 +152,7 @@ class SAC(RLAlgorithm):
             self._alpha_lr, name='alpha_optimizer')
 
     @tf.function(experimental_relax_shapes=True)
-    def _compute_Q_targets(self, batch):
+    def _compute_Q_targets_td0(self, batch):
         entropy_scale = tf.convert_to_tensor(self._alpha)
         reward_scale = tf.convert_to_tensor(self._reward_scale)
         discount = tf.convert_to_tensor(self._discount)
@@ -169,6 +178,143 @@ class SAC(RLAlgorithm):
             reward_scale)
 
         return tf.stop_gradient(Q_targets)
+
+    @tf.function(experimental_relax_shapes=True)
+    def _compute_traces(self,
+                        *,
+                        observations,
+                        actions,
+                        raw_actions,
+                        mask,
+                        p_old_a):
+        p_a = self._policy.probs_for_raw_actions(observations, raw_actions)
+        tf.debugging.assert_shapes((
+            (p_a, ('B', 'S', 1)),
+            (p_old_a, ('B', 'S', 1)),
+        ))
+        trace_numerators = p_a
+        trace_denominators = p_old_a
+        # NOTE(hartikainen): We need to explicitly mask on this level
+        # because applying mask later will cause nans to get propagated
+        # through `tf.where`. The value of `safe_denominator` doesn't
+        # matter (as long as it results in finite gradient) since we're
+        # masking it away from the losses. For related discussion on
+        # `tf.where` nan propagation, see: https://stackoverflow.com/a/42497444/1599247
+        safe_denominator = 1.0
+        safe_trace_denominators = tf.where(
+            mask[..., None], trace_denominators, safe_denominator)
+        traces = tf.where(
+            mask[..., None],
+            tf.minimum(trace_numerators / safe_trace_denominators, 1.0),
+            0.0)
+
+        return traces
+
+    @tf.function(experimental_relax_shapes=True)
+    def _compute_Q_targets_retrace(self, batch):
+        entropy_scale = tf.convert_to_tensor(self._alpha)
+        reward_scale = tf.convert_to_tensor(self._reward_scale)
+        discount = tf.convert_to_tensor(self._discount)
+
+        mask_t_0 = batch['mask']
+
+        (observations_t_0,
+         observations_t_1,
+         actions_t_0,
+         raw_actions_t_0,
+         rewards_t_0,
+         terminals_t_0,
+         log_p_old_a_t_0) = tree.map_structure(
+             lambda x: tf.where(
+                 mask_t_0[..., None], x, tf.zeros(1, dtype=x.dtype)),
+             (batch['observations'],
+              batch['next_observations'],
+              batch['actions'],
+              batch['raw_actions'],
+              batch['rewards'],
+              batch['terminals'],
+              batch['log_probs']))
+
+        p_old_a_t_0 = tf.exp(log_p_old_a_t_0)
+
+        traces_t_0 = self._compute_traces(
+            observations=observations_t_0,
+            actions=actions_t_0,
+            raw_actions=raw_actions_t_0,
+            mask=mask_t_0,
+            p_old_a=p_old_a_t_0)
+        traces_t_0 = tf.stop_gradient(traces_t_0)
+        traces_t_0 = self._retrace_lambda * traces_t_0
+        traces_t_1 = tf.concat((
+            traces_t_0[:, 1:, ...], tf.zeros(tf.shape(traces_t_0[:, -1:, ...])),
+        ), axis=1)
+
+        actions_t_1_sampled, log_p_a_t_1_sampled = self._policy.actions_and_log_probs(
+            observations_t_1)
+        expected_Qs_values_t_1 = tuple(
+            Q.values(observations_t_1, actions_t_1_sampled)
+            for Q in self._Q_targets)
+        expected_Q_values_t_1 = tf.reduce_min(expected_Qs_values_t_1, axis=0)
+
+        # NOTE(hartikainen): The recursive implementation of retrace requires
+        # us to input Q(s_T,a_T) even though we have never executed a_T in the
+        # final state s_T when the episode terminates. These get cancelled out
+        # by the recursion so the values don't matter, but we need to have them
+        # in there to get the recursion kicked off. Ideally we would fill the
+        # last element with nans, but due to the the recursion, those would
+        # propagate through the values despite them being cancelled correctly.
+        actions_t_1 = tf.concat((
+            actions_t_0[:, 1:, ...],
+            tf.fill(tf.shape(actions_t_0[:, -1:, ...]), 0.0)
+        ), axis=1)
+
+        Qs_values_t_1 = tuple(
+            Q.values(observations_t_1, actions_t_1)
+            for Q in self._Q_targets)
+        Q_values_t_1 = tf.reduce_min(Qs_values_t_1, axis=0)
+
+        retrace_inputs = (
+            # rewards and continuation_probs should be of t_1
+            reward_scale * rewards_t_0,
+            discount * (1.0 - tf.cast(terminals_t_0, rewards_t_0.dtype)),
+            # traces and q values should be of t_1
+            traces_t_1,
+            expected_Q_values_t_1 - entropy_scale * log_p_a_t_1_sampled,
+            Q_values_t_1)
+
+        # NOTE(hartikainen): We need to swap the batch_shape and
+        # sequence_length axes because the retrace implementation uses
+        # `tf.scan` which does not support custom axes.
+        retrace_inputs = tree.map_structure(
+            lambda x: tf.transpose(
+                x, tf.concat(((1, 0), tf.range(2, tf.rank(x))), axis=0)),
+            retrace_inputs)
+
+        Q_targets_retrace = retrace_ops.off_policy_corrected_multistep_target(
+            *retrace_inputs, back_prop=False)
+
+        # NOTE(hartikainen): Swap the axes back. See note above.
+        Q_targets_retrace = tf.transpose(
+            Q_targets_retrace,
+            tf.concat((
+                (1, 0), tf.range(2, tf.rank(Q_targets_retrace))
+            ), axis=0))
+
+        tf.debugging.assert_shapes((
+            (Q_targets_retrace, ('B', 'S', 1)),
+            (traces_t_1, ('B', 'S', 1)),
+            (mask_t_0, ('B', 'S')),
+        ))
+
+        return tf.stop_gradient(Q_targets_retrace)
+
+    def _compute_Q_targets(self, *args, **kwargs):
+        if self._Q_target_type == 'td0':
+            return self._compute_Q_targets_td0(*args, **kwargs)
+        elif self._Q_target_type == 'retrace':
+            return self._compute_Q_targets_retrace(*args, **kwargs)
+        else:
+            raise ValueError(self._Q_target_type)
 
     @tf.function(experimental_relax_shapes=True)
     def _update_critic(self, batch):

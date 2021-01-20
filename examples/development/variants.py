@@ -39,6 +39,16 @@ ALGORITHM_PARAMS_ADDITIONAL = {
             'target_update_interval': 1,
             'tau': 5e-3,
             'target_entropy': 'auto',
+            'Q_target_type': 'retrace',
+            'retrace_lambda': tune.sample_from(lambda spec: (
+                {
+                    'retrace': 0.99,
+                    'td0': None,
+                }[spec.get('config', spec)
+                   ['algorithm_params']
+                   ['config']
+                   ['Q_target_type']]
+            )),
 
             'discount': 0.99,
             'reward_scale': 1.0,
