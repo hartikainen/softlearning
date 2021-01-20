@@ -157,6 +157,27 @@ class BasePolicy:
         prob = tree.map_structure(lambda x: x[0], probs)
         return prob
 
+    @abc.abstractmethod
+    def probs_for_raw_actions(self, observations, raw_actions):
+        """Compute probabilities for given raw actions.
+
+        This can be implemented more stably than `probs` in some cases, e.g.
+        when `tf.Tanh`-bijector is used to squash the actions.
+        """
+        raise NotImplementedError
+
+    def prob_for_raw_action(self, *args, **kwargs):
+        """Compute the probability for a single raw action.
+
+        This can be implemented more stably than `prob` in some cases, e.g. when
+        `tf.Tanh`-bijector is used to squash the actions.
+        """
+        args_, kwargs_ = tree.map_structure(
+            lambda x: x[None, ...], (args, kwargs))
+        probs = self.probs_for_raw_actions(*args_, **kwargs_)
+        prob = tree.map_structure(lambda x: x[0], probs)
+        return prob
+
     def actions_and_raw_actions_and_log_probs(self, inputs):
         """Compute actions, raw_actions, and log probabilities together."""
         raise NotImplementedError
@@ -284,6 +305,23 @@ class ContinuousPolicy(BasePolicy):
         }[squash]
 
         return super(ContinuousPolicy, self).__init__(*args, **kwargs)
+
+    def probs_for_raw_actions(self, observations, raw_actions):
+        """Compute probabilities for given raw actions.
+
+        This can be implemented more stably than `probs` in some cases, e.g.
+        when `tf.Tanh`-bijector is used to squash the actions.
+        """
+        observations = self._filter_observations(observations)
+
+        shifts, scales = self.shift_and_scale_model(observations)
+        probs = self.action_distribution.prob(
+            self._action_post_processor(raw_actions),
+            bijector_kwargs={'scale': {'scale': scales},
+                             'shift': {'shift': shifts}}
+        )[..., tf.newaxis]
+
+        return probs
 
     def get_config(self):
         base_config = super(ContinuousPolicy, self).get_config()
