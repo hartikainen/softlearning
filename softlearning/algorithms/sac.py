@@ -144,25 +144,26 @@ class SAC(RLAlgorithm):
 
     @tf.function(experimental_relax_shapes=True)
     def _compute_Q_targets(self, batch):
-        next_observations = batch['next_observations']
-        rewards = batch['rewards']
-        terminals = batch['terminals']
-
         entropy_scale = tf.convert_to_tensor(self._alpha)
         reward_scale = tf.convert_to_tensor(self._reward_scale)
         discount = tf.convert_to_tensor(self._discount)
 
-        next_actions, next_log_pis = self._policy.actions_and_log_probs(
-            next_observations)
-        next_Qs_values = tuple(
-            Q.values(next_observations, next_actions) for Q in self._Q_targets)
-        next_Q_values = tf.reduce_min(next_Qs_values, axis=0)
+        observations_t_1 = batch['next_observations']
+        rewards_t_0 = batch['rewards']
+        terminals_t_0 = batch['terminals']
+
+        actions_t_1_sampled, log_p_a_t_1 = self._policy.actions_and_log_probs(
+            observations_t_1)
+        expected_Qs_values_t_1 = tuple(
+            Q.values(observations_t_1, actions_t_1_sampled)
+            for Q in self._Q_targets)
+        expected_Q_values_t_1 = tf.reduce_min(expected_Qs_values_t_1, axis=0)
 
         Q_targets = compute_Q_targets(
-            next_Q_values,
-            next_log_pis,
-            rewards,
-            terminals,
+            expected_Q_values_t_1,
+            log_p_a_t_1,
+            rewards_t_0,
+            terminals_t_0,
             discount,
             entropy_scale,
             reward_scale)
