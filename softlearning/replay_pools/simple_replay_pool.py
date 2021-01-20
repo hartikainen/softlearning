@@ -39,6 +39,14 @@ class SimpleReplayPool(FlexibleReplayPool):
                 name='actions',
                 dtype=action_space.dtype,
                 shape=environment.action_space.shape),
+            'raw_actions': Field(
+                name='raw_actions',
+                dtype=action_space.dtype,
+                shape=environment.action_space.shape),
+            'log_probs': Field(
+                name='log_probs',
+                dtype='float32',
+                shape=(1, )),
             'rewards': Field(
                 name='rewards',
                 dtype='float32',

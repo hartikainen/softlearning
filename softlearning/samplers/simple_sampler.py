@@ -31,15 +31,20 @@ class SimpleSampler(BaseSampler):
         return self._current_observation
 
     def _process_sample(self,
+                        *,
                         observation,
                         action,
+                        raw_action,
+                        log_prob,
                         reward,
                         terminal,
                         next_observation,
                         info):
         processed_observation = {
             'observations': observation,
+            'raw_actions': raw_action,
             'actions': action,
+            'log_probs': log_prob,
             'rewards': np.atleast_1d(reward),
             'terminals': np.atleast_1d(terminal),
             'next_observations': next_observation,
@@ -52,10 +57,10 @@ class SimpleSampler(BaseSampler):
         if self._is_first_step:
             self.reset()
 
-        action = self.policy.action(self._policy_input).numpy()
+        action, raw_action, log_prob = (
+            self.policy.action_and_raw_action_and_log_prob(self._policy_input))
 
-        next_observation, reward, terminal, info = self.environment.step(
-            action)
+        next_observation, reward, terminal, info = self.environment.step(action)
         self._path_length += 1
         self._path_return += reward
         self._total_samples += 1
@@ -63,6 +68,8 @@ class SimpleSampler(BaseSampler):
         processed_sample = self._process_sample(
             observation=self._current_observation,
             action=action,
+            raw_action=raw_action,
+            log_prob=log_prob,
             reward=reward,
             terminal=terminal,
             next_observation=next_observation,

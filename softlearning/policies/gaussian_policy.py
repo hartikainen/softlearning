@@ -170,6 +170,38 @@ class GaussianPolicy(LatentSpacePolicy):
 
         return actions, probs
 
+    @tf.function(experimental_relax_shapes=True)
+    def actions_and_raw_actions_and_log_probs(self, observations):
+        """Compute actions, raw_actions, and log probabilities together.
+
+        We need this functions to avoid numerical issues coming out of the
+        squashing bijector (`tfp.bijectors.Tanh`). Ideally this would be
+        avoided by using caching of the bijector and then computing actions
+        and log probs separately, but that's currently not possible due to the
+        issue in the graph mode (i.e. within `tf.function`) bijector caching.
+        This method could be removed once the caching works. For more, see:
+        https://github.com/tensorflow/probability/issues/840
+        """
+        observations = self._filter_observations(observations)
+
+        first_observation = tree.flatten(observations)[0]
+        first_input_rank = tf.size(tree.flatten(self._input_shapes)[0])
+        batch_shape = tf.shape(first_observation)[:-first_input_rank]
+
+        shifts, scales = self.shift_and_scale_model(observations)
+        raw_actions = self.raw_action_distribution.sample(
+            batch_shape,
+            bijector_kwargs={'scale': {'scale': scales},
+                             'shift': {'shift': shifts}})
+        actions = self._action_post_processor(raw_actions)
+        log_probs = self.action_distribution.log_prob(
+            actions,
+            bijector_kwargs={'scale': {'scale': scales},
+                             'shift': {'shift': shifts}}
+        )[..., tf.newaxis]
+
+        return actions, raw_actions, log_probs
+
     @contextmanager
     def evaluation_mode(self):
         """Activates the evaluation mode, resulting in deterministic actions.

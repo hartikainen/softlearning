@@ -157,6 +157,20 @@ class BasePolicy:
         prob = tree.map_structure(lambda x: x[0], probs)
         return prob
 
+    def actions_and_raw_actions_and_log_probs(self, inputs):
+        """Compute actions, raw_actions, and log probabilities together."""
+        raise NotImplementedError
+
+    def action_and_raw_action_and_log_prob(self, *args, **kwargs):
+        """Compute action, raw_action, and log probability together."""
+        args_, kwargs_ = tree.map_structure(
+            lambda x: x[None, ...], (args, kwargs))
+        actions_and_raw_actions_and_log_probs = (
+            self.actions_and_raw_actions_and_log_probs(*args_, **kwargs_))
+        action_and_raw_action_and_log_prob = tree.map_structure(
+            lambda x: x[0], actions_and_raw_actions_and_log_probs)
+        return action_and_raw_action_and_log_prob
+
     @contextmanager
     def evaluation_mode(self):
         """Sets the policy to function in evaluation mode.

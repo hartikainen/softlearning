@@ -26,6 +26,14 @@ class UniformPolicyMixin:
         probs = self.distribution.prob(actions)[..., tf.newaxis]
         return probs
 
+    @tf.function(experimental_relax_shapes=True)
+    def actions_and_raw_actions_and_log_probs(self, *args, **kwargs):
+        """Compute actions, raw_actions, and log probabilities together."""
+        actions = raw_actions = self.actions(*args, **kwargs)
+        log_probs = self.log_probs(*args, **kwargs, actions=actions)
+
+        return actions, raw_actions, log_probs
+
 
 class ContinuousUniformPolicy(UniformPolicyMixin, ContinuousPolicy):
     def __init__(self, *args, **kwargs):
