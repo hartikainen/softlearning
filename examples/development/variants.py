@@ -16,8 +16,7 @@ NUM_COUPLING_LAYERS = 2
 
 ALGORITHM_PARAMS_BASE = {
     'config': {
-        'train_every_n_steps': 1,
-        'n_train_repeat': 1,
+        'train_steps_per_environment_step': 1,
         'eval_render_kwargs': {},
         'eval_n_episodes': 1,
         'num_warmup_samples': tune.sample_from(lambda spec: (

@@ -34,11 +34,9 @@ class RLAlgorithm(Checkpointable):
             pool,
             sampler,
             n_epochs=1000,
-            train_every_n_steps=1,
-            n_train_repeat=1,
             min_pool_size=1,
             batch_size=1,
-            max_train_repeat_per_timestep=5,
+            train_steps_per_environment_step=1,
             epoch_length=1000,
             eval_n_episodes=10,
             eval_render_kwargs=None,
@@ -49,8 +47,6 @@ class RLAlgorithm(Checkpointable):
         Args:
             pool (`ReplayPool`): Replay pool to add gathered samples to.
             n_epochs (`int`): Number of epochs to run the training for.
-            n_train_repeat (`int`): Number of times to repeat the training
-                for single time step.
             epoch_length (`int`): Epoch length.
             eval_n_episodes (`int`): Number of rollouts to evaluate.
             eval_render_kwargs (`None`, `dict`): Arguments to be passed for
@@ -62,12 +58,10 @@ class RLAlgorithm(Checkpointable):
         self.pool = pool
 
         self._n_epochs = n_epochs
-        self._n_train_repeat = n_train_repeat
+        self._train_steps_per_environment_step = (
+            train_steps_per_environment_step)
         self._min_pool_size = min_pool_size
         self._batch_size = batch_size
-        self._max_train_repeat_per_timestep = max(
-            max_train_repeat_per_timestep, n_train_repeat)
-        self._train_every_n_steps = train_every_n_steps
         self._epoch_length = epoch_length
 
         self._eval_n_episodes = eval_n_episodes
@@ -108,11 +102,11 @@ class RLAlgorithm(Checkpointable):
         """Method called after the actual training loops."""
         pass
 
-    def _timestep_before_hook(self, *args, **kwargs):
+    def _environment_sample_before_hook(self, *args, **kwargs):
         """Hook called at the beginning of each timestep."""
         pass
 
-    def _timestep_after_hook(self, *args, **kwargs):
+    def _environment_sample_after_hook(self, *args, **kwargs):
         """Hook called at the end of each timestep."""
         pass
 
@@ -171,22 +165,27 @@ class RLAlgorithm(Checkpointable):
                     and self.ready_to_train):
                     break
 
-                self._timestep_before_hook()
-                gt.stamp('timestep_before_hook')
+                self._environment_sample_before_hook()
+                gt.stamp('environment_sample_before_hook')
 
                 self._do_sampling(timestep=self._total_timestep)
+
+                self._environment_sample_after_hook()
+                gt.stamp('environment_sample_after_hook')
+
                 gt.stamp('sample')
 
-                if self.ready_to_train:
-                    repeat_diagnostics = self._do_training_repeats(
-                        timestep=self._total_timestep)
-                    if repeat_diagnostics is not None:
-                        update_diagnostics.append(repeat_diagnostics)
+            if self.ready_to_train:
+                environment_steps = samples_now - start_samples
+                train_steps = int(np.ceil(
+                    self._train_steps_per_environment_step * environment_steps))
+                repeat_diagnostics = self._do_training_repeats(
+                    N=train_steps,
+                    timestep=self._total_timestep)
+                if repeat_diagnostics is not None:
+                    update_diagnostics.append(repeat_diagnostics)
 
                 gt.stamp('train')
-
-                self._timestep_after_hook()
-                gt.stamp('timestep_after_hook')
 
             update_diagnostics = tree.map_structure(
                 lambda *d: np.mean(d), *update_diagnostics)
@@ -330,27 +329,23 @@ class RLAlgorithm(Checkpointable):
     def ready_to_train(self):
         return self._min_pool_size <= self.pool.size
 
-    def _do_sampling(self, timestep):
-        self.sampler.sample()
+    def _do_sampling(self, timestep, N=1):
+        for i in range(N):
+            self.sampler.sample()
 
-    def _do_training_repeats(self, timestep):
-        """Repeat training _n_train_repeat times every _train_every_n_steps"""
-        if timestep % self._train_every_n_steps > 0: return
-        trained_enough = (
-            self._train_steps_this_epoch
-            > self._max_train_repeat_per_timestep * self._timestep)
-        if trained_enough: return
-
-        diagnostics = [
-            self._do_training(iteration=timestep, batch=self._training_batch())
-            for i in range(self._n_train_repeat)
-        ]
+    def _do_training_repeats(self, N, timestep):
+        """Repeat training N times."""
+        diagnostics = []
+        for n in range(N):
+            step_result = self._do_training(
+                iteration=self._num_train_steps,
+                batch=self._training_batch())
+            diagnostics.append(step_result)
+            self._num_train_steps += 1
+            self._train_steps_this_epoch += 1
 
         diagnostics = tree.map_structure(
             lambda *d: tf.reduce_mean(d).numpy(), *diagnostics)
-
-        self._num_train_steps += self._n_train_repeat
-        self._train_steps_this_epoch += self._n_train_repeat
 
         return diagnostics
 

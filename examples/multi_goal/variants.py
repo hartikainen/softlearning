@@ -6,7 +6,7 @@ ALGORITHM_PARAMS_BASE = {
     'config': {
         'epoch_length': 100,
         'n_epochs': 1000,
-        'n_train_repeat': 1,
+        'train_steps_per_environment_step': 1,
         'eval_render_kwargs': {
             'mode': 'human',
         },
