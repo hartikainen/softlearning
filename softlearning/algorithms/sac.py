@@ -148,9 +148,9 @@ class SAC(RLAlgorithm):
         rewards = batch['rewards']
         terminals = batch['terminals']
 
-        entropy_scale = self._alpha
-        reward_scale = self._reward_scale
-        discount = self._discount
+        entropy_scale = tf.convert_to_tensor(self._alpha)
+        reward_scale = tf.convert_to_tensor(self._reward_scale)
+        discount = tf.convert_to_tensor(self._discount)
 
         next_actions, next_log_pis = self._policy.actions_and_log_probs(
             next_observations)
